@@ -19,6 +19,7 @@ The application allows connecting to a remote server for chatting with AI. The a
 + Adding TTS (Text-to-Speech) support
 + Adding integration for image generation
 + roll it out to the app store
++ APIs
 + More features will be brainstormed and added later
 
 ## 📲 Usage
