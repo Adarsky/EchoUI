@@ -1,0 +1,115 @@
+//
+//  SettingsSheetView.swift
+//  FrontendAI
+//
+//  Created by macbook on 27.03.2025.
+//
+
+
+import SwiftUI
+
+struct SettingsSheetView: View {
+    @Binding var isPresented: Bool
+    @Binding var messageLength: Int
+    @Binding var endpoint: String
+    @State private var navigateToAPIManager = false
+    @AppStorage("showAvatars") private var showAvatars: Bool = true
+
+
+    var body: some View {
+        let numberFormatter: NumberFormatter = {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.minimum = 1
+            formatter.maximum = 8192
+            return formatter
+        }()
+        NavigationStack {
+            VStack(spacing: 20) {
+                HStack {
+                    Text("Settings")
+                        .font(.title3)
+                        .bold()
+                    Spacer()
+                    Button("Close") {
+                        isPresented = false
+                    }
+                }
+                
+                List {
+                    Section(header: Text("CONNECTION CONFIGURATION")) {
+                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
+                            HStack {
+                                Image(systemName: "server.rack")
+                                Text("Manage API Servers")
+                            }
+                        }
+                    }
+                    
+                    Section(header: Text("CHAT CONFIGURATION")) {
+                        HStack {
+                            Text("Max Len:")
+                            Spacer()
+                            TextField("\(messageLength)", value: $messageLength, formatter: numberFormatter)
+                                .foregroundColor(.gray)
+                            Stepper("", value: $messageLength, in: 1...8192)
+                            
+                        }
+                        HStack{
+                            Toggle("Show avatars", isOn: $showAvatars)
+                        }
+                        
+                    }
+                    
+                    Section(header: Text("SUPPORT ME (In progress :3)")) {
+                        Link(destination: URL(string: "https://github.com/your-username")!) {
+                            HStack {
+                                Image(systemName: "link")
+                                Text("My github")
+                            }
+                        }
+                        NavigationLink(destination: Text("bug")) {
+                            HStack {
+                                Image(systemName: "exclamationmark.bubble.fill")
+                                Text("Report a bug")
+                            }
+                        }
+                        NavigationLink(destination: Text("contact")) {
+                            HStack {
+                                Image(systemName: "envelope.open.fill")
+                                Text("Contact me")
+                            }
+                        }
+                        NavigationLink(destination: Text("xmr")) {
+                            HStack {
+                                Image(systemName: "bitcoinsign.circle.fill")
+                                Text("MONERO (XMR)")
+                            }
+                        }
+                        NavigationLink(destination: Text("btc")) {
+                            HStack {
+                                Image(systemName: "bitcoinsign.circle.fill")
+                                Text("BITCOIN (BTC)")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
+                
+                Spacer()
+            }
+            .padding()
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+
+#Preview {
+    SettingsSheetView(
+        isPresented: .constant(true),
+        messageLength: .constant(2048),
+        endpoint: .constant("http://localhost:5000")
+    )
+}
