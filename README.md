@@ -2,6 +2,8 @@
 
 This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data, so I hope you like the Apple like design. I tried to scatter the code in intuitive folders and make it readable so that you can freely customize it and see the functions.
 
+
+
 ## ✨ Features:
 
 + The following functions are available::
@@ -14,6 +16,12 @@ This application was written in order to transfer the character of AI and so on 
 + Markdown markup in messages
 + The chat history is saved
 
+<p float="left">
+  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.44.png" width="200" />
+  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.58.png" width="200" />
+  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.12.png" width="200" />
+  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.17.png" width="200" />
+</p>
 
 ## 🌐 Connection options:
 + Chat Completions
@@ -24,6 +32,7 @@ There are two supported APIs: chat completions (OpenAI) and KoboldCPP. It can wo
 ## 🛠️ In Progress:
 
 + roll it out to the app store
++ Streaming (issues with it, I know I'm stupid)
 + More features will be brainstormed and added later
 
 ## 📲 Usage
