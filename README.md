@@ -27,7 +27,7 @@ This application was written in order to transfer the character of AI and so on 
 + Chat Completions
 + KoboldCPP (still in work, really unstable)
 
-There are two supported APIs: chat completions (OpenAI) and KoboldCPP. It can work via TLS (!) (so far only with kobold sp), that is, you can connect via the https://..
+Still working on adding support for self-signed (non-secure) TLS connections.
 
 ## 🛠️ In Progress:
 
