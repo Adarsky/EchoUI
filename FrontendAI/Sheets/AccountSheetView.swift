@@ -21,12 +21,13 @@ struct AccountSheetView: View {
     @State private var showDeleteAlert = false
 
     var body: some View {
+        
         NavigationStack {
             VStack(spacing: 20) {
                 HStack {
-                    Text("Account Settings")
-                        .font(.title3)
+                    Text("Persona settings")
                         .bold()
+                        .font(.title3)
                     Spacer()
                     Button("Close") {
                         isPresented = false
@@ -34,7 +35,7 @@ struct AccountSheetView: View {
                 }
 
                 List {
-                    Section("Personas") {
+                    Section("Your personas") {
                         ForEach(personas) { persona in
                             HStack {
                                 persona.avatarImage
@@ -85,7 +86,6 @@ struct AccountSheetView: View {
                 .listStyle(.insetGrouped)
             }
             .padding()
-            .navigationTitle("Account")
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .navigationDestination(item: $selectedPersonaForEdit) { persona in

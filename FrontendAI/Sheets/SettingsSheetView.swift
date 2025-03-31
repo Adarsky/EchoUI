@@ -46,52 +46,17 @@ struct SettingsSheetView: View {
                         }
                     }
                     
-                    Section(header: Text("CHAT CONFIGURATION")) {
-                        HStack {
-                            Text("Max Len:")
-                            Spacer()
-                            TextField("\(messageLength)", value: $messageLength, formatter: numberFormatter)
-                                .foregroundColor(.gray)
-                            Stepper("", value: $messageLength, in: 1...8192)
-                            
-                        }
-                        HStack{
-                            Toggle("Show avatars", isOn: $showAvatars)
-                        }
-                        
-                    }
+//                    Section(header: Text("CHAT CONFIGURATION")) {
+//                        HStack {
+//                            Text("Max Len:")
+//                            Spacer()
+//                            TextField("\(messageLength)", value: $messageLength, formatter: numberFormatter)
+//                                .foregroundColor(.gray)
+//                            Stepper("", value: $messageLength, in: 1...8192)
+//                        }
                     
-                    Section(header: Text("SUPPORT ME (In progress :3)")) {
-                        Link(destination: URL(string: "https://github.com/your-username")!) {
-                            HStack {
-                                Image(systemName: "link")
-                                Text("My github")
-                            }
-                        }
-                        NavigationLink(destination: Text("bug")) {
-                            HStack {
-                                Image(systemName: "exclamationmark.bubble.fill")
-                                Text("Report a bug")
-                            }
-                        }
-                        NavigationLink(destination: Text("contact")) {
-                            HStack {
-                                Image(systemName: "envelope.open.fill")
-                                Text("Contact me")
-                            }
-                        }
-                        NavigationLink(destination: Text("xmr")) {
-                            HStack {
-                                Image(systemName: "bitcoinsign.circle.fill")
-                                Text("MONERO (XMR)")
-                            }
-                        }
-                        NavigationLink(destination: Text("btc")) {
-                            HStack {
-                                Image(systemName: "bitcoinsign.circle.fill")
-                                Text("BITCOIN (BTC)")
-                            }
-                        }
+                        HStack {
+                            Toggle("Show avatars", isOn: $showAvatars)
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -104,6 +69,7 @@ struct SettingsSheetView: View {
         }
     }
 }
+
 
 
 #Preview {

@@ -11,6 +11,7 @@ import SwiftData
 struct ChatHistoryListView: View {
     let botID: UUID
     let botName: String
+    var onSelectHistory: ((ChatHistory) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -26,8 +27,9 @@ struct ChatHistoryListView: View {
                     .foregroundColor(.secondary)
             } else {
                 ForEach(histories) { history in
-                    NavigationLink {
-                        ChatHistoryDetailView(history: history)
+                    Button {
+                        onSelectHistory?(history)
+                        dismiss()
                     } label: {
                         VStack(alignment: .leading) {
                             Text(history.date.formatted(date: .abbreviated, time: .shortened))
@@ -42,6 +44,7 @@ struct ChatHistoryListView: View {
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
+                        .padding(.vertical, 4)
                     }
                 }
                 .onDelete(perform: deleteHistory)
