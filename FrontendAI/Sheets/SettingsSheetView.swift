@@ -14,8 +14,8 @@ struct SettingsSheetView: View {
     @Binding var endpoint: String
     @State private var navigateToAPIManager = false
     @AppStorage("showAvatars") private var showAvatars: Bool = true
-
-
+    
+    
     var body: some View {
         let numberFormatter: NumberFormatter = {
             let formatter = NumberFormatter()
@@ -45,37 +45,25 @@ struct SettingsSheetView: View {
                             }
                         }
                     }
-                    
-//                    Section(header: Text("CHAT CONFIGURATION")) {
-//                        HStack {
-//                            Text("Max Len:")
-//                            Spacer()
-//                            TextField("\(messageLength)", value: $messageLength, formatter: numberFormatter)
-//                                .foregroundColor(.gray)
-//                            Stepper("", value: $messageLength, in: 1...8192)
-//                        }
-                    
+
+                    Section(header: Text("CHAT CONFIGURATION")) {
+                        Toggle("Show avatars", isOn: $showAvatars)
+
                         HStack {
-                            Toggle("Show avatars", isOn: $showAvatars)
+                            Text("Max Length")
+                            Spacer()
+                            Stepper("\(messageLength)", value: $messageLength, in: 1...8192)
+                        }
                     }
                 }
-                .listStyle(.insetGrouped)
-                
-                Spacer()
+                    .listStyle(.insetGrouped)
+                    
+                    Spacer()
+                }
+                .padding()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
             }
-            .padding()
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
     }
-}
 
-
-
-#Preview {
-    SettingsSheetView(
-        isPresented: .constant(true),
-        messageLength: .constant(2048),
-        endpoint: .constant("http://localhost:5000")
-    )
-}
