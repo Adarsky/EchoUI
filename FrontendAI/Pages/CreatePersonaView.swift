@@ -56,8 +56,6 @@ struct CreatePersonaView: View {
             TextField("System prompt / Description", text: $description, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
 
-            ColorPicker("Icon color", selection: $iconColor)
-
             Spacer()
 
             Button("Save Persona") {
