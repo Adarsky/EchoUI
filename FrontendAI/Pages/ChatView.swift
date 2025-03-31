@@ -35,6 +35,8 @@ struct ChatView: View {
     @Query private var allBots: [BotModel]
     @State private var savedBotModel: BotModel?
     @AppStorage("showAvatars") private var showAvatars: Bool = true
+    @State private var isManualHistoryLoad = false
+
 
     var currentSystemPrompt: String {
         let personaPrompt = personaManager.activePersona?.systemPrompt ?? ""
@@ -155,7 +157,11 @@ struct ChatView: View {
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: loadHistory)
+        .onAppear {
+            if !isManualHistoryLoad {
+                loadHistory()
+            }
+        }
         .onDisappear(perform: saveChatHistory)
         .alert("No API server selected", isPresented: $showAPIMissingAlert) {
             Button("OK", role: .cancel) {}
@@ -210,7 +216,9 @@ struct ChatView: View {
                 )
             }
             .navigationDestination(isPresented: $isViewingHistory) {
-                ChatHistoryListView(botID: botID, botName: bot.name)
+                ChatHistoryListView(botID: botID, botName: bot.name) { selectedHistory in
+                    loadSelectedHistory(selectedHistory)
+                }
             }
         }
         .padding()
@@ -389,6 +397,16 @@ struct ChatView: View {
         }
         try? modelContext.save()
     }
+    
+    private func loadSelectedHistory(_ history: ChatHistory) {
+        currentHistory = history
+        messages = history.messages
+            .sorted(by: { $0.index < $1.index })
+            .map { ChatMessage(content: $0.text, isUser: $0.isUser) }
+        isManualHistoryLoad = true
+    }
+
+
 }
 
 extension Collection {
