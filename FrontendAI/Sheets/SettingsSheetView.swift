@@ -45,18 +45,15 @@ struct SettingsSheetView: View {
                             }
                         }
                     }
-                    
-//                    Section(header: Text("CHAT CONFIGURATION")) {
-//                        HStack {
-//                            Text("Max Len:")
-//                            Spacer()
-//                            TextField("\(messageLength)", value: $messageLength, formatter: numberFormatter)
-//                                .foregroundColor(.gray)
-//                            Stepper("", value: $messageLength, in: 1...8192)
-//                        }
-                    
+
+                    Section(header: Text("CHAT CONFIGURATION")) {
+                        Toggle("Show avatars", isOn: $showAvatars)
+
                         HStack {
-                            Toggle("Show avatars", isOn: $showAvatars)
+                            Text("Max Length")
+                            Spacer()
+                            Stepper("\(messageLength)", value: $messageLength, in: 1...8192)
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
