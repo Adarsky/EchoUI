@@ -25,7 +25,7 @@ This application was written in order to transfer the character of AI and so on 
 
 ## 🌐 Connection options:
 + Chat Completions
-+ KoboldCPP (still in work, really unstable)
++ KoboldCPP
 
 Still working on adding support for self-signed (non-secure) TLS connections.
 
