@@ -1,6 +1,6 @@
 # EchoUI ios — simple frotend LLM app for iOS
 
-This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data, so I hope you like the Apple like design. I tried to scatter the code in intuitive folders and make it readable so that you can freely customize it and see the functions.
+This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data, so I hope you like the Apple like design. I tried to scatter the code in intuitive folders and make it readable so that you can freely customize it and see the functions. The project was mostly built with the help of ChatGPT. Initially, I created it for personal use, but decided to open source it since there aren’t many solid alternatives to ChatterUI available at the moment.
 
 
 
