@@ -36,6 +36,13 @@ struct ChatView: View {
     @State private var savedBotModel: BotModel?
     @AppStorage("showAvatars") private var showAvatars: Bool = true
     @State private var isManualHistoryLoad = false
+    @State private var streamingReply: ChatMessage?
+    @State private var isGenerating: Bool = false
+    @State private var generationTask: Task<Void, Never>? = nil
+    @State private var showCursor: Bool = true
+    @State private var alertMessage: String?
+    @State private var showAlertBanner: Bool = false
+
 
 
     var currentSystemPrompt: String {
@@ -50,6 +57,22 @@ struct ChatView: View {
 
     var body: some View {
         ZStack {
+            if showAlertBanner, let alertMessage {
+                VStack {
+                    Text(alertMessage)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.red.opacity(0.9))
+                        .cornerRadius(12)
+                        .padding(.top, 8)
+                        .padding(.horizontal)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut, value: showAlertBanner)
+            }
+
             VStack(spacing: 0) {
                 headerBar
                 ScrollView {
@@ -66,7 +89,8 @@ struct ChatView: View {
                                             .foregroundColor(.white)
                                     }
                                     if showAvatars {
-                                        if let avatar = personaManager.activePersona?.avatarData, let image = UIImage(data: avatar) {
+                                        if let avatar = personaManager.activePersona?.avatarData,
+                                           let image = UIImage(data: avatar) {
                                             Image(uiImage: image)
                                                 .resizable()
                                                 .scaledToFill()
@@ -81,9 +105,7 @@ struct ChatView: View {
                                     }
                                 }
                                 .contextMenu {
-                                    Button("Copy") {
-                                        UIPasteboard.general.string = msg.content
-                                    }
+                                    Button("Copy") { UIPasteboard.general.string = msg.content }
                                     Button("Edit") {}
                                     Button("Delete", role: .destructive) {
                                         messages.removeAll { $0.id == msg.id }
@@ -92,7 +114,8 @@ struct ChatView: View {
                             } else {
                                 HStack(alignment: .bottom, spacing: 6) {
                                     if showAvatars {
-                                        if let data = bot.avatarData, let uiImage = UIImage(data: data) {
+                                        if let data = bot.avatarData,
+                                           let uiImage = UIImage(data: data) {
                                             Image(uiImage: uiImage)
                                                 .resizable()
                                                 .scaledToFill()
@@ -108,10 +131,17 @@ struct ChatView: View {
                                     }
 
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text(msg.content)
-                                            .padding()
-                                            .background(Color.gray.opacity(0.2))
-                                            .cornerRadius(12)
+                                        if msg.id == streamingReply?.id && isGenerating {
+                                            Text(msg.content + (showCursor ? "▍" : " "))
+                                                .padding()
+                                                .background(Color.gray.opacity(0.2))
+                                                .cornerRadius(12)
+                                        } else {
+                                            Text(msg.content)
+                                                .padding()
+                                                .background(Color.gray.opacity(0.2))
+                                                .cornerRadius(12)
+                                        }
 
                                         HStack(spacing: 8) {
                                             Button {
@@ -137,9 +167,7 @@ struct ChatView: View {
                                     }
                                 }
                                 .contextMenu {
-                                    Button("Copy") {
-                                        UIPasteboard.general.string = msg.content
-                                    }
+                                    Button("Copy") { UIPasteboard.general.string = msg.content }
                                     Button("Edit") {}
                                     Button("Delete", role: .destructive) {
                                         messages.removeAll { $0.id == msg.id }
@@ -161,12 +189,16 @@ struct ChatView: View {
             if !isManualHistoryLoad {
                 loadHistory()
             }
+            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+                showCursor.toggle()
+            }
         }
         .onDisappear(perform: saveChatHistory)
         .alert("No API server selected", isPresented: $showAPIMissingAlert) {
             Button("OK", role: .cancel) {}
         }
     }
+
 
     var headerBar: some View {
         HStack {
@@ -239,18 +271,38 @@ struct ChatView: View {
             .background(Color.gray.opacity(0.2))
             .cornerRadius(8)
 
-            Button {
-                if apiManager.selectedServer == nil {
-                    showAPIMissingAlert = true
-                } else {
-                    sendMessage()
+            if isGenerating {
+                Button {
+                    generationTask?.cancel()
+                    isGenerating = false
+                    generationTask = nil
+                    if let id = streamingReply?.id,
+                       let index = messages.firstIndex(where: { $0.id == id }) {
+                        // оставляем как есть, без добавления ошибки
+                    }
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .foregroundColor(.red)
                 }
-            } label: {
-                Image(systemName: "paperplane.fill")
+            } else {
+                Button {
+                    if apiManager.selectedServer == nil {
+                        showError("No API server selected")
+                    } else if !inputText.isEmpty {
+                        sendMessage()
+                    }
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                }
+                .disabled(inputText.isEmpty)
             }
         }
         .padding()
     }
+
+
+    
+    
 
     private func sendMessage() {
         guard !inputText.isEmpty else { return }
@@ -261,54 +313,64 @@ struct ChatView: View {
 
         let systemPrompt = currentSystemPrompt
         let greeting = bot.greeting
-
         let dummyUser = ChatPayloadMessage(role: "user", content: "")
-
         let historyPayload: [ChatPayloadMessage] = messages.map {
             ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
         }
 
-        // 💡 Добавим greeting, только если он не в messages
         let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
 
         var payload: [ChatPayloadMessage] = []
-
         if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload.append(.init(role: "system", content: systemPrompt))
         }
-
         payload.append(dummyUser)
-
         if !hasGreeting {
             payload.append(.init(role: "assistant", content: greeting))
         }
-
         payload += historyPayload
 
-        /// ✅ DEBUG PRINT
         print("📤 Payload being sent to API:")
         for msg in payload {
             print("[\(msg.role)] \(msg.content)")
         }
 
-        Task {
+        let replyID = UUID()
+        streamingReply = ChatMessage(id: replyID, content: "", isUser: false)
+        messages.append(streamingReply!)
+
+        isGenerating = true
+
+        generationTask = Task {
             guard let server = apiManager.selectedServer else { return }
             do {
-                let reply = try await APIService.sendMessage(messages: payload, server: server)
-                withAnimation {
-                    messages.append(ChatMessage(content: reply, isUser: false))
-                }
+                _ = try await APIService.sendMessage(
+                    messages: payload,
+                    server: server,
+                    onStream: { chunk in
+                        DispatchQueue.main.async {
+                            if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                                messages[index].allVariants[0] += chunk
+                            }
+                        }
+                    }
+                )
+                isGenerating = false
+                generationTask = nil
+                streamingReply = nil
                 saveChatHistory()
             } catch {
                 print("❌ API Error: \(error.localizedDescription)")
-                messages.append(ChatMessage(content: "⚠️ Error: \(error.localizedDescription)", isUser: false))
+                if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                    messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                }
+                isGenerating = false
+                generationTask = nil
+                streamingReply = nil
                 saveChatHistory()
             }
         }
     }
-
-
-
 
 
     private func regenerateMessage(for message: ChatMessage) {
@@ -338,19 +400,42 @@ struct ChatView: View {
             ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
         }
 
+        messages[index].allVariants.append("")
+        messages[index].currentIndex = messages[index].allVariants.count - 1
 
-        Task {
+        isGenerating = true
+        streamingReply = messages[index]
+
+        generationTask = Task {
             guard let server = apiManager.selectedServer else { return }
             do {
-                let reply = try await APIService.sendMessage(messages: payload, server: server)
-                messages[index].allVariants.append(reply)
-                messages[index].currentIndex = messages[index].allVariants.count - 1
-                saveChatHistory()
+                _ = try await APIService.sendMessage(
+                    messages: payload,
+                    server: server,
+                    onStream: { chunk in
+                        DispatchQueue.main.async {
+                            if messages.indices.contains(index),
+                               messages[index].allVariants.indices.contains(messages[index].currentIndex) {
+                                messages[index].allVariants[messages[index].currentIndex] += chunk
+                            }
+                        }
+                    }
+                )
             } catch {
-                print("⚠️ Error regenerating: \(error.localizedDescription)")
+                if Task.isCancelled {
+                    print("🟡 Generation was cancelled")
+                } else {
+                    print("❌ API Error: \(error.localizedDescription)")
+                    showError("⚠️ \(error.localizedDescription)")
+                }
             }
+            isGenerating = false
+            generationTask = nil
+            streamingReply = nil
+            saveChatHistory()
         }
     }
+
 
     private func switchVariant(for id: UUID, direction: Int) {
         guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
@@ -378,6 +463,7 @@ struct ChatView: View {
                 }
             } catch {
                 print("⚠️ Load failed: \(error)")
+                streamingReply = nil
             }
         }
     }
@@ -404,6 +490,16 @@ struct ChatView: View {
             .sorted(by: { $0.index < $1.index })
             .map { ChatMessage(content: $0.text, isUser: $0.isUser) }
         isManualHistoryLoad = true
+    }
+    
+    private func showError(_ message: String) {
+        alertMessage = message
+        showAlertBanner = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation {
+                showAlertBanner = false
+            }
+        }
     }
 
 

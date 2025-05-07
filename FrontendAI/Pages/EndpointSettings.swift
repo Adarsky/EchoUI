@@ -11,15 +11,13 @@ class APIServer {
     var name: String
     var baseURL: String
     var selectedModel: String
-    var temperature: Double
     var isOnline: Bool = false
     var type: APIType
 
-    init(name: String, baseURL: String, selectedModel: String, temperature: Double, type: APIType) {
+    init(name: String, baseURL: String, selectedModel: String, type: APIType) {
         self.name = name
         self.baseURL = baseURL
         self.selectedModel = selectedModel
-        self.temperature = temperature
         self.type = type
     }
 }
@@ -125,7 +123,6 @@ struct CreateAPIServerView: View {
     @State private var baseURL: String = ""
     @State private var selectedModel: String = ""
     @State private var availableModels: [String] = []
-    @State private var temperature: Double = 0.7
     @State private var selectedType: APIType = .openai
     @Environment(PersonaManager.self) var personaManager
 
@@ -162,12 +159,6 @@ struct CreateAPIServerView: View {
                             }
                         }
                     }
-
-                    HStack {
-                        Text("Temperature: \(temperature, specifier: "%.2f")")
-                        Spacer()
-                        Slider(value: $temperature, in: 0...1, step: 0.01)
-                    }
                 }
             }
             .navigationTitle(editingServer == nil ? "Add API Server" : "Edit API Server")
@@ -178,14 +169,12 @@ struct CreateAPIServerView: View {
                             server.name = name
                             server.baseURL = baseURL
                             server.selectedModel = selectedModel
-                            server.temperature = temperature
                             server.type = selectedType
                         } else {
                             let newServer = APIServer(
                                 name: name,
                                 baseURL: baseURL,
                                 selectedModel: selectedModel,
-                                temperature: temperature,
                                 type: selectedType
                             )
                             modelContext.insert(newServer)
@@ -207,7 +196,6 @@ struct CreateAPIServerView: View {
                     name = server.name
                     baseURL = server.baseURL
                     selectedModel = server.selectedModel
-                    temperature = server.temperature
                     selectedType = server.type
                 }
             }
