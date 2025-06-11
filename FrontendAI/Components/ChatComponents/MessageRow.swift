@@ -31,6 +31,7 @@ struct MessageRow: View, Equatable {
     @Environment(\.streamingReply) private var streamingReply
     @Environment(\.isGenerating) private var isGenerating
     @Environment(\.showCursor) private var showCursor
+    @State private var animateCursor = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -58,31 +59,30 @@ struct MessageRow: View, Equatable {
 
                 // ---------- BUBBLE ----------
                 ZStack(alignment: .bottomLeading) {
-
-                    // сам текст — анимируем opacity на КАЖДЫЙ chunk
+                    
+                    
                     Text(msg.content.isEmpty ? "‎" : msg.content)
                         .padding()
                         .background(Color.gray.opacity(0.2))
                         .cornerRadius(12)
                         .drawingGroup(opaque: !isStreaming)
-                        .animation(.easeInOut(duration: 0.3),   // ⬅️ fade-in 120 мс
-                                   value: msg.content)            // 🔑 триггер — любое изменение строки
-
-                    // мигающий курсор только пока строка пуста
+                        .animation(.easeInOut(duration: 0.3),
+                                   value: msg.content)
+                    
                     if isStreaming && msg.content.isEmpty {
                         Circle()
                             .fill(.gray)
                             .frame(width: 10, height: 10)
-                            .scaleEffect(showCursor ? 1.0 : 1.4)
-                            .opacity(showCursor ? 0.6 : 0.3)
-                            .padding(EdgeInsets(top: 0, leading: 6, bottom: 6, trailing: 0))
-                            .animation(.easeInOut(duration: 0.6)
-                                       .repeatForever(autoreverses: true),
-                                       value: showCursor)
+                            .scaleEffect(animateCursor ? 1.2 : 0.8)
+                            .opacity(animateCursor ? 0.6 : 0.3)
+                            .padding(.leading, 6)
+                            .onAppear {
+                                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                                    animateCursor = true
+                                }
+                            }
                     }
                 }
-
-                controlsBar
             }
         }
     }
