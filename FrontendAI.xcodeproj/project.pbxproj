@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FA4692A02DE6A5B0001F57CF /* ChatField in Frameworks */ = {isa = PBXBuildFile; productRef = FA46929F2DE6A5B0001F57CF /* ChatField */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		FA23B3072D92ED2100831D63 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA4692A02DE6A5B0001F57CF /* ChatField in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +96,7 @@
 				FA23B2F62D92ED2000831D63 /* FrontendAI */,
 				FA23B3092D92ED2100831D63 /* FrontendAITests */,
 				FA23B3132D92ED2100831D63 /* FrontendAIUITests */,
+				FA46929B2DE6A1FC001F57CF /* Frameworks */,
 				FA23B2F52D92ED2000831D63 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -103,6 +109,13 @@
 				FA23B3102D92ED2100831D63 /* FrontendAIUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FA46929B2DE6A1FC001F57CF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -125,6 +138,7 @@
 			);
 			name = FrontendAI;
 			packageProductDependencies = (
+				FA46929F2DE6A5B0001F57CF /* ChatField */,
 			);
 			productName = FrontendAI;
 			productReference = FA23B2F42D92ED2000831D63 /* FrontendAI.app */;
@@ -208,6 +222,9 @@
 			);
 			mainGroup = FA23B2EB2D92ED2000831D63;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FA46929E2DE6A5B0001F57CF /* XCRemoteSwiftPackageReference "ChatField" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FA23B2F52D92ED2000831D63 /* Products */;
 			projectDirPath = "";
@@ -579,6 +596,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FA46929E2DE6A5B0001F57CF /* XCRemoteSwiftPackageReference "ChatField" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kevinhermawan/ChatField";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FA46929F2DE6A5B0001F57CF /* ChatField */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA46929E2DE6A5B0001F57CF /* XCRemoteSwiftPackageReference "ChatField" */;
+			productName = ChatField;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = FA23B2EC2D92ED2000831D63 /* Project object */;
 }

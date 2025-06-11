@@ -42,7 +42,7 @@ struct CreatePersonaView: View {
                         .padding()
                 }
             }
-            .onChange(of: selectedImageItem) { newItem in
+            .onChange(of: selectedImageItem) { _, newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self) {
                         avatarData = data
