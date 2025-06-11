@@ -7,13 +7,13 @@ struct MainPage: View {
     @State private var showSheetSettings = false
     @State private var showSheetAccount = false
 
-    // Навигация
+
     @State private var selectedBot: BotModel? = nil
     @State private var selectedBotForEdit: BotModel? = nil
     @State private var navigateToChat = false
     @State private var showCreatePage = false
 
-    // Удаление
+
     @State private var botToDelete: BotModel? = nil
     @State private var showDeleteAlert = false
 
@@ -22,6 +22,9 @@ struct MainPage: View {
 
     @Query var bots: [BotModel]
     @Environment(\.modelContext) var modelContext
+    
+    @EnvironmentObject var apiManager: APIManager
+    @Query var servers: [APIServer]
 
     var body: some View {
         NavigationStack {
@@ -63,7 +66,7 @@ struct MainPage: View {
                     ForEach(bots) { bot in
                         ChatListRow(
                             title: bot.name,
-                            subtitle: formattedPreview(for: bot),
+                            subtitle: latestMessageText(for: bot, in: modelContext),
                             date: bot.date,
                             isPinned: bot.isPinned,
                             avatarImage: bot.avatarImage
@@ -129,30 +132,36 @@ struct MainPage: View {
                 endpoint: $Endpoint
             )
         }
+        .onAppear {
+            apiManager.restoreLastSelectedServer(from: servers)
+            
+            if let server = apiManager.selectedServer {
+                Task {
+                    await apiManager.ping(server: server, modelContext: modelContext)
+                }
+            }
+        }
     }
 }
 
+func latestMessageText(for bot: BotModel, in context: ModelContext) -> String {
+    let botID = bot.id
+    let descriptor = FetchDescriptor<ChatHistory>(
+        predicate: #Predicate { $0.botID == botID },
+        sortBy: [SortDescriptor(\.date, order: .reverse)]
+    )
 
-// MARK: -- Some dummy functions
-
-func formattedPreview(for bot: BotModel) -> String {
-    // Пример: заглушка, позже подставим реальные сообщения
-    let lastMessage = "This is a response from \(bot.name)" // <- сюда можно вставить последнее из БД
-
-    // Префикс
-    let prefix = Bool.random() ? "You: " : "\(bot.name): " // Заменить на реальное условие
-
-    // Финальный текст
-    let full = prefix + lastMessage
-
-    // Если текст длинный — обрежем
-    if full.count > 20 {
-        let index = full.index(full.startIndex, offsetBy: 20)
-        return String(full[..<index]) + "..."
-    } else {
-        return full
+    guard let lastHistory = try? context.fetch(descriptor).first,
+          let lastMessage = lastHistory.messages.sorted(by: { $0.index < $1.index }).last else {
+        return "No messages yet"
     }
+
+    let prefix = lastMessage.isUser ? "You: " : "\(bot.name): "
+    let content = lastMessage.text
+    let full = prefix + content
+    return full.count > 40 ? String(full.prefix(40)) + "…" : full
 }
+
 
 
 //MARK: -- END OF BASE CODE
