@@ -75,7 +75,7 @@ struct SettingsView: View {
                         in: 1...2048,
                         step: 1
                     )
-                    .onChange(of: sliderValue) { newValue in
+                    .onChange(of: sliderValue) {_, newValue in
                         responseLength = Int(newValue)
                     }
                     
@@ -83,7 +83,7 @@ struct SettingsView: View {
                         .keyboardType(.numberPad)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .padding(.trailing)
-                        .onChange(of: responseLength) { newValue in
+                        .onChange(of: responseLength) {_, newValue in
                             sliderValue = Double(newValue)
                         }
                 }

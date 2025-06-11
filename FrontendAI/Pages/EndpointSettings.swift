@@ -8,6 +8,7 @@ enum APIType: String, Codable, CaseIterable {
 
 @Model
 class APIServer {
+    @Attribute(.unique) var uuid: UUID = UUID()
     var name: String
     var baseURL: String
     var selectedModel: String

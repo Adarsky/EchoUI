@@ -45,7 +45,7 @@ struct EditBotView: View {
                 PhotosPicker(selection: $selectedImage, matching: .images) {
                     Text("Choose Photo")
                 }
-                .onChange(of: selectedImage) { newItem in
+                .onChange(of: selectedImage) {  _, newItem in
                     Task {
                         if let data = try? await newItem?.loadTransferable(type: Data.self) {
                             bot.avatarData = data

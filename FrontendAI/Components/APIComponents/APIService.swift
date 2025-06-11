@@ -120,13 +120,13 @@ class APIService {
             "rep_pen": UserDefaults.standard.double(forKey: "repeat_penalty"),
             "top_k": UserDefaults.standard.double(forKey: "top_k"),
             "top_p": UserDefaults.standard.double(forKey: "top_p"),
-            "typical": 1,
+/*           "typical": 1,
             "tfs": 1,
             "top_a": 0,
             "rep_pen_range": 256,
-            "rep_pen_slope": 1,
+           "rep_pen_slope": 1,
             "quiet": false
-        ]
+ */         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

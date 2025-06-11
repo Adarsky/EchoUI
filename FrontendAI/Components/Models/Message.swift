@@ -15,11 +15,13 @@ class Message {
     var content: String
     var isUser: Bool
     var timestamp: Date
-    
-    init(content: String, isUser: Bool, timestamp: Date = Date()) {
+    var botID: UUID
+
+    init(content: String, isUser: Bool, botID: UUID, timestamp: Date = Date()) {
         self.id = UUID()
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
+        self.botID = botID
     }
 }

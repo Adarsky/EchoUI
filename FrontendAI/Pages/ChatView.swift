@@ -1,27 +1,28 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ChatView: View {
     let bot: Bot
     let botID: UUID
-
+    
     struct ChatMessage: Identifiable {
         let id: UUID
         var allVariants: [String]
         let isUser: Bool
         var currentIndex: Int = 0
-
+        
         var content: String {
             allVariants[safe: currentIndex] ?? ""
         }
-
+        
         init(id: UUID = UUID(), content: String, isUser: Bool) {
             self.id = id
             self.allVariants = [content]
             self.isUser = isUser
         }
     }
-
+    
     @State private var messages: [ChatMessage] = []
     @State private var showChatBotSheet = false
     @State private var inputText: String = ""
@@ -42,19 +43,24 @@ struct ChatView: View {
     @State private var showCursor: Bool = true
     @State private var alertMessage: String?
     @State private var showAlertBanner: Bool = false
+    @State private var inputTextHeight: CGFloat = 40
+    @FocusState private var isTextFieldFocused: Bool
+    @State private var showMissingAPIAlert = false
+    @State private var openSettings = false
 
-
-
+    
+    
+    
     var currentSystemPrompt: String {
         let personaPrompt = personaManager.activePersona?.systemPrompt ?? ""
         return [personaPrompt, bot.subtitle].filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
-
+    
     init(bot: Bot) {
         self.bot = bot
         self.botID = bot.id
     }
-
+    
     var body: some View {
         ZStack {
             if showAlertBanner, let alertMessage {
@@ -72,117 +78,32 @@ struct ChatView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(.easeInOut, value: showAlertBanner)
             }
-
+            
             VStack(spacing: 0) {
                 headerBar
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(messages) { msg in
-                            if msg.isUser {
-                                HStack(spacing: 6) {
-                                    Spacer()
-                                    VStack(alignment: .trailing) {
-                                        Text(msg.content)
-                                            .padding()
-                                            .background(Color.blue)
-                                            .cornerRadius(12)
-                                            .foregroundColor(.white)
-                                    }
-                                    if showAvatars {
-                                        if let avatar = personaManager.activePersona?.avatarData,
-                                           let image = UIImage(data: avatar) {
-                                            Image(uiImage: image)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 32, height: 32)
-                                                .clipShape(Circle())
-                                        } else {
-                                            Image(systemName: "person.fill")
-                                                .resizable()
-                                                .frame(width: 32, height: 32)
-                                                .foregroundColor(.gray)
-                                        }
-                                    }
-                                }
-                                .contextMenu {
-                                    Button("Copy") { UIPasteboard.general.string = msg.content }
-                                    Button("Edit") {}
-                                    Button("Delete", role: .destructive) {
-                                        messages.removeAll { $0.id == msg.id }
-                                    }
-                                }
-                            } else {
-                                HStack(alignment: .bottom, spacing: 6) {
-                                    if showAvatars {
-                                        if let data = bot.avatarData,
-                                           let uiImage = UIImage(data: data) {
-                                            Image(uiImage: uiImage)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 32, height: 32)
-                                                .clipShape(Circle())
-                                        } else {
-                                            Image(systemName: bot.avatarSystemName)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 32, height: 32)
-                                                .foregroundColor(bot.iconColor)
-                                        }
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        if msg.id == streamingReply?.id && isGenerating {
-                                            Text(msg.content + (showCursor ? "▍" : " "))
-                                                .padding()
-                                                .background(Color.gray.opacity(0.2))
-                                                .cornerRadius(12)
-                                        } else {
-                                            Text(msg.content)
-                                                .padding()
-                                                .background(Color.gray.opacity(0.2))
-                                                .cornerRadius(12)
-                                        }
-
-                                        HStack(spacing: 8) {
-                                            Button {
-                                                regenerateMessage(for: msg)
-                                            } label: {
-                                                Image(systemName: "arrow.trianglehead.counterclockwise.rotate.90")
-                                            }
-
-                                            Button {
-                                                switchVariant(for: msg.id, direction: -1)
-                                            } label: {
-                                                Image(systemName: "arrow.left")
-                                            }
-                                            .disabled(currentMessage(for: msg.id)?.currentIndex == 0)
-
-                                            Button {
-                                                switchVariant(for: msg.id, direction: 1)
-                                            } label: {
-                                                Image(systemName: "arrow.right")
-                                            }
-                                            .disabled((currentMessage(for: msg.id)?.currentIndex ?? 0) >= (currentMessage(for: msg.id)?.allVariants.count ?? 1) - 1)
-                                        }
-                                    }
-                                }
-                                .contextMenu {
-                                    Button("Copy") { UIPasteboard.general.string = msg.content }
-                                    Button("Edit") {}
-                                    Button("Delete", role: .destructive) {
-                                        messages.removeAll { $0.id == msg.id }
-                                    }
-                                }
-                            }
+                            MessageRow(
+                                msg: msg,
+                                messages: $messages,
+                                regenerate: regenerateMessage,
+                                switchVariant: switchVariant
+                            )
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
                 inputBar
             }
         }
+        .environment(\.bot, bot)
+        .environment(\.showAvatars, showAvatars)
+        .environment(\.personaManager, personaManager)
+        .environment(\.streamingReply, streamingReply)
+        .environment(\.isGenerating, isGenerating)
+        .environment(\.showCursor, showCursor)
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -194,12 +115,21 @@ struct ChatView: View {
             }
         }
         .onDisappear(perform: saveChatHistory)
-        .alert("No API server selected", isPresented: $showAPIMissingAlert) {
+        .sheet(isPresented: $openSettings) {
+            APIManagerView(selectedServer: $apiManager.selectedServer)
+                .environmentObject(apiManager)
+        }
+        .alert("No API server selected", isPresented: $showMissingAPIAlert) {
+            Button("Settings") {
+                openSettings = true
+            }
             Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please select or configure an API endpoint to continue.")
         }
     }
-
-
+    
+    
     var headerBar: some View {
         HStack {
             Button(action: { dismiss() }) {
@@ -256,55 +186,66 @@ struct ChatView: View {
         .padding()
         .background(Color.gray.opacity(0.15))
     }
-
+    
     var inputBar: some View {
-        HStack(spacing: 12) {
-            ZStack(alignment: .leading) {
-                if inputText.isEmpty {
-                    Text("Message \(bot.name)...")
-                        .foregroundColor(.gray)
-                }
-                TextField("", text: $inputText)
-                    .foregroundColor(.primary)
-            }
-            .padding(8)
-            .background(Color.gray.opacity(0.2))
-            .cornerRadius(8)
+        VStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(Color.gray.opacity(0.10))
+                .frame(height: 64)
+                .overlay(
+                    HStack {
+                        TextField("Message \(bot.name)", text: $inputText, axis: .vertical)
+                            .focused($isTextFieldFocused)
+                            .foregroundColor(.primary)
+                            .padding(12)
 
-            if isGenerating {
-                Button {
-                    generationTask?.cancel()
-                    isGenerating = false
-                    generationTask = nil
-                    if let id = streamingReply?.id,
-                       let index = messages.firstIndex(where: { $0.id == id }) {
-                        // оставляем как есть, без добавления ошибки
+                        Spacer()
+
+                        if isGenerating {
+                            Button {
+                                generationTask?.cancel()
+                                isGenerating = false
+                                generationTask = nil
+                                if let id = streamingReply?.id,
+                                   let _ = messages.firstIndex(where: { $0.id == id }) {
+                                    streamingReply = nil
+                                    saveChatHistory()
+                                }
+                            } label: {
+                                Image(systemName: "stop.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.red)
+                                    .padding(.trailing, 12)
+                            }
+                        } else {
+                            Button {
+                                if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    sendMessage()
+                                }
+                            } label: {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.blue)
+                                    .padding(.trailing, 12)
+                            }
+                        }
                     }
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .foregroundColor(.red)
-                }
-            } else {
-                Button {
-                    if apiManager.selectedServer == nil {
-                        showError("No API server selected")
-                    } else if !inputText.isEmpty {
-                        sendMessage()
-                    }
-                } label: {
-                    Image(systemName: "paperplane.fill")
-                }
-                .disabled(inputText.isEmpty)
-            }
+                )
+                .padding(.horizontal)
+                .padding(.bottom, 10)
         }
-        .padding()
     }
 
 
-    
-    
+
 
     private func sendMessage() {
+        
+        guard let server = apiManager.selectedServer else {
+            showMissingAPIAlert = true
+            return
+        }
+
         guard !inputText.isEmpty else { return }
 
         let userMessage = ChatMessage(content: inputText, isUser: true)
@@ -318,7 +259,7 @@ struct ChatView: View {
             ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
         }
 
-        let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
+        let hasGreeting = messages.contains(where: { !$0.isUser && $0.allVariants.contains(greeting) })
 
         var payload: [ChatPayloadMessage] = []
         if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -336,99 +277,142 @@ struct ChatView: View {
         }
 
         let replyID = UUID()
+        let streamBuffer = ActorIsolated("")
         streamingReply = ChatMessage(id: replyID, content: "", isUser: false)
         messages.append(streamingReply!)
-
+        
+        startGentleVibration()
         isGenerating = true
+        startGentleVibration()
+
+        Task {
+            while isGenerating {
+                try? await Task.sleep(for: .milliseconds(50))
+                let flush = await streamBuffer.replace(with: "")
+                guard !flush.isEmpty else { continue }
+
+                if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                    await MainActor.run {
+                        let variant = messages[index].currentIndex
+
+                        if replyID == streamingReply?.id && isGenerating {
+                            messages[index].allVariants[variant] += flush
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                messages[index].allVariants[variant] += flush
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         generationTask = Task {
-            guard let server = apiManager.selectedServer else { return }
             do {
                 _ = try await APIService.sendMessage(
                     messages: payload,
                     server: server,
                     onStream: { chunk in
-                        DispatchQueue.main.async {
-                            if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                                messages[index].allVariants[0] += chunk
-                            }
+                        Task {
+                            await streamBuffer.withValue { $0 += chunk }
                         }
                     }
                 )
-                isGenerating = false
-                generationTask = nil
-                streamingReply = nil
-                saveChatHistory()
+                endVibrationEffect()
             } catch {
                 print("❌ API Error: \(error.localizedDescription)")
                 if let index = messages.firstIndex(where: { $0.id == replyID }) {
                     messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
                 }
-                isGenerating = false
-                generationTask = nil
-                streamingReply = nil
-                saveChatHistory()
             }
+            
+            endVibrationEffect()
+            isGenerating = false
+            generationTask = nil
+            streamingReply = nil
+            saveChatHistory()
         }
     }
 
 
+
     private func regenerateMessage(for message: ChatMessage) {
+        
+        guard let server = apiManager.selectedServer else {
+            showMissingAPIAlert = true
+            return
+        }
+
         guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 
         let systemPrompt = currentSystemPrompt
         let greeting = bot.greeting
         let dummyUser = ChatPayloadMessage(role: "user", content: "")
-
         let historyBefore = messages.prefix(upTo: index)
 
         let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
 
         var payload: [ChatPayloadMessage] = []
-
         if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload.append(.init(role: "system", content: systemPrompt))
         }
-
         payload.append(dummyUser)
-
         if !hasGreeting {
             payload.append(.init(role: "assistant", content: greeting))
         }
-
         payload += historyBefore.map {
             ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
         }
 
         messages[index].allVariants.append("")
         messages[index].currentIndex = messages[index].allVariants.count - 1
-
+        
+        startGentleVibration()
         isGenerating = true
         streamingReply = messages[index]
 
+        let streamBuffer = ActorIsolated("")
+
+        Task {
+            while isGenerating {
+                try? await Task.sleep(for: .milliseconds(50))
+                let flush = await streamBuffer.replace(with: "")
+                guard !flush.isEmpty else { continue }
+
+                if messages.indices.contains(index) {
+                    await MainActor.run {
+                        let variant = messages[index].currentIndex
+
+                        if message.id == streamingReply?.id && isGenerating {
+                            messages[index].allVariants[variant] += flush
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                messages[index].allVariants[variant] += flush
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         generationTask = Task {
-            guard let server = apiManager.selectedServer else { return }
             do {
                 _ = try await APIService.sendMessage(
                     messages: payload,
                     server: server,
                     onStream: { chunk in
-                        DispatchQueue.main.async {
-                            if messages.indices.contains(index),
-                               messages[index].allVariants.indices.contains(messages[index].currentIndex) {
-                                messages[index].allVariants[messages[index].currentIndex] += chunk
-                            }
+                        Task {
+                            await streamBuffer.withValue { $0 += chunk }
                         }
                     }
                 )
             } catch {
-                if Task.isCancelled {
-                    print("🟡 Generation was cancelled")
-                } else {
-                    print("❌ API Error: \(error.localizedDescription)")
-                    showError("⚠️ \(error.localizedDescription)")
-                }
+                print("❌ API Error: \(error.localizedDescription)")
+                showError("⚠️ \(error.localizedDescription)")
             }
+            
+            endVibrationEffect()
             isGenerating = false
             generationTask = nil
             streamingReply = nil
@@ -501,6 +485,51 @@ struct ChatView: View {
             }
         }
     }
+    
+    private func startGentleVibration(interval: TimeInterval = 0.1) {
+        let feedbackSequence: [UIImpactFeedbackGenerator.FeedbackStyle] = [
+            .heavy,   // ≈ 1.0
+            .medium,  // ≈ 0.7
+            .light,   // ≈ 0.5
+        ]
+
+        var currentIndex = 0
+
+        Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            guard isGenerating else {
+                timer.invalidate()
+                return
+            }
+
+            if currentIndex >= feedbackSequence.count {
+                timer.invalidate()
+                return
+            }
+
+            let style = feedbackSequence[currentIndex]
+            let generator = UIImpactFeedbackGenerator(style: style)
+            generator.prepare()
+            generator.impactOccurred()
+
+            currentIndex += 1
+        }
+    }
+
+    
+    private func endVibrationEffect() {
+        let soft = UIImpactFeedbackGenerator(style: .light)
+        let strong = UIImpactFeedbackGenerator(style: .medium)
+        
+        soft.prepare()
+        strong.prepare()
+        
+        soft.impactOccurred() // тук
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            strong.impactOccurred() // дук
+        }
+    }
+
+
 
 
 }
@@ -510,3 +539,36 @@ extension Collection {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = 20
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
+#Preview {
+    let previewBot = Bot(
+        id: UUID(),
+        name: "PreviewBot",
+        avatarSystemName: "brain.head.profile",
+        iconColor: .blue,
+        subtitle: "Helpful assistant",
+        date: "24.09.2020",
+        isPinned: false,
+        greeting: "Hello, how can I help you today?",
+        avatarData: nil
+    )
+
+    ChatView(bot: previewBot)
+        .environmentObject(APIManager())
+        .environment(PersonaManager())
+}
+
