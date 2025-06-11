@@ -110,9 +110,6 @@ struct ChatView: View {
             if !isManualHistoryLoad {
                 loadHistory()
             }
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                showCursor.toggle()
-            }
         }
         .onDisappear(perform: saveChatHistory)
         .sheet(isPresented: $openSettings) {
@@ -285,49 +282,30 @@ struct ChatView: View {
         isGenerating = true
         startGentleVibration()
 
-        Task {
-            while isGenerating {
-                try? await Task.sleep(for: .milliseconds(50))
-                let flush = await streamBuffer.replace(with: "")
-                guard !flush.isEmpty else { continue }
-
-                if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                    await MainActor.run {
-                        let variant = messages[index].currentIndex
-
-                        if replyID == streamingReply?.id && isGenerating {
-                            messages[index].allVariants[variant] += flush
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                messages[index].allVariants[variant] += flush
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
         generationTask = Task {
             do {
                 _ = try await APIService.sendMessage(
                     messages: payload,
                     server: server,
                     onStream: { chunk in
-                        Task {
-                            await streamBuffer.withValue { $0 += chunk }
+                        DispatchQueue.main.async {
+                            if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                                let variant = messages[index].currentIndex
+                                messages[index].allVariants[variant] += chunk
+                            }
                         }
                     }
                 )
                 endVibrationEffect()
             } catch {
                 print("❌ API Error: \(error.localizedDescription)")
-                if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                    messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                await MainActor.run {
+                    if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                        messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                    }
                 }
             }
-            
-            endVibrationEffect()
+
             isGenerating = false
             generationTask = nil
             streamingReply = nil
@@ -345,6 +323,8 @@ struct ChatView: View {
         }
 
         guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
+        
+        let replyID = message.id
 
         let systemPrompt = currentSystemPrompt
         let greeting = bot.greeting
@@ -374,45 +354,30 @@ struct ChatView: View {
 
         let streamBuffer = ActorIsolated("")
 
-        Task {
-            while isGenerating {
-                try? await Task.sleep(for: .milliseconds(50))
-                let flush = await streamBuffer.replace(with: "")
-                guard !flush.isEmpty else { continue }
-
-                if messages.indices.contains(index) {
-                    await MainActor.run {
-                        let variant = messages[index].currentIndex
-
-                        if message.id == streamingReply?.id && isGenerating {
-                            messages[index].allVariants[variant] += flush
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                messages[index].allVariants[variant] += flush
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         generationTask = Task {
             do {
                 _ = try await APIService.sendMessage(
                     messages: payload,
                     server: server,
                     onStream: { chunk in
-                        Task {
-                            await streamBuffer.withValue { $0 += chunk }
+                        DispatchQueue.main.async {
+                            if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                                let variant = messages[index].currentIndex
+                                messages[index].allVariants[variant] += chunk
+                            }
                         }
                     }
                 )
+                endVibrationEffect()
             } catch {
                 print("❌ API Error: \(error.localizedDescription)")
-                showError("⚠️ \(error.localizedDescription)")
+                await MainActor.run {
+                    if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                        messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                    }
+                }
             }
-            
-            endVibrationEffect()
+
             isGenerating = false
             generationTask = nil
             streamingReply = nil
