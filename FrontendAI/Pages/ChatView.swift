@@ -1,34 +1,36 @@
+//
+//  ChatView.swift
+//  FrontendAI
+//
+//  Created by macbook on 30.03.2025.
+//
+
 import SwiftUI
 import SwiftData
 import UIKit
 
 struct ChatView: View {
+    // MARK: – Входные данные
     let bot: Bot
     let botID: UUID
-    
-    struct ChatMessage: Identifiable {
-        let id: UUID
-        var allVariants: [String]
-        let isUser: Bool
-        var currentIndex: Int = 0
-        
-        var content: String {
-            allVariants[safe: currentIndex] ?? ""
-        }
-        
-        init(id: UUID = UUID(), content: String, isUser: Bool) {
-            self.id = id
-            self.allVariants = [content]
-            self.isUser = isUser
-        }
-    }
-    
-    @State private var messages: [ChatMessage] = []
+
+    // MARK: – Состояния
+    @State private var messages: [ChatMessageModel] = []
     @State private var showChatBotSheet = false
     @State private var inputText: String = ""
     @State private var currentHistory: ChatHistory?
     @State private var isViewingHistory: Bool = false
-    @State private var showAPIMissingAlert = false
+    @State private var isManualHistoryLoad = false
+    @State private var streamingReply: ChatMessageModel?
+    @State private var isGenerating: Bool = false
+    @State private var generationTask: Task<Void, Never>? = nil
+    @State private var showCursor: Bool = true
+    @State private var alertMessage: String?
+    @State private var showAlertBanner: Bool = false
+    @State private var showMissingAPIAlert = false
+    @State private var openSettings = false
+
+    // MARK: – Env
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var apiManager: APIManager
@@ -36,31 +38,20 @@ struct ChatView: View {
     @Query private var allBots: [BotModel]
     @State private var savedBotModel: BotModel?
     @AppStorage("showAvatars") private var showAvatars: Bool = true
-    @State private var isManualHistoryLoad = false
-    @State private var streamingReply: ChatMessage?
-    @State private var isGenerating: Bool = false
-    @State private var generationTask: Task<Void, Never>? = nil
-    @State private var showCursor: Bool = true
-    @State private var alertMessage: String?
-    @State private var showAlertBanner: Bool = false
-    @State private var inputTextHeight: CGFloat = 40
-    @FocusState private var isTextFieldFocused: Bool
-    @State private var showMissingAPIAlert = false
-    @State private var openSettings = false
 
-    
-    
-    
-    var currentSystemPrompt: String {
-        let personaPrompt = personaManager.activePersona?.systemPrompt ?? ""
-        return [personaPrompt, bot.subtitle].filter { !$0.isEmpty }.joined(separator: "\n\n")
-    }
-    
+    // MARK: – Init
     init(bot: Bot) {
         self.bot = bot
         self.botID = bot.id
     }
-    
+
+    // MARK: – Calculated
+    var currentSystemPrompt: String {
+        let personaPrompt = personaManager.activePersona?.systemPrompt ?? ""
+        return [personaPrompt, bot.subtitle].filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    // MARK: – Body
     var body: some View {
         ZStack {
             if showAlertBanner, let alertMessage {
@@ -78,15 +69,28 @@ struct ChatView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(.easeInOut, value: showAlertBanner)
             }
-            
+
             VStack(spacing: 0) {
-                headerBar
+                // Header
+                ChatHeaderBar(
+                    bot: bot,
+                    botID: botID,
+                    showChatBotSheet: $showChatBotSheet,
+                    isViewingHistory: $isViewingHistory,
+                    onNewChat: {
+                        saveChatHistory()
+                        messages = []
+                        currentHistory = nil
+                        messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
+                    }
+                )
+
+                // Messages list
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(messages) { msg in
                             MessageRow(
                                 msg: msg,
-                                messages: $messages,
                                 regenerate: regenerateMessage,
                                 switchVariant: switchVariant
                             )
@@ -95,21 +99,27 @@ struct ChatView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                inputBar
+
+                // Input bar
+                ChatInputBar(
+                    inputText: $inputText,
+                    isGenerating: $isGenerating,
+                    placeholder: "Message \(bot.name)",
+                    onSend: sendMessage,
+                    onStop: stopGeneration
+                )
             }
         }
+        // Env-proxies
         .environment(\.bot, bot)
         .environment(\.showAvatars, showAvatars)
         .environment(\.personaManager, personaManager)
-        .environment(\.streamingReply, streamingReply)
         .environment(\.isGenerating, isGenerating)
         .environment(\.showCursor, showCursor)
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            if !isManualHistoryLoad {
-                loadHistory()
-            }
+            if !isManualHistoryLoad { loadHistory() }
         }
         .onDisappear(perform: saveChatHistory)
         .sheet(isPresented: $openSettings) {
@@ -117,127 +127,32 @@ struct ChatView: View {
                 .environmentObject(apiManager)
         }
         .alert("No API server selected", isPresented: $showMissingAPIAlert) {
-            Button("Settings") {
-                openSettings = true
-            }
+            Button("Settings") { openSettings = true }
             Button("OK", role: .cancel) {}
         } message: {
             Text("Please select or configure an API endpoint to continue.")
         }
-    }
-    
-    
-    var headerBar: some View {
-        HStack {
-            Button(action: { dismiss() }) {
-                Image(systemName: "chevron.left")
-                    .font(.headline)
-            }
-            Spacer()
-            HStack(spacing: 8) {
-                if let data = bot.avatarData, let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 32, height: 32)
-                        .clipShape(Circle())
-                } else {
-                    Image(systemName: bot.avatarSystemName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 32, height: 32)
-                        .foregroundColor(bot.iconColor)
-                }
-                Text(bot.name)
-                    .font(.headline)
-            }
-            Spacer()
-            Button {
-                showChatBotSheet = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.title3)
-            }
-            .sheet(isPresented: $showChatBotSheet) {
-                ChatBotSheetView(
-                    bot: bot,
-                    onNewChat: {
-                        saveChatHistory()
-                        messages = []
-                        currentHistory = nil
-                        messages.append(ChatMessage(content: bot.greeting, isUser: false))
-                        showChatBotSheet = false
-                    },
-                    onViewHistory: {
-                        showChatBotSheet = false
-                        isViewingHistory = true
-                    }
-                )
-            }
-            .navigationDestination(isPresented: $isViewingHistory) {
-                ChatHistoryListView(botID: botID, botName: bot.name) { selectedHistory in
-                    loadSelectedHistory(selectedHistory)
-                }
+        .navigationDestination(isPresented: $isViewingHistory) {
+            ChatHistoryListView(botID: botID, botName: bot.name) { selectedHistory in
+                loadSelectedHistory(selectedHistory)
             }
         }
-        .padding()
-        .background(Color.gray.opacity(0.15))
     }
-    
-    var inputBar: some View {
-        VStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color.gray.opacity(0.10))
-                .frame(height: 64)
-                .overlay(
-                    HStack {
-                        TextField("Message \(bot.name)", text: $inputText, axis: .vertical)
-                            .focused($isTextFieldFocused)
-                            .foregroundColor(.primary)
-                            .padding(12)
 
-                        Spacer()
+    // MARK: – Actions
 
-                        if isGenerating {
-                            Button {
-                                generationTask?.cancel()
-                                isGenerating = false
-                                generationTask = nil
-                                if let id = streamingReply?.id,
-                                   let _ = messages.firstIndex(where: { $0.id == id }) {
-                                    streamingReply = nil
-                                    saveChatHistory()
-                                }
-                            } label: {
-                                Image(systemName: "stop.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.red)
-                                    .padding(.trailing, 12)
-                            }
-                        } else {
-                            Button {
-                                if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    sendMessage()
-                                }
-                            } label: {
-                                Image(systemName: "paperplane.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.blue)
-                                    .padding(.trailing, 12)
-                            }
-                        }
-                    }
-                )
-                .padding(.horizontal)
-                .padding(.bottom, 10)
+    /// Завершить стрим и отменить Task.
+    private func stopGeneration() {
+        generationTask?.cancel()
+        isGenerating = false
+        generationTask = nil
+        if streamingReply != nil {
+            streamingReply = nil
+            saveChatHistory()
         }
     }
-
-
-
 
     private func sendMessage() {
-        
         guard let server = apiManager.selectedServer else {
             showMissingAPIAlert = true
             return
@@ -245,42 +160,17 @@ struct ChatView: View {
 
         guard !inputText.isEmpty else { return }
 
-        let userMessage = ChatMessage(content: inputText, isUser: true)
+        let userMessage = ChatMessageModel(content: inputText, isUser: true)
         withAnimation { messages.append(userMessage) }
         inputText = ""
 
-        let systemPrompt = currentSystemPrompt
-        let greeting = bot.greeting
-        let dummyUser = ChatPayloadMessage(role: "user", content: "")
-        let historyPayload: [ChatPayloadMessage] = messages.map {
-            ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
-        }
-
-        let hasGreeting = messages.contains(where: { !$0.isUser && $0.allVariants.contains(greeting) })
-
-        var payload: [ChatPayloadMessage] = []
-        if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            payload.append(.init(role: "system", content: systemPrompt))
-        }
-        payload.append(dummyUser)
-        if !hasGreeting {
-            payload.append(.init(role: "assistant", content: greeting))
-        }
-        payload += historyPayload
-
-        print("📤 Payload being sent to API:")
-        for msg in payload {
-            print("[\(msg.role)] \(msg.content)")
-        }
-
+        let payload = buildPayload(dummyUser: true)
         let replyID = UUID()
-        let streamBuffer = ActorIsolated("")
-        streamingReply = ChatMessage(id: replyID, content: "", isUser: false)
+        streamingReply = ChatMessageModel(id: replyID, content: "", isUser: false)
         messages.append(streamingReply!)
-        
+
         startGentleVibration()
         isGenerating = true
-        startGentleVibration()
 
         generationTask = Task {
             do {
@@ -291,7 +181,7 @@ struct ChatView: View {
                         DispatchQueue.main.async {
                             if let index = messages.firstIndex(where: { $0.id == replyID }) {
                                 let variant = messages[index].currentIndex
-                                messages[index].allVariants[variant] += chunk
+                                messages[index].appendChunk(chunk, to: variant)
                             }
                         }
                     }
@@ -301,7 +191,7 @@ struct ChatView: View {
                 print("❌ API Error: \(error.localizedDescription)")
                 await MainActor.run {
                     if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                        messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                        messages[index].appendChunk("⚠️ Error: \(error.localizedDescription)", to: 0)
                     }
                 }
             }
@@ -313,46 +203,21 @@ struct ChatView: View {
         }
     }
 
-
-
-    private func regenerateMessage(for message: ChatMessage) {
-        
+    private func regenerateMessage(for message: ChatMessageModel) {
         guard let server = apiManager.selectedServer else {
             showMissingAPIAlert = true
             return
         }
 
         guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        
         let replyID = message.id
 
-        let systemPrompt = currentSystemPrompt
-        let greeting = bot.greeting
-        let dummyUser = ChatPayloadMessage(role: "user", content: "")
-        let historyBefore = messages.prefix(upTo: index)
+        let payload = buildPayload(upTo: index, dummyUser: true)
 
-        let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
-
-        var payload: [ChatPayloadMessage] = []
-        if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            payload.append(.init(role: "system", content: systemPrompt))
-        }
-        payload.append(dummyUser)
-        if !hasGreeting {
-            payload.append(.init(role: "assistant", content: greeting))
-        }
-        payload += historyBefore.map {
-            ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
-        }
-
-        messages[index].allVariants.append("")
-        messages[index].currentIndex = messages[index].allVariants.count - 1
-        
+        messages[index].addNewVariant()
         startGentleVibration()
         isGenerating = true
         streamingReply = messages[index]
-
-        let streamBuffer = ActorIsolated("")
 
         generationTask = Task {
             do {
@@ -361,9 +226,9 @@ struct ChatView: View {
                     server: server,
                     onStream: { chunk in
                         DispatchQueue.main.async {
-                            if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                                let variant = messages[index].currentIndex
-                                messages[index].allVariants[variant] += chunk
+                            if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                                let variant = messages[idx].currentIndex
+                                messages[idx].appendChunk(chunk, to: variant)
                             }
                         }
                     }
@@ -372,8 +237,8 @@ struct ChatView: View {
             } catch {
                 print("❌ API Error: \(error.localizedDescription)")
                 await MainActor.run {
-                    if let index = messages.firstIndex(where: { $0.id == replyID }) {
-                        messages[index].allVariants[0] = "⚠️ Error: \(error.localizedDescription)"
+                    if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                        messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: 0)
                     }
                 }
             }
@@ -385,30 +250,65 @@ struct ChatView: View {
         }
     }
 
-
     private func switchVariant(for id: UUID, direction: Int) {
         guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
-        let count = messages[index].allVariants.count
-        var newIndex = messages[index].currentIndex + direction
-        newIndex = max(0, min(count - 1, newIndex))
-        messages[index].currentIndex = newIndex
+        messages[index].switchVariant(offset: direction)
     }
 
-    private func currentMessage(for id: UUID) -> ChatMessage? {
-        messages.first(where: { $0.id == id })
+    // MARK: – Payload builder
+
+    private func buildPayload(upTo limit: Int? = nil, dummyUser: Bool = false) -> [ChatPayloadMessage] {
+        let systemPrompt = currentSystemPrompt
+        let greeting = bot.greeting
+        let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
+
+        var payload: [ChatPayloadMessage] = []
+
+        if !systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload.append(.init(role: "system", content: systemPrompt))
+        }
+
+        if dummyUser {
+            payload.append(.init(role: "user", content: ""))
+        }
+
+        if !hasGreeting {
+            payload.append(.init(role: "assistant", content: greeting))
+        }
+
+        let slice: [ChatMessageModel] = {
+            if let limit = limit {
+                return Array(messages.prefix(upTo: limit))
+            } else {
+                return messages
+            }
+        }()
+
+        payload += slice.map {
+            ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content)
+        }
+
+        return payload
     }
+
+    // MARK: – History (load/save)
 
     private func loadHistory() {
         Task {
             savedBotModel = allBots.first(where: { $0.id == botID })
             do {
-                let descriptor = FetchDescriptor<ChatHistory>(predicate: #Predicate { $0.botID == botID }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+                let descriptor = FetchDescriptor<ChatHistory>(
+                    predicate: #Predicate { $0.botID == botID },
+                    sortBy: [SortDescriptor(\.date, order: .reverse)]
+                )
                 let histories = try modelContext.fetch(descriptor)
                 if let last = histories.first {
                     currentHistory = last
-                    messages = last.messages.sorted(by: { $0.index < $1.index }).map { ChatMessage(content: $0.text, isUser: $0.isUser) }
+                    messages = last.messages
+                        .sorted(by: { $0.index < $1.index })
+                        .map { ChatMessageModel(content: $0.text, isUser: $0.isUser) }
                 } else {
-                    messages.append(ChatMessage(content: bot.greeting, isUser: false))
+                    messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
                 }
             } catch {
                 print("⚠️ Load failed: \(error)")
@@ -432,32 +332,29 @@ struct ChatView: View {
         }
         try? modelContext.save()
     }
-    
+
     private func loadSelectedHistory(_ history: ChatHistory) {
         currentHistory = history
         messages = history.messages
             .sorted(by: { $0.index < $1.index })
-            .map { ChatMessage(content: $0.text, isUser: $0.isUser) }
+            .map { ChatMessageModel(content: $0.text, isUser: $0.isUser) }
         isManualHistoryLoad = true
     }
-    
+
+    // MARK: – Alerts
+
     private func showError(_ message: String) {
         alertMessage = message
         showAlertBanner = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-            withAnimation {
-                showAlertBanner = false
-            }
+            withAnimation { showAlertBanner = false }
         }
     }
-    
-    private func startGentleVibration(interval: TimeInterval = 0.1) {
-        let feedbackSequence: [UIImpactFeedbackGenerator.FeedbackStyle] = [
-            .heavy,   // ≈ 1.0
-            .medium,  // ≈ 0.7
-            .light,   // ≈ 0.5
-        ]
 
+    // MARK: – Вибрация
+
+    private func startGentleVibration(interval: TimeInterval = 0.1) {
+        let feedbackSequence: [UIImpactFeedbackGenerator.FeedbackStyle] = [.heavy, .medium, .light]
         var currentIndex = 0
 
         Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
@@ -471,8 +368,7 @@ struct ChatView: View {
                 return
             }
 
-            let style = feedbackSequence[currentIndex]
-            let generator = UIImpactFeedbackGenerator(style: style)
+            let generator = UIImpactFeedbackGenerator(style: feedbackSequence[currentIndex])
             generator.prepare()
             generator.impactOccurred()
 
@@ -480,45 +376,21 @@ struct ChatView: View {
         }
     }
 
-    
     private func endVibrationEffect() {
         let soft = UIImpactFeedbackGenerator(style: .light)
         let strong = UIImpactFeedbackGenerator(style: .medium)
-        
+
         soft.prepare()
         strong.prepare()
-        
+
         soft.impactOccurred() // тук
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             strong.impactOccurred() // дук
         }
     }
-
-
-
-
 }
 
-extension Collection {
-    subscript(safe index: Index) -> Element? {
-        return indices.contains(index) ? self[index] : nil
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = 20
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
-
+// MARK: – Preview
 #Preview {
     let previewBot = Bot(
         id: UUID(),
@@ -536,4 +408,3 @@ struct RoundedCorner: Shape {
         .environmentObject(APIManager())
         .environment(PersonaManager())
 }
-
