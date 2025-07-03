@@ -1,14 +1,13 @@
 //
-//  BotKey.swift
+//  EnvironmentKeys.swift
 //  FrontendAI
 //
 //  Created by macbook on 30.05.2025.
 //
 
-
 import SwiftUI
 
-// MARK: - bot
+// MARK: - Bot
 struct BotKey: EnvironmentKey {
     static let defaultValue = Bot(
         id: UUID(),
@@ -29,7 +28,7 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - personaManager
+// MARK: - PersonaManager
 struct PersonaManagerKey: EnvironmentKey {
     static let defaultValue = PersonaManager()
 }
@@ -40,18 +39,7 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - streamingReply
-struct StreamingReplyKey: EnvironmentKey {
-    static let defaultValue: ChatView.ChatMessage? = nil
-}
-extension EnvironmentValues {
-    var streamingReply: ChatView.ChatMessage? {
-        get { self[StreamingReplyKey.self] }
-        set { self[StreamingReplyKey.self] = newValue }
-    }
-}
-
-// MARK: - isGenerating
+// MARK: - IsGenerating
 struct IsGeneratingKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
@@ -62,7 +50,7 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - showCursor
+// MARK: - ShowCursor
 struct ShowCursorKey: EnvironmentKey {
     static let defaultValue: Bool = true
 }
@@ -73,7 +61,7 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - showAvatars
+// MARK: - ShowAvatars
 struct ShowAvatarsKey: EnvironmentKey {
     static let defaultValue: Bool = true
 }
