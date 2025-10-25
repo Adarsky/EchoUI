@@ -5,27 +5,16 @@
 //  Created by macbook on 03.07.2025.
 //
 
-
-//
-//  ChatHeaderBar.swift
-//  FrontendAI
-//
-//  Created by macbook on 30.03.2025.
-//
-
 import SwiftUI
 
-/// Верхняя панель в `ChatView` (назад, аватар, шестерёнка).
 struct ChatHeaderBar: View {
     let bot: Bot
     let botID: UUID
 
-    // Состояния из родительского `ChatView`
     @Binding var showChatBotSheet: Bool
     @Binding var isViewingHistory: Bool
     let onNewChat: () -> Void
 
-    // Env
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

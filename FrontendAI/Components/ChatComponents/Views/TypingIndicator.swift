@@ -15,7 +15,6 @@
 
 import SwiftUI
 
-/// Мигающий кружок, показывающий «бот печатает».
 struct TypingIndicator: View {
     @State private var scale: CGFloat = 0.5
 
