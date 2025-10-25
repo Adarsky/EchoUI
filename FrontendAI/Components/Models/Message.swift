@@ -16,12 +16,17 @@ class Message {
     var isUser: Bool
     var timestamp: Date
     var botID: UUID
+    
+    var variants: [String]?
+    var currentIndex: Int?
 
-    init(content: String, isUser: Bool, botID: UUID, timestamp: Date = Date()) {
+    init(content: String, isUser: Bool, botID: UUID, timestamp: Date = Date(),variants: [String]? = nil, currentIndex: Int? = nil) {
         self.id = UUID()
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
         self.botID = botID
+        self.variants = variants
+        self.currentIndex = currentIndex
     }
 }

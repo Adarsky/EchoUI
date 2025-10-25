@@ -5,7 +5,6 @@
 //  Created by macbook on 28.03.2025.
 //
 
-
 import Foundation
 import SwiftData
 import SwiftUI
@@ -30,15 +29,28 @@ class APIManager: ObservableObject {
     }
 
     func ping(server: APIServer, modelContext: ModelContext) async {
-        guard let url = URL(string: server.type == .openai
-                            ? "\(server.baseURL)/v1/models"
-                            : "\(server.baseURL)/api/v1/model") else { return }
-        let updated = server
+        let endpoint: String
+        switch server.type {
+        case .openai:
+            endpoint = "\(server.baseURL)/v1/models"
+        case .openrouter:
+            endpoint = "\(server.baseURL)/api/v1/models"
+        }
+        
+        guard let url = URL(string: endpoint) else { return }
+        
+        var request = URLRequest(url: url)
+        
+        // Добавляем API ключ если есть
+        if let apiKey = server.apiKey, !apiKey.isEmpty {
+            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        
         do {
-            _ = try await URLSession.shared.data(from: url)
-            updated.isOnline = true
+            _ = try await URLSession.shared.data(for: request)
+            server.isOnline = true
         } catch {
-            updated.isOnline = false
+            server.isOnline = false
         }
         try? modelContext.save()
     }

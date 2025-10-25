@@ -36,7 +36,7 @@ struct ChatHistoryListView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
 
-                            Text(history.messages.first?.text ?? "Empty chat")
+                            Text(lastMessageText(for: history))
                                 .font(.body)
                                 .lineLimit(1)
 
@@ -52,11 +52,6 @@ struct ChatHistoryListView: View {
         }
         .navigationTitle("\(botName) History")
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Back") {
-                    dismiss()
-                }
-            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
             }
@@ -88,9 +83,24 @@ struct ChatHistoryListView: View {
         }
         do {
             try modelContext.save()
-            loadHistory() // Перезагрузим после удаления
+            loadHistory()
         } catch {
             print("Error saving model context after deletion: \(error)")
         }
     }
+    
+    private func lastMessageText(for history: ChatHistory) -> String {
+        guard let last = history.messages
+            .sorted(by: { $0.index < $1.index })
+            .last
+        else {
+            return "Empty chat"
+        }
+
+        let prefix = last.isUser ? "You: " : "\(botName): "
+        let full = prefix + last.text
+        return full.count > 80 ? String(full.prefix(80)) + "…" : full
+    }
 }
+
+

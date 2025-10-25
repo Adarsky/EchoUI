@@ -61,7 +61,6 @@ struct MainPage: View {
                 .padding()
                 .background(Color.gray.opacity(0.10))
 
-                // Список ботов
                 List {
                     ForEach(bots) { bot in
                         ChatListRow(
@@ -107,7 +106,6 @@ struct MainPage: View {
                 Spacer()
             }
 
-            // Навигация
             .navigationDestination(isPresented: $navigateToChat) {
                 if let bot = selectedBot {
                     ChatView(bot: bot.asBot())
@@ -121,7 +119,6 @@ struct MainPage: View {
             }
         }
 
-        // Шторки
         .sheet(isPresented: $showSheetAccount) {
             AccountSheetView(isPresented: $showSheetAccount)
         }

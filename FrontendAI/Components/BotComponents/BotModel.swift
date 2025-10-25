@@ -54,7 +54,6 @@ class BotModel {
         self.greeting = greeting
     }
 
-    // Создание BotModel из Bot
     convenience init(from bot: Bot) {
         self.init(
             id: bot.id,
@@ -68,8 +67,7 @@ class BotModel {
             greeting: bot.greeting
         )
     }
-
-    // Преобразование обратно в Bot
+    
     func asBot() -> Bot {
         Bot(
             id: self.id,

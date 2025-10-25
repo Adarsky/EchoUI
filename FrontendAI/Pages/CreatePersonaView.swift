@@ -49,13 +49,35 @@ struct CreatePersonaView: View {
                     }
                 }
             }
-
-            TextField("Name", text: $name)
+            
+            HStack {
+                Text("Name")
+                    .font(.caption)
+                Spacer()
+            }
+            
+            TextField(" ", text: $name, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
-
-            TextField("System prompt / Description", text: $description, axis: .vertical)
+                .background(
+                    RoundedRectangle(cornerRadius: 30)
+                        .fill(Color(.systemGray6))
+                )
+            HStack {
+                Text("Description")
+                    .font(.caption)
+                Spacer()
+            }
+            TextEditor(text: $description)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
                 .textFieldStyle(.roundedBorder)
-
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(.systemGray5))
+                )
+                .frame(maxWidth: .infinity)
             Spacer()
 
             Button("Save Persona") {
