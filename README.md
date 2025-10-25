@@ -1,50 +1,42 @@
-# EchoUI ios — simple frotend LLM app for iOS
+# EchoUI, simple frotend LLM app for iOS
 
-This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data, so I hope you like the Apple like design. I tried to scatter the code in intuitive folders and make it readable so that you can freely customize it and see the functions. The project was mostly built with the help of ChatGPT. Initially, I created it for personal use, but decided to open source it since there aren’t many solid alternatives to ChatterUI available at the moment.
+## Description
 
+This application was created as an open-source alternative to closed projects, with a focus on local data storage and privacy. It is an experimental project developed by a single person to learn the Swift programming language and to experiment with partial LLM integration. Please note that there may be minor visual or technical issues. Feedback and bug reports are always welcome.
 
+---
 
-## ✨ Features:
+## In-app Features
 
-+ The following functions are available::
-+ Character Creation
-+ Creating a persona
-+ Viewing a character's story
-+ Connecting to a custom API
-+ Support for the "character card" 
-(That is, a photo, a description of the character as a system prompt, a character greeting)
-+ Markdown markup in messages
-+ The chat history is saved
++ Character and persona creation
++ Chat history saving and browsing
++ Creating new chats
++ Markdown support in messages
 
-<p float="left">
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.44.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.58.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.12.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.17.png" width="200" />
-</p>
+---
 
-## 🌐 Connection options:
-+ Chat Completions
-+ KoboldCPP
+## Connection Options
 
-Still working on adding support for self-signed (non-secure) TLS connections.
+You can connect to any servers that support the OpenRouter or OpenAI API models.
+*Note: The application does not support connections using self-signed TLS certificates.*
 
-## 🛠️ In Progress:
+---
 
-+ roll it out to the app store
-+ Streaming (issues with it, I know I'm stupid)
-+ More features will be brainstormed and added later
+## In Progress
 
-## 📲 Usage
++ Add traffic proxying via the VLESS protocol for access from restricted regions
++ Add Janitor AI or other sites as a character hub
++ Publish the app on the App Store
 
-To get started, download the .ipa file.
-Currently, the application is not available on the App Store, so you can install it using AltStore (or whatever you using).
+---
 
-Steps for Installation:
+## Installation
 
-+ Download and install AltStore (or whatever you using).
-+ Open AltStore (or other sideloading program) and add the downloaded .ipa file.
-+ Follow the on-screen instructions to complete the installation.
+1. Download and install AltStore (or any other sideloading tool).
+2. Open AltStore (or your chosen sideloading app) and add the downloaded ".ipa" file.
+   *Note: Not all commits include ".ipa" files.*
+3. Follow the on-screen instructions to complete the installation.
 
+---
 
-
+Enjoy using the app!
