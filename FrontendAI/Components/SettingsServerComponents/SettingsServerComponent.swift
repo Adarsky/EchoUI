@@ -4,7 +4,7 @@
 //
 //  Created by macbook on 14.04.2025.
 //
-
+/*
 import Foundation
 import SwiftUI
 
@@ -36,3 +36,4 @@ struct SSC: Identifiable, Hashable {
         self.avatarSystemName = avatarSystemName
     }
 }
+*/

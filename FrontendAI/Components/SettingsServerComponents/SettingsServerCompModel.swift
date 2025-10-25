@@ -4,7 +4,7 @@
 //
 //  Created by macbook on 14.04.2025.
 //
-
+/*
 import Foundation
 import SwiftData
 import SwiftUI
@@ -61,3 +61,4 @@ class SSCmodel {
         )
     }
 }
+*/

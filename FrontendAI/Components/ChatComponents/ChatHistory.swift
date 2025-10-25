@@ -13,7 +13,6 @@
 //  Created by macbook on 28.03.2025.
 //
 
-// ChatHistory.swift
 import Foundation
 import SwiftData
 
