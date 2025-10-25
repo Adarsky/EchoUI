@@ -30,6 +30,17 @@ You can connect to any servers that support the OpenRouter or OpenAI API models.
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="Screenshots/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-10-25%20at%2015.45.46.png" width="200">
+  <img src="Screenshots/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-10-25%20at%2015.45.54.png" width="200">
+  <img src="Screenshots/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-10-25%20at%2015.46.00.png" width="200">
+  <img src="Screenshots/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-10-25%20at%2015.46.09.png" width="200">
+</p>
+
+---
+
 ## Installation
 
 1. Download and install AltStore (or any other sideloading tool).
@@ -40,3 +51,4 @@ You can connect to any servers that support the OpenRouter or OpenAI API models.
 ---
 
 Enjoy using the app!
+
