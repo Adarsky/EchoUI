@@ -23,6 +23,7 @@ struct EditMessageSheet: View {
         NavigationStack {
             VStack {
                 TextEditor(text: $draftText)
+                    .scrollContentBackground(.hidden)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

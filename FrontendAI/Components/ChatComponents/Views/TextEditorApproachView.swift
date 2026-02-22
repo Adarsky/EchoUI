@@ -30,6 +30,7 @@ struct TextEditorApproachView: View {
                         .padding()
                         .opacity(text == nil ? 1 : 0)
                     TextEditor(text: Binding($text, replacingNilWith: ""))
+                        .scrollContentBackground(.hidden)
                         .frame(minHeight: 30, alignment: .leading)
                         .cornerRadius(6.0)
                         .multilineTextAlignment(.leading)
