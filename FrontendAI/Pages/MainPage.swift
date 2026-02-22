@@ -25,41 +25,51 @@ struct MainPage: View {
     
     @EnvironmentObject var apiManager: APIManager
     @Query var servers: [APIServer]
+    
+    @Namespace var MainPageGlassEffect
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Header
-                HStack {
-                    Text("Echo UI")
-                        .font(.title)
-                        .bold()
-                    
-                    Spacer()
-                    
-                    Button {
-                        showCreatePage = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3)
-                    }
-
-                    Button {
-                        showSheetSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title3)
-                    }
-
-                    Button {
-                        showSheetAccount = true
-                    } label: {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title3)
+                GlassEffectContainer () {
+                    HStack {
+                        Text("Echo UI")
+                            .font(.title)
+                            .bold()
+                        
+                        Spacer()
+                        
+                        Button {
+                            showCreatePage = true
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: 1, namespace: MainPageGlassEffect)
+                        
+                        Button {
+                            showSheetAccount = true
+                        } label: {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: 1, namespace: MainPageGlassEffect)
+                        
+                        Button {
+                            showSheetSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: 2, namespace: MainPageGlassEffect)
+                        
                     }
                 }
                 .padding()
-                .background(Color.gray.opacity(0.10))
 
                 List {
                     ForEach(bots) { bot in
@@ -163,8 +173,18 @@ func latestMessageText(for bot: BotModel, in context: ModelContext) -> String {
 
 //MARK: -- END OF BASE CODE
 
-struct BottomSheetTestView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainPage()
-    }
+#Preview {
+    MainPage()
+        .modelContainer(
+            for: [
+                BotModel.self,
+                APIServer.self,
+                ChatHistory.self,
+                ChatMessageEntity.self,
+                PersonaModel.self
+            ],
+            inMemory: true
+        )
+        .environmentObject(APIManager())
+        .environment(PersonaManager())
 }
