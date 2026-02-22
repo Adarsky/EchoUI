@@ -44,12 +44,13 @@ struct ChatHeaderBar: View {
                             .frame(width: 32, height: 32)
                             .foregroundColor(bot.iconColor)
                     }
-                    
                 Text(bot.name)
                     .font(.headline)
             }
-                .frame(maxWidth: 300)
+                .padding(.horizontal, 30)
+                .padding(.vertical, 6)
                 .glassEffect(.clear)
+                .frame(maxWidth: 300)
                 .glassEffectUnion(id: 2, namespace: chatBotSheetNamespace)
                 
                 Spacer()
