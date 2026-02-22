@@ -20,6 +20,7 @@ struct MessageRow: View {
     @State private var editedText = ""
     @State private var showDeleteConfirm = false
     @State private var lastCount: Int = 0
+    @State private var isThinkingExpanded = false
     
     @Namespace var MessageRowGlassContainer
 
@@ -27,7 +28,31 @@ struct MessageRow: View {
         HStack(alignment: .top) {
             if msg.isUser { Spacer(minLength: 40) }
 
-            VStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
+            LazyVStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
+                if !msg.isUser, msg.hasThinkingContent {
+                    Button {
+                        isThinkingExpanded.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(msg.thinkingStatusText)
+                                .font(.footnote.weight(.semibold))
+
+                            Image(systemName: isThinkingExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    ThinkingStreamPanel(sourceText: msg.thinkingContent)
+                        .frame(height: 180)
+                        .opacity(isThinkingExpanded ? 1 : 0)
+                        .frame(maxHeight: isThinkingExpanded ? 180 : 0, alignment: .top)
+                        .clipped()
+                        .allowsHitTesting(isThinkingExpanded)
+                        .accessibilityHidden(!isThinkingExpanded)
+                        .animation(.easeInOut(duration: 0.26), value: isThinkingExpanded)
+                }
 
                 if msg.content.isEmpty && !msg.isUser {
                     TypingIndicator()
@@ -161,6 +186,27 @@ struct MessageRow: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityHint(msg.isUser ? "User's message" : "Bot's message")
+        .onChange(of: msg.currentIndex) { _ in
+            isThinkingExpanded = false
+        }
+    }
+}
+
+private struct ThinkingStreamPanel: View {
+    let sourceText: String
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: true) {
+            Text(sourceText)
+                .font(.footnote.monospaced())
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.gray.opacity(0.12))
+        )
     }
 }
 
