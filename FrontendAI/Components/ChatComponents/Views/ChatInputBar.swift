@@ -21,7 +21,7 @@ struct ChatInputBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .center, spacing: 4) {
                 ZStack(alignment: .leading) {
                     if inputText.isEmpty {
                         Text(placeholder)
@@ -42,28 +42,31 @@ struct ChatInputBar: View {
                         }
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 30)
-                        .fill(Color(.systemGray6))
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(.ultraThinMaterial)
                 )
                 .frame(maxWidth: .infinity)
+                Spacer()
 
                 if isGenerating {
                     Button(action: onStop) {
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 20))
-                            .padding(8)
+                            .font(.system(size: 31, weight: .semibold))
                     }
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 30)
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
                 } else {
                     Button(action: {
                         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                         onSend()
                     }) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 45))
-                            .padding(8)
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 31, weight: .semibold))
                     }
-                    .frame(width: 36, height: 50)
+                    .frame(width: 40, height: 30)
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
                 }
             }
             .padding(.horizontal)
@@ -95,4 +98,34 @@ struct ChatInputBar: View {
             textHeight = min(max(calculatedHeight, 36), 148)
         }
     }
+}
+
+private struct ChatInputBarPreviewHost: View {
+    @State private var inputText: String
+    @State private var isGenerating: Bool
+
+    init(inputText: String = "", isGenerating: Bool = false) {
+        _inputText = State(initialValue: inputText)
+        _isGenerating = State(initialValue: isGenerating)
+    }
+
+    var body: some View {
+        ChatInputBar(
+            inputText: $inputText,
+            isGenerating: $isGenerating,
+            placeholder: "Message Assistant",
+            onSend: { },
+            onStop: { isGenerating = false }
+        )
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+    }
+}
+
+#Preview("Idle") {
+    ChatInputBarPreviewHost()
+}
+
+#Preview("Generating") {
+    ChatInputBarPreviewHost(inputText: "Draft prompt...", isGenerating: true)
 }
