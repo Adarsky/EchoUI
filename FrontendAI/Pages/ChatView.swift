@@ -181,6 +181,10 @@ final class ChatMessageModel: ObservableObject, Identifiable {
             }
             thinkingClosedAt = date
         }
+
+        var isThinkingInProgress: Bool {
+            hasLeadingThink && thinkingClosedAt == nil
+        }
     }
 
     let id: UUID
@@ -207,6 +211,11 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     var thinkingStatusText: String {
         guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingStatusText ?? "thinking" }
         return variants[currentIndex].thinkingStatusText
+    }
+
+    var isThinkingInProgress: Bool {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.isThinkingInProgress ?? false }
+        return variants[currentIndex].isThinkingInProgress
     }
 
     var allVariants: [String] { variants.map(\.displayContent) }
@@ -265,6 +274,7 @@ struct ChatView: View {
     @State private var isManualHistoryLoad = false
     @State private var streamingReply: ChatMessageModel?
     @State private var isGenerating = false
+    @State private var isThinking = false
     @State private var generationTask: Task<Void, Never>? = nil
 
     @State private var alertMessage: String?
@@ -340,6 +350,7 @@ struct ChatView: View {
                 ChatInputBar(
                     inputText: $inputText,
                     isGenerating: $isGenerating,
+                    isThinking: $isThinking,
                     placeholder: "Message \(bot.name)",
                     onSend: sendMessage,
                     onStop: stopGeneration
@@ -382,6 +393,7 @@ struct ChatView: View {
     private func stopGeneration() {
         generationTask?.cancel()
         streamingReply?.finalizeThinkingNow()
+        isThinking = false
         isGenerating = false
         generationTask = nil
         streamingReply = nil
@@ -406,6 +418,7 @@ struct ChatView: View {
         let placeholder = ChatMessageModel(id: replyID, content: "", isUser: false)
         messages.append(placeholder)
         streamingReply = placeholder
+        isThinking = false
         isGenerating = true
 
         // 3. async request
@@ -425,6 +438,7 @@ struct ChatView: View {
         let payload = buildPayload(upTo: index, dummyUser: true)
 
         messages[index].addNewVariant()
+        isThinking = false
         isGenerating = true
         streamingReply = messages[index]
 
@@ -450,6 +464,7 @@ struct ChatView: View {
                         if let idx = messages.firstIndex(where: { $0.id == replyID }) {
                             let variant = messages[idx].currentIndex
                             messages[idx].appendChunk(chunk, to: variant)
+                            isThinking = messages[idx].isThinkingInProgress
                         }
                     }
                 }
@@ -460,11 +475,13 @@ struct ChatView: View {
                 if let idx = messages.firstIndex(where: { $0.id == replyID }) {
                     messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: 0)
                 }
+                isThinking = false
             }
         }
 
         // end‑of‑stream
         await MainActor.run {
+            isThinking = false
             isGenerating = false
             generationTask = nil
             streamingReply = nil
