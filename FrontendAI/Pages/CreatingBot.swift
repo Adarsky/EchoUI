@@ -129,15 +129,9 @@ struct CreateBotView: View {
     }
 }
 
-struct CreateBotView_Previews: PreviewProvider {
-    static var previews: some View {
-        CreateBotView()
-    }
+#Preview {
+    CreateBotView()
+        .modelContainer(for: BotModel.self, inMemory: true)
+        .environment(PersonaManager())
 }
-
-        struct CreateBotView_Pre: PreviewProvider {
-            static var previews: some View {
-                CreateBotView()
-            }
-        }
 
