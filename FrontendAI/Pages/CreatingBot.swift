@@ -64,6 +64,7 @@ struct CreateBotView: View {
                     }.padding(.leading, 16)
                 
                 TextEditor(text: $greeting)
+                    .scrollContentBackground(.hidden)
                     .frame(height: 120)
                     .padding()
                     .background(Color(.secondarySystemBackground))
@@ -77,6 +78,7 @@ struct CreateBotView: View {
                 
                 // Описание
                 TextEditor(text: $description)
+                    .scrollContentBackground(.hidden)
                     .frame(height: 120)
                     .padding()
                     .background(Color(.secondarySystemBackground))
@@ -134,4 +136,3 @@ struct CreateBotView: View {
         .modelContainer(for: BotModel.self, inMemory: true)
         .environment(PersonaManager())
 }
-

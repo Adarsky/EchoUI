@@ -61,17 +61,13 @@ struct ChatInputBar: View {
                         .focused($isTextFieldFocused)
                         .frame(height: textHeight)
                         .scrollContentBackground(.hidden)
-                        .background(Color.clear)
                         .padding(.vertical, 6)
                         .padding(.horizontal, 8)
                         .onChange(of: inputText) { _ in
                             adjustHeight()
                         }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
+                .glassEffect(.regular.interactive())
                 .frame(maxWidth: .infinity)
                 Spacer()
 
@@ -200,7 +196,6 @@ private struct ChatInputBarPreviewHost: View {
             }
         )
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
     }
 }
 

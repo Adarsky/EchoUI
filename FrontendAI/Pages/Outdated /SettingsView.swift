@@ -55,6 +55,7 @@ struct SettingsView: View {
                     }
                     
                     TextEditor(text: $userInput)
+                        .scrollContentBackground(.hidden)
                         .frame(height: 120)
                         .padding(4)
                         .background(Color(.secondarySystemBackground))
