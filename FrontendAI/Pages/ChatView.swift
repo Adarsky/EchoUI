@@ -361,8 +361,18 @@ struct ChatView: View {
                         .background(alignment: .top) {
                             GeometryReader { geo in
                                 Rectangle()
-                                    .fill(.ultraThinMaterial)
+                                    .fill(.ultraThickMaterial)
                                     .frame(height: geo.safeAreaInsets.top + 70)
+                                    .mask(
+                                        LinearGradient(
+                                            gradient: Gradient(stops: [
+                                                .init(color: .black, location: 0),
+                                                .init(color: .clear, location: 1)
+                                            ]),
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
                                     .ignoresSafeArea(edges: .top)
                             }
                         }
