@@ -25,6 +25,7 @@ struct ChatHeaderBar: View {
                     Image(systemName: "chevron.left")
                 }
                 .buttonStyle(.glass)
+                .glassEffect(.regular)
                 .glassEffectUnion(id: 1, namespace: chatBotSheetNamespace)
                 
                 Spacer()
@@ -47,9 +48,9 @@ struct ChatHeaderBar: View {
                 Text(bot.name)
                     .font(.headline)
             }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .glassEffect(.clear)
+                .glassEffect(.regular)
                 .frame(maxWidth: 300)
                 .glassEffectUnion(id: 2, namespace: chatBotSheetNamespace)
                 
@@ -59,6 +60,7 @@ struct ChatHeaderBar: View {
                     Image(systemName: "gearshape.fill")
                 }
                 .buttonStyle(.glass)
+                .glassEffect(.regular)
                 .glassEffectUnion(id: 3, namespace: chatBotSheetNamespace)
                 .sheet(isPresented: $showChatBotSheet) {
                     ChatBotSheetView(
@@ -83,7 +85,7 @@ struct ChatHeaderBar: View {
     ChatHeaderBar(
         bot: Bot(
             name: "Assistant",
-            avatarSystemName: "sparkles",
+            avatarSystemName: "circle.circle.fill",
             iconColor: .blue,
             subtitle: "Ready to help",
             date: "Today",
