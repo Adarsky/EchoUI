@@ -20,6 +20,8 @@ struct MessageRow: View {
     @State private var editedText = ""
     @State private var showDeleteConfirm = false
     @State private var lastCount: Int = 0
+    
+    @Namespace var MessageRowGlassContainer
 
     var body: some View {
         HStack(alignment: .top) {
@@ -78,41 +80,50 @@ struct MessageRow: View {
                 }
 
                 if !msg.isUser {
-                    HStack(spacing: 16) {
-                        // PREV
-                        Button {
-                            switchVariant(msg.id, -1)
-                        } label: {
-                            Image(systemName: "chevron.left.circle")
-                                .imageScale(.large)
+                    GlassEffectContainer() {
+                        HStack(spacing: 16) {
+                            // PREV
+                            Button {
+                                switchVariant(msg.id, -1)
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .imageScale(.medium)
+                            }
+                            .disabled(!msg.hasMultipleVariants)
+                            .buttonStyle(.glass)
+                            .glassEffectUnion(id: 1, namespace: MessageRowGlassContainer)
+                            
+                            Button {
+                                switchVariant(msg.id, +1)
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .imageScale(.medium)
+                            }
+                            .disabled(!msg.hasMultipleVariants)
+                            .buttonStyle(.glass)
+                            .glassEffectUnion(id: 1, namespace: MessageRowGlassContainer)
+                            
+                            // REGENERATE
+                            Button {
+                                regenerate(msg)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .imageScale(.medium)
+                            }
+                            .buttonStyle(.glass)
+                            .glassEffectUnion(id: 2, namespace: MessageRowGlassContainer)
+                            
+                            // NEXT
+                            
+                            Text("\(msg.currentIndex + 1)/\(max(msg.allVariants.count, 1))")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .frame(minWidth: 44, alignment: .center)
                         }
-                        .disabled(!msg.hasMultipleVariants)
-
-                        // REGENERATE
-                        Button {
-                            regenerate(msg)
-                        } label: {
-                            Image(systemName: "arrow.clockwise.circle")
-                                .imageScale(.large)
-                        }
-
-                        // NEXT
-                        Button {
-                            switchVariant(msg.id, +1)
-                        } label: {
-                            Image(systemName: "chevron.right.circle")
-                                .imageScale(.large)
-                        }
-                        .disabled(!msg.hasMultipleVariants)
-
-                        Text("\(msg.currentIndex + 1)/\(max(msg.allVariants.count, 1))")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .frame(minWidth: 44, alignment: .center)
+                        .buttonStyle(.borderless)
+                        .labelStyle(.iconOnly)
+                        .padding(.top, 2)
                     }
-                    .buttonStyle(.borderless)
-                    .labelStyle(.iconOnly)
-                    .padding(.top, 2)
                 }
             }
             .frame(maxWidth: .infinity,
@@ -126,11 +137,11 @@ struct MessageRow: View {
 
             if #available(iOS 16.0, *) {
                 EditMessageSheet(
-                    text: $editedText,
+                    text: editedText,
                     isUser: msg.isUser,
-                    onSave: {
+                    onSave: { newText in
                         Task { @MainActor in
-                            msg.replaceCurrentVariant(with: editedText)
+                            msg.replaceCurrentVariant(with: newText)
                         }
                     }
                 )
@@ -138,11 +149,11 @@ struct MessageRow: View {
             } else {
                 // iOS < 16
                 LegacyEditMessageSheet(
-                    text: $editedText,
+                    text: editedText,
                     isUser: msg.isUser,
-                    onSave: {
+                    onSave: { newText in
                         Task { @MainActor in
-                            msg.replaceCurrentVariant(with: editedText)
+                            msg.replaceCurrentVariant(with: newText)
                         }
                     }
                 )
@@ -155,15 +166,21 @@ struct MessageRow: View {
 
 // MARK: - iOS < 16
 struct LegacyEditMessageSheet: View {
-    @Binding var text: String
     var isUser: Bool
-    var onSave: () -> Void
+    var onSave: (String) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var draftText: String
+
+    init(text: String, isUser: Bool, onSave: @escaping (String) -> Void) {
+        self.isUser = isUser
+        self.onSave = onSave
+        _draftText = State(initialValue: text)
+    }
 
     var body: some View {
         NavigationView {
             VStack {
-                TextEditor(text: $text)
+                TextEditor(text: $draftText)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -173,7 +190,13 @@ struct LegacyEditMessageSheet: View {
             .navigationBarTitle(isUser ? "Edit (you)" : "Edit (bot)", displayMode: .inline)
             .navigationBarItems(
                 leading: Button("Cancel") { dismiss() },
-                trailing: Button("Save") { onSave(); dismiss() }
+                trailing: Button("Save") {
+                    let textToSave = draftText
+                    dismiss()
+                    Task { @MainActor in
+                        onSave(textToSave)
+                    }
+                }
             )
         }
     }
@@ -187,4 +210,41 @@ extension AttributedString {
             self = AttributedString(text)
         }
     }
+}
+
+private struct MessageRowPreviewHost: View {
+    @StateObject private var message: ChatMessageModel
+
+    init(message: ChatMessageModel) {
+        _message = StateObject(wrappedValue: message)
+    }
+
+    var body: some View {
+        MessageRow(
+            msg: message,
+            regenerate: { _ in },
+            switchVariant: { _, _ in },
+            onDelete: { _ in }
+        )
+        .padding()
+        .background(Color(.systemBackground))
+    }
+}
+
+#Preview("Assistant Message") {
+    MessageRowPreviewHost(
+        message: ChatMessageModel(
+            content: "Here is a quick summary of your request.",
+            isUser: false
+        )
+    )
+}
+
+#Preview("User Message") {
+    MessageRowPreviewHost(
+        message: ChatMessageModel(
+            content: "Can you add a preview to MessageRow?",
+            isUser: true
+        )
+    )
 }
