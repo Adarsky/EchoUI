@@ -64,13 +64,7 @@ struct APIManagerView: View {
     // MARK: - Ping Server
     
     func ping(server: APIServer) async {
-        let endpoint: String
-        switch server.type {
-        case .openai:
-            endpoint = "\(server.baseURL)/v1/models"
-        case .openrouter:
-            endpoint = "\(server.baseURL)/api/v1/models"
-        }
+        let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
         
         guard let url = URL(string: endpoint) else { return }
         var request = URLRequest(url: url)
@@ -198,12 +192,12 @@ struct CreateAPIServerView: View {
                 
                 Section(header: Text("Model Selection")) {
                     if isOpenRouter {
-                        TextField("Model name (e.g. openrouter/xxx)", text: $selectedModel)
+                        TextField("Model name (e.g. openai/gpt-4o-mini)", text: $selectedModel)
                             .autocapitalization(.none)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                         
-                        Text("Enter the exact model ID as specified by OpenRouter. The list of models is not loaded for OpenRouter.")
+                        Text("Enter the exact OpenRouter model ID (provider/model). The list of models is not loaded for OpenRouter.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
@@ -282,10 +276,12 @@ struct CreateAPIServerView: View {
     }
     
     private func saveServer() {
+        let normalizedBaseURL = selectedType.normalizedBaseURL(baseURL)
+
         if let server = editingServer {
             // Update existing server
             server.name = name
-            server.baseURL = baseURL
+            server.baseURL = normalizedBaseURL
             server.selectedModel = selectedModel
             server.availableModels = isOpenRouter ? [] : availableModels
             server.type = selectedType
@@ -294,7 +290,7 @@ struct CreateAPIServerView: View {
             // Create new server
             let newServer = APIServer(
                 name: name,
-                baseURL: baseURL,
+                baseURL: normalizedBaseURL,
                 selectedModel: selectedModel,
                 availableModels: isOpenRouter ? [] : availableModels,
                 type: selectedType,
@@ -313,13 +309,7 @@ struct CreateAPIServerView: View {
         isLoadingModels = true
         defer { isLoadingModels = false }
         
-        let modelURL: String
-        switch selectedType {
-        case .openai:
-            modelURL = "\(baseURL)/v1/models"
-        case .openrouter:
-            modelURL = "\(baseURL)/api/v1/models"
-        }
+        let modelURL = selectedType.endpoint(baseURL: baseURL, path: "models")
         
         guard let url = URL(string: modelURL) else {
             print("Invalid URL: \(modelURL)")

@@ -29,13 +29,7 @@ class APIManager: ObservableObject {
     }
 
     func ping(server: APIServer, modelContext: ModelContext) async {
-        let endpoint: String
-        switch server.type {
-        case .openai:
-            endpoint = "\(server.baseURL)/v1/models"
-        case .openrouter:
-            endpoint = "\(server.baseURL)/api/v1/models"
-        }
+        let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
         
         guard let url = URL(string: endpoint) else { return }
         
