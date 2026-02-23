@@ -5,31 +5,57 @@
 //  Created by macbook on 27.03.2025.
 //
 
-
 import SwiftUI
 
 struct SettingsSheetView: View {
     @Binding var isPresented: Bool
     @Binding var messageLength: Int
     @Binding var endpoint: String
-    @State private var navigateToAPIManager = false
-    @AppStorage("showAvatars") private var showAvatars: Bool = true
-    
-    
+
+    @Namespace private var settingsNavNamespace
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                HStack {
-                    Text("Settings")
-                        .font(.title3)
-                        .bold()
-                    Spacer()
-                    Button("Close") {
-                        isPresented = false
+                GlassEffectContainer {
+                    HStack {
+                        Button {
+                            isPresented = false
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .imageScale(.large)
+                        }
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: 1, namespace: settingsNavNamespace)
+
+                        Spacer()
+
+                        Text("Settings")
+                            .font(.headline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .glassEffect(.regular)
+                            .glassEffectUnion(id: 2, namespace: settingsNavNamespace)
+
+                        Spacer()
+
+                        Color.clear
+                            .frame(width: 34, height: 34)
                     }
                 }
-                
+                .padding(.horizontal)
+                .padding(.top, 8)
+
                 List {
+                    Section(header: Text("CUSTOMIZATION")) {
+                        NavigationLink(destination: ChatAppearanceSettingsView()) {
+                            HStack {
+                                Image(systemName: "paintpalette")
+                                Text("Chat Appearance")
+                            }
+                        }
+                    }
+
                     Section(header: Text("CONNECTION CONFIGURATION")) {
                         NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
                             HStack {
@@ -38,16 +64,13 @@ struct SettingsSheetView: View {
                             }
                         }
                     }
+                }
+                .listStyle(.insetGrouped)
 
-                }
-                    .listStyle(.insetGrouped)
-                    
-                    Spacer()
-                }
-                .padding()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                Spacer()
             }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
-
+}

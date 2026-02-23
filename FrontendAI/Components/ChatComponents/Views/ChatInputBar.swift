@@ -67,7 +67,7 @@ struct ChatInputBar: View {
                             adjustHeight()
                         }
                 }
-                .glassEffect(.regular.interactive())
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 .frame(maxWidth: .infinity)
                 Spacer()
 
