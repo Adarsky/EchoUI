@@ -507,6 +507,12 @@ struct ChatView: View {
             showMissingAPIAlert = true; return
         }
         guard !inputText.isEmpty else { return }
+        let config = ServerConfig(
+            type: server.type,
+            baseURL: server.baseURL,
+            selectedModel: server.selectedModel,
+            apiKey: server.apiKey
+        )
 
         // 1. append user message
         let userMessage = ChatMessageModel(content: inputText, isUser: true)
@@ -525,7 +531,7 @@ struct ChatView: View {
 
         // 3. async request
         generationTask = Task {
-            await streamReply(payload: payload, server: server, replyID: replyID)
+            await streamReply(payload: payload, config: config, replyID: replyID)
         }
     }
 
@@ -534,6 +540,12 @@ struct ChatView: View {
         guard let server = apiManager.selectedServer else {
             showMissingAPIAlert = true; return
         }
+        let config = ServerConfig(
+            type: server.type,
+            baseURL: server.baseURL,
+            selectedModel: server.selectedModel,
+            apiKey: server.apiKey
+        )
         guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 
         let replyID = message.id
@@ -545,7 +557,7 @@ struct ChatView: View {
         streamingReply = messages[index]
 
         generationTask = Task {
-            await streamReply(payload: payload, server: server, replyID: replyID)
+            await streamReply(payload: payload, config: config, replyID: replyID)
         }
     }
 
@@ -556,11 +568,11 @@ struct ChatView: View {
     }
 
     // MARK: – Streaming helper
-    private func streamReply(payload: [ChatPayloadMessage], server: APIServer, replyID: UUID) async {
+    private func streamReply(payload: [ChatPayloadMessage], config: ServerConfig, replyID: UUID) async {
         do {
             _ = try await APIService.sendMessage(
                 messages: payload,
-                server: server,
+                config: config,
                 onStream: { chunk in
                     Task { @MainActor in
                         if let idx = messages.firstIndex(where: { $0.id == replyID }) {
