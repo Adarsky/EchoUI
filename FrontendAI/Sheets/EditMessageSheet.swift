@@ -8,19 +8,15 @@
 import SwiftUI
 
 struct EditMessageSheet: View {
+    var text: String
     var isUser: Bool
     var onSave: (String) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var draftText: String
-
-    init(text: String, isUser: Bool, onSave: @escaping (String) -> Void) {
-        self.isUser = isUser
-        self.onSave = onSave
-        _draftText = State(initialValue: text)
-    }
+    @State private var draftText = ""
+    @State private var didSeedDraft = false
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             VStack {
                 TextEditor(text: $draftText)
                     .scrollContentBackground(.hidden)
@@ -30,21 +26,22 @@ struct EditMessageSheet: View {
                     .padding()
                 Spacer()
             }
-            .navigationTitle(isUser ? "Edit (you)" : "Edit (bot)")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let textToSave = draftText
-                        dismiss()
-                        Task { @MainActor in
-                            onSave(textToSave)
-                        }
+            .navigationBarTitle(isUser ? "Edit (you)" : "Edit (bot)", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button("Cancel") { dismiss() },
+                trailing: Button("Save") {
+                    let textToSave = draftText
+                    dismiss()
+                    Task { @MainActor in
+                        onSave(textToSave)
                     }
                 }
-            }
+            )
+        }
+        .onAppear {
+            guard !didSeedDraft else { return }
+            draftText = text
+            didSeedDraft = true
         }
     }
 }
