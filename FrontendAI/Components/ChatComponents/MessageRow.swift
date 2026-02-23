@@ -43,7 +43,9 @@ struct MessageRow: View {
             LazyVStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
                 if !msg.isUser, msg.hasThinkingContent {
                     Button {
-                        isThinkingExpanded.toggle()
+                        withAnimation(.easeInOut(duration: 0.26)) {
+                            isThinkingExpanded.toggle()
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Text(msg.thinkingStatusText)
@@ -56,14 +58,11 @@ struct MessageRow: View {
                     }
                     .buttonStyle(.plain)
 
-                    ThinkingStreamPanel(sourceText: msg.thinkingContent)
-                        .frame(height: 180)
-                        .opacity(isThinkingExpanded ? 1 : 0)
-                        .frame(maxHeight: isThinkingExpanded ? 180 : 0, alignment: .top)
-                        .clipped()
-                        .allowsHitTesting(isThinkingExpanded)
-                        .accessibilityHidden(!isThinkingExpanded)
-                        .animation(.easeInOut(duration: 0.26), value: isThinkingExpanded)
+                    if isThinkingExpanded {
+                        ThinkingStreamPanel(sourceText: msg.thinkingContent)
+                            .frame(height: 180)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
 
                 if msg.content.isEmpty && !msg.isUser {
@@ -76,7 +75,7 @@ struct MessageRow: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
-                    Text(AttributedString(markdownSafe: msg.content))
+                    Text(renderedMarkdown(from: msg.content))
                         .id(msg.currentIndex)
                         .padding(12)
                         .background(
@@ -240,10 +239,12 @@ private struct ThinkingStreamPanel: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
-            Text(sourceText)
-                .font(.footnote.monospaced())
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            LazyVStack(alignment: .leading, spacing: 0) {
+                Text(sourceText)
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(10)
         .background(
@@ -293,14 +294,51 @@ struct LegacyEditMessageSheet: View {
     }
 }
 
-extension AttributedString {
-    init(markdownSafe text: String) {
-        if let attributed = try? AttributedString(markdown: text) {
-            self = attributed
-        } else {
-            self = AttributedString(text)
-        }
+private func renderedMarkdown(from text: String) -> AttributedString {
+    let markdownText = markdownReadyText(from: text)
+    let options = AttributedString.MarkdownParsingOptions(
+        interpretedSyntax: .inlineOnlyPreservingWhitespace,
+        failurePolicy: .returnPartiallyParsedIfPossible
+    )
+    if let attributed = try? AttributedString(markdown: markdownText, options: options) {
+        return attributed
     }
+    return AttributedString(text)
+}
+
+private func markdownReadyText(from text: String) -> String {
+    let normalizedText = text
+        .replacingOccurrences(of: "/n/n", with: "\n\n")
+        .replacingOccurrences(of: "/n", with: "\n")
+        .replacingOccurrences(of: "\\n", with: "\n")
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+
+    var result = ""
+    var newlineRun = 0
+
+    for character in normalizedText {
+        if character == "\n" {
+            newlineRun += 1
+            continue
+        }
+
+        if newlineRun == 1 {
+            result += "  \n"
+        } else if newlineRun > 1 {
+            result += String(repeating: "\n", count: newlineRun)
+        }
+        newlineRun = 0
+        result.append(character)
+    }
+
+    if newlineRun == 1 {
+        result += "  \n"
+    } else if newlineRun > 1 {
+        result += String(repeating: "\n", count: newlineRun)
+    }
+
+    return result
 }
 
 private struct MessageRowPreviewHost: View {
