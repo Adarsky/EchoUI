@@ -17,8 +17,6 @@ struct ChatInputBar: View {
     let onSend: () -> Void
     let onStop: () -> Void
 
-    @FocusState private var isTextFieldFocused: Bool
-    @State private var textHeight: CGFloat = 36
     @State private var buttonVisualState: ButtonVisualState = .idle
     @State private var postThinkingTask: Task<Void, Never>? = nil
 
@@ -49,24 +47,11 @@ struct ChatInputBar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 4) {
-                ZStack(alignment: .leading) {
-                    if inputText.isEmpty {
-                        Text(placeholder)
-                            .foregroundColor(.gray)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 14)
-                    }
-
-                    TextEditor(text: $inputText)
-                        .focused($isTextFieldFocused)
-                        .frame(height: textHeight)
-                        .scrollContentBackground(.hidden)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 8)
-                        .onChange(of: inputText) { _ in
-                            adjustHeight()
-                        }
-                }
+                TextField(placeholder, text: $inputText, axis: .vertical)
+                    .lineLimit(1...6)
+                    .textFieldStyle(.plain)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 14)
                 .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 .frame(maxWidth: .infinity)
                 Spacer()
@@ -98,10 +83,10 @@ struct ChatInputBar: View {
         .onAppear {
             reconcileButtonState(animated: false)
         }
-        .onChange(of: isGenerating) { _ in
+        .onChange(of: isGenerating) { _, _ in
             reconcileButtonState()
         }
-        .onChange(of: isThinking) { _ in
+        .onChange(of: isThinking) { _, _ in
             reconcileButtonState()
         }
     }
@@ -143,31 +128,6 @@ struct ChatInputBar: View {
             }
         } else {
             buttonVisualState = newState
-        }
-    }
-
-    private func adjustHeight() {
-        let font = UIFont.systemFont(ofSize: 17)
-        let textView = UITextView()
-        textView.font = font
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-
-        let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                textHeight = 36
-            }
-            return
-        }
-        
-        textView.text = inputText
-        let maxWidth = UIScreen.main.bounds.width - 32 - 16 - 36 - 8 - 16
-        let size = textView.sizeThatFits(CGSize(width: maxWidth, height: .infinity))
-        let calculatedHeight = size.height + 12
-
-        withAnimation(.easeInOut(duration: 0.2)) {
-            textHeight = min(max(calculatedHeight, 36), 148)
         }
     }
 }
