@@ -31,7 +31,6 @@ struct MessageRow: View {
     @State private var isEditing = false
     @State private var editedText = ""
     @State private var showDeleteConfirm = false
-    @State private var lastCount: Int = 0
     @State private var isThinkingExpanded = false
     
     @Namespace var MessageRowGlassContainer
@@ -115,11 +114,6 @@ struct MessageRow: View {
                             Button("Delete", role: .destructive) { onDelete(msg.id) }
                             Button("Cancel", role: .cancel) { }
                         }
-                        .onChange(of: msg.content) { _ in
-                            if msg.content.count > lastCount {
-                                lastCount = msg.content.count
-                            }
-                        }
                 }
 
                 if !msg.isUser {
@@ -189,7 +183,7 @@ struct MessageRow: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityHint(msg.isUser ? "User's message" : "Bot's message")
-        .onChange(of: msg.currentIndex) { _ in
+        .onChange(of: msg.currentIndex) { _, _ in
             isThinkingExpanded = false
         }
     }
