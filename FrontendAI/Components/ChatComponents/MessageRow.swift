@@ -178,30 +178,15 @@ struct MessageRow: View {
 
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
         .sheet(isPresented: $isEditing) {
-
-            if #available(iOS 16.0, *) {
-                EditMessageSheet(
-                    text: editedText,
-                    isUser: msg.isUser,
-                    onSave: { newText in
-                        Task { @MainActor in
-                            msg.replaceCurrentVariant(with: newText)
-                        }
+            LegacyEditMessageSheet(
+                text: editedText,
+                isUser: msg.isUser,
+                onSave: { newText in
+                    Task { @MainActor in
+                        msg.replaceCurrentVariant(with: newText)
                     }
-                )
-                .presentationDetents(Set([.medium, .large]))
-            } else {
-                // iOS < 16
-                LegacyEditMessageSheet(
-                    text: editedText,
-                    isUser: msg.isUser,
-                    onSave: { newText in
-                        Task { @MainActor in
-                            msg.replaceCurrentVariant(with: newText)
-                        }
-                    }
-                )
-            }
+                }
+            )
         }
         .accessibilityElement(children: .contain)
         .accessibilityHint(msg.isUser ? "User's message" : "Bot's message")
@@ -270,16 +255,12 @@ private struct ThinkingStreamPanel: View {
 
 // MARK: - iOS < 16
 struct LegacyEditMessageSheet: View {
+    var text: String
     var isUser: Bool
     var onSave: (String) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var draftText: String
-
-    init(text: String, isUser: Bool, onSave: @escaping (String) -> Void) {
-        self.isUser = isUser
-        self.onSave = onSave
-        _draftText = State(initialValue: text)
-    }
+    @State private var draftText = ""
+    @State private var didSeedDraft = false
 
     var body: some View {
         NavigationView {
@@ -303,6 +284,11 @@ struct LegacyEditMessageSheet: View {
                     }
                 }
             )
+        }
+        .onAppear {
+            guard !didSeedDraft else { return }
+            draftText = text
+            didSeedDraft = true
         }
     }
 }
