@@ -70,6 +70,7 @@ enum ChatAppearanceColor {
 enum ChatWallpaperStore {
     private static let directoryName = "ChatAppearance"
     private static let fileName = "chat_wallpaper.jpg"
+    private static let persistedPathToken = "local://chat_wallpaper"
 
     static func saveFromRawImageData(_ data: Data) -> String? {
         guard let image = UIImage(data: data) else { return nil }
@@ -86,20 +87,67 @@ enum ChatWallpaperStore {
         do {
             let fileURL = try wallpaperFileURL()
             try jpegData.write(to: fileURL, options: [.atomic])
-            return fileURL.path
+            return persistedPathToken
         } catch {
             return nil
         }
     }
 
     static func loadImage(from path: String) -> UIImage? {
-        guard !path.isEmpty else { return nil }
-        return UIImage(contentsOfFile: path)
+        guard let resolvedPath = resolveExistingPath(from: path) else { return nil }
+        return UIImage(contentsOfFile: resolvedPath)
     }
 
     static func removeWallpaper(at path: String) {
-        guard !path.isEmpty else { return }
-        try? FileManager.default.removeItem(atPath: path)
+        let fm = FileManager.default
+
+        if let resolvedPath = resolvePathReference(path),
+           fm.fileExists(atPath: resolvedPath) {
+            try? fm.removeItem(atPath: resolvedPath)
+        }
+
+        if let canonicalPath = try? wallpaperFileURL().path,
+           canonicalPath != resolvePathReference(path),
+           fm.fileExists(atPath: canonicalPath) {
+            try? fm.removeItem(atPath: canonicalPath)
+        }
+    }
+
+    static func normalizeStoredPath(_ path: inout String) {
+        if path.isEmpty {
+            if let canonicalPath = try? wallpaperFileURL().path,
+               FileManager.default.fileExists(atPath: canonicalPath) {
+                path = persistedPathToken
+            }
+            return
+        }
+
+        if path == persistedPathToken {
+            return
+        }
+
+        guard let canonicalPath = try? wallpaperFileURL().path else { return }
+        let fm = FileManager.default
+        let normalizedInput = URL(fileURLWithPath: path).standardized.path
+        let normalizedCanonical = URL(fileURLWithPath: canonicalPath).standardized.path
+
+        if normalizedInput == normalizedCanonical {
+            path = persistedPathToken
+            return
+        }
+
+        if path.hasSuffix("/\(fileName)") && !fm.fileExists(atPath: path) && fm.fileExists(atPath: canonicalPath) {
+            path = persistedPathToken
+        }
+    }
+
+    static func referencesSameWallpaper(_ lhs: String, _ rhs: String) -> Bool {
+        if lhs == rhs { return true }
+        guard !lhs.isEmpty, !rhs.isEmpty else { return false }
+
+        let lhsResolved = resolvePathReference(lhs)
+        let rhsResolved = resolvePathReference(rhs)
+        return lhsResolved == rhsResolved
     }
 
     static func migrateLegacyBase64IfNeeded(path: inout String, legacyBase64: inout String) {
@@ -113,6 +161,32 @@ enum ChatWallpaperStore {
 
         path = savedPath
         legacyBase64 = ""
+    }
+
+    private static func resolveExistingPath(from path: String) -> String? {
+        let fm = FileManager.default
+
+        if let directPath = resolvePathReference(path),
+           fm.fileExists(atPath: directPath) {
+            return directPath
+        }
+
+        if let canonicalPath = try? wallpaperFileURL().path,
+           fm.fileExists(atPath: canonicalPath) {
+            return canonicalPath
+        }
+
+        return nil
+    }
+
+    private static func resolvePathReference(_ path: String) -> String? {
+        guard !path.isEmpty else { return nil }
+
+        if path == persistedPathToken {
+            return try? wallpaperFileURL().path
+        }
+
+        return path
     }
 
     private static func wallpaperFileURL() throws -> URL {

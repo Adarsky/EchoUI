@@ -483,6 +483,7 @@ struct ChatView: View {
             path: &chatWallpaperPath,
             legacyBase64: &legacyChatWallpaperBase64
         )
+        ChatWallpaperStore.normalizeStoredPath(&chatWallpaperPath)
     }
 
     @MainActor
