@@ -48,12 +48,11 @@ struct ChatInputBar: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 4) {
                 TextField(placeholder, text: $inputText, axis: .vertical)
-                    .lineLimit(1...6)
-                    .textFieldStyle(.plain)
+                    .lineLimit(1...8)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 14)
-                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .frame(maxWidth: .infinity)
+                    .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 18))
+                    .frame(maxWidth: .infinity)
                 Spacer()
 
                 Button(action: {
@@ -65,7 +64,7 @@ struct ChatInputBar: View {
                     }
                 }) {
                     Image(systemName: buttonVisualState.symbolName)
-                        .font(.system(size: 31, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
                         .symbolEffect(
                             .breathe.pulse.byLayer,
@@ -73,7 +72,7 @@ struct ChatInputBar: View {
                             isActive: buttonVisualState == .thinking
                         )
                 }
-                .frame(width: 40, height: 30)
+                .frame(width: 25, height: 30)
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
             }
