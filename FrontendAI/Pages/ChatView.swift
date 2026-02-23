@@ -192,6 +192,7 @@ final class ChatMessageModel: ObservableObject, Identifiable {
 
     @Published private var variants: [VariantStorage]
     @Published var currentIndex: Int = 0
+    @Published var isStreaming: Bool = false
 
     var content: String {
         guard variants.indices.contains(currentIndex) else { return variants.first?.displayContent ?? "" }
@@ -255,6 +256,12 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     func finalizeThinkingNow() {
         guard variants.indices.contains(currentIndex) else { return }
         variants[currentIndex].finalizeThinkingIfNeeded(at: Date())
+    }
+
+    @MainActor
+    func setStreaming(_ value: Bool) {
+        guard isStreaming != value else { return }
+        isStreaming = value
     }
 
 }
@@ -495,6 +502,7 @@ struct ChatView: View {
     private func stopGeneration() {
         generationTask?.cancel()
         streamingReply?.finalizeThinkingNow()
+        streamingReply?.setStreaming(false)
         isThinking = false
         isGenerating = false
         generationTask = nil
@@ -524,6 +532,7 @@ struct ChatView: View {
         let payload = buildPayload(dummyUser: true)
         let replyID = UUID()
         let placeholder = ChatMessageModel(id: replyID, content: "", isUser: false)
+        placeholder.setStreaming(true)
         messages.append(placeholder)
         streamingReply = placeholder
         isThinking = false
@@ -552,6 +561,7 @@ struct ChatView: View {
         let payload = buildPayload(upTo: index, dummyUser: true)
 
         messages[index].addNewVariant()
+        messages[index].setStreaming(true)
         isThinking = false
         isGenerating = true
         streamingReply = messages[index]
@@ -569,25 +579,35 @@ struct ChatView: View {
 
     // MARK: – Streaming helper
     private func streamReply(payload: [ChatPayloadMessage], config: ServerConfig, replyID: UUID) async {
+        let coalescer = StreamChunkCoalescer()
+
         do {
             _ = try await APIService.sendMessage(
                 messages: payload,
                 config: config,
                 onStream: { chunk in
-                    Task { @MainActor in
-                        if let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                            let variant = messages[idx].currentIndex
-                            messages[idx].appendChunk(chunk, to: variant)
-                            isThinking = messages[idx].isThinkingInProgress
+                    if let batchedChunk = coalescer.append(chunk) {
+                        Task { @MainActor in
+                            applyStreamChunk(batchedChunk, for: replyID)
                         }
                     }
                 }
             )
+
+            if let remainingChunk = coalescer.drain() {
+                await MainActor.run {
+                    applyStreamChunk(remainingChunk, for: replyID)
+                }
+            }
         } catch {
             print("❌ API Error: \(error.localizedDescription)")
             await MainActor.run {
+                if let remainingChunk = coalescer.drain() {
+                    applyStreamChunk(remainingChunk, for: replyID)
+                }
                 if let idx = messages.firstIndex(where: { $0.id == replyID }) {
                     messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: 0)
+                    messages[idx].setStreaming(false)
                 }
                 isThinking = false
             }
@@ -595,11 +615,39 @@ struct ChatView: View {
 
         // end‑of‑stream
         await MainActor.run {
+            if let streamingReply, streamingReply.id == replyID {
+                streamingReply.setStreaming(false)
+            } else if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                messages[idx].setStreaming(false)
+            }
             isThinking = false
             isGenerating = false
             generationTask = nil
             streamingReply = nil
             saveChatHistory()
+        }
+    }
+
+    @MainActor
+    private func applyStreamChunk(_ chunk: String, for replyID: UUID) {
+        guard !chunk.isEmpty else { return }
+
+        if let streamingReply, streamingReply.id == replyID {
+            let variant = streamingReply.currentIndex
+            streamingReply.appendChunk(chunk, to: variant)
+            let thinkingNow = streamingReply.isThinkingInProgress
+            if isThinking != thinkingNow {
+                isThinking = thinkingNow
+            }
+            return
+        }
+
+        guard let idx = messages.firstIndex(where: { $0.id == replyID }) else { return }
+        let variant = messages[idx].currentIndex
+        messages[idx].appendChunk(chunk, to: variant)
+        let thinkingNow = messages[idx].isThinkingInProgress
+        if isThinking != thinkingNow {
+            isThinking = thinkingNow
         }
     }
 
@@ -706,6 +754,52 @@ struct ChatView: View {
             proxy.scrollTo(latestMessageID, anchor: .bottom)
             didApplyInitialScrollPosition = true
         }
+    }
+}
+
+private final class StreamChunkCoalescer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer = ""
+    private var lastFlushTime = CFAbsoluteTimeGetCurrent()
+    private let minInterval: CFAbsoluteTime
+    private let maxBufferedChars: Int
+
+    init(minInterval: CFAbsoluteTime = 1.0 / 30.0, maxBufferedChars: Int = 1200) {
+        self.minInterval = minInterval
+        self.maxBufferedChars = maxBufferedChars
+    }
+
+    func append(_ chunk: String) -> String? {
+        guard !chunk.isEmpty else { return nil }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        buffer.append(chunk)
+        let now = CFAbsoluteTimeGetCurrent()
+        let shouldFlushNow =
+            chunk == "<think>" ||
+            chunk == "</think>" ||
+            buffer.count >= maxBufferedChars ||
+            (now - lastFlushTime) >= minInterval
+
+        guard shouldFlushNow else { return nil }
+
+        let output = buffer
+        buffer.removeAll(keepingCapacity: true)
+        lastFlushTime = now
+        return output
+    }
+
+    func drain() -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !buffer.isEmpty else { return nil }
+        let output = buffer
+        buffer.removeAll(keepingCapacity: true)
+        lastFlushTime = CFAbsoluteTimeGetCurrent()
+        return output
     }
 }
 
