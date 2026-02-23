@@ -16,6 +16,18 @@ struct MessageRow: View {
     let switchVariant: (UUID, Int) -> Void
     let onDelete: (UUID) -> Void
 
+    @AppStorage(ChatAppearanceStorageKeys.userBubbleRed) private var userBubbleRed = ChatAppearanceDefaults.userBubbleRed
+    @AppStorage(ChatAppearanceStorageKeys.userBubbleGreen) private var userBubbleGreen = ChatAppearanceDefaults.userBubbleGreen
+    @AppStorage(ChatAppearanceStorageKeys.userBubbleBlue) private var userBubbleBlue = ChatAppearanceDefaults.userBubbleBlue
+    @AppStorage(ChatAppearanceStorageKeys.userBubbleOpacity) private var userBubbleOpacity = ChatAppearanceDefaults.userBubbleOpacity
+    @AppStorage(ChatAppearanceStorageKeys.userBubbleTransparent) private var userBubbleTransparent = ChatAppearanceDefaults.userBubbleTransparent
+
+    @AppStorage(ChatAppearanceStorageKeys.botBubbleRed) private var botBubbleRed = ChatAppearanceDefaults.botBubbleRed
+    @AppStorage(ChatAppearanceStorageKeys.botBubbleGreen) private var botBubbleGreen = ChatAppearanceDefaults.botBubbleGreen
+    @AppStorage(ChatAppearanceStorageKeys.botBubbleBlue) private var botBubbleBlue = ChatAppearanceDefaults.botBubbleBlue
+    @AppStorage(ChatAppearanceStorageKeys.botBubbleOpacity) private var botBubbleOpacity = ChatAppearanceDefaults.botBubbleOpacity
+    @AppStorage(ChatAppearanceStorageKeys.botBubbleTransparent) private var botBubbleTransparent = ChatAppearanceDefaults.botBubbleTransparent
+
     @State private var isEditing = false
     @State private var editedText = ""
     @State private var showDeleteConfirm = false
@@ -57,7 +69,11 @@ struct MessageRow: View {
                 if msg.content.isEmpty && !msg.isUser {
                     TypingIndicator()
                         .padding(12)
-                        .background(Color.gray.opacity(0.2))
+                        .background(bubbleFillColor(for: false))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(bubbleStrokeColor(for: false), lineWidth: 1)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
                     Text(AttributedString(markdownSafe: msg.content))
@@ -65,10 +81,13 @@ struct MessageRow: View {
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(msg.isUser ? Color.blue.opacity(0.8)
-                                                 : Color.gray.opacity(0.2))
+                                .fill(bubbleFillColor(for: msg.isUser))
                         )
-                        .foregroundColor(msg.isUser ? .white : .primary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(bubbleStrokeColor(for: msg.isUser), lineWidth: 1)
+                        )
+                        .foregroundColor(bubbleTextColor(for: msg.isUser))
                         .contextMenu {
                             Button {
                                 UIPasteboard.general.string = msg.content
@@ -189,6 +208,45 @@ struct MessageRow: View {
         .onChange(of: msg.currentIndex) { _ in
             isThinkingExpanded = false
         }
+    }
+
+    private var userConfiguredColor: Color {
+        ChatAppearanceColor.makeColor(
+            red: userBubbleRed,
+            green: userBubbleGreen,
+            blue: userBubbleBlue,
+            opacity: userBubbleOpacity
+        )
+    }
+
+    private var botConfiguredColor: Color {
+        ChatAppearanceColor.makeColor(
+            red: botBubbleRed,
+            green: botBubbleGreen,
+            blue: botBubbleBlue,
+            opacity: botBubbleOpacity
+        )
+    }
+
+    private func bubbleFillColor(for isUser: Bool) -> Color {
+        if isUser {
+            return userBubbleTransparent ? .clear : userConfiguredColor
+        }
+        return botBubbleTransparent ? .clear : botConfiguredColor
+    }
+
+    private func bubbleStrokeColor(for isUser: Bool) -> Color {
+        let isTransparent = isUser ? userBubbleTransparent : botBubbleTransparent
+        if isTransparent {
+            return Color.primary.opacity(0.24)
+        }
+        return Color.clear
+    }
+
+    private func bubbleTextColor(for isUser: Bool) -> Color {
+        let isTransparent = isUser ? userBubbleTransparent : botBubbleTransparent
+        if isTransparent { return .primary }
+        return isUser ? .white : .primary
     }
 }
 

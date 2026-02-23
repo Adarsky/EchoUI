@@ -266,6 +266,8 @@ struct ChatView: View {
     private let isPreviewSeeded: Bool
 
     private let maxVisibleMessages = 300
+    private let topMessagesInset: CGFloat = 100
+    private let BottomMessagesInset: CGFloat = 70
 
     @State private var messages: [ChatMessageModel] = []
     @State private var showChatBotSheet = false
@@ -282,6 +284,7 @@ struct ChatView: View {
     @State private var showAlertBanner = false
     @State private var showMissingAPIAlert = false
     @State private var openSettings = false
+    @State private var didApplyInitialScrollPosition = false
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -289,7 +292,9 @@ struct ChatView: View {
     @Environment(PersonaManager.self) private var personaManager
     @Query private var allBots: [BotModel]
     @State private var savedBotModel: BotModel?
-    @AppStorage("showAvatars") private var showAvatars = true
+    @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var chatWallpaperPath = ""
+    @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyChatWallpaperBase64 = ""
+    @State private var chatWallpaperImage: UIImage?
 
     init(bot: Bot) {
         self.bot = bot
@@ -311,6 +316,8 @@ struct ChatView: View {
 
     var body: some View {
         ZStack {
+            chatBackground
+
             if showAlertBanner, let alertMessage {
                 VStack {
                     Text(alertMessage)
@@ -327,25 +334,37 @@ struct ChatView: View {
                 .animation(.easeInOut, value: showAlertBanner)
             }
             VStack(spacing: 0) {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(messages) { msg in
-                            MessageRow(
-                                msg: msg,
-                                regenerate: regenerateMessage,
-                                switchVariant: switchVariant,
-                                onDelete: { id in
-                                    if let i = messages.firstIndex(where: { $0.id == id }) {
-                                        messages.remove(at: i)
-                                        saveChatHistory()
+                ScrollViewReader { scrollProxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(messages) { msg in
+                                MessageRow(
+                                    msg: msg,
+                                    regenerate: regenerateMessage,
+                                    switchVariant: switchVariant,
+                                    onDelete: { id in
+                                        if let i = messages.firstIndex(where: { $0.id == id }) {
+                                            messages.remove(at: i)
+                                            saveChatHistory()
+                                        }
                                     }
-                                }
-                            )
+                                )
+                                .id(msg.id)
+                            }
                         }
+                        .padding(.top, topMessagesInset)
+                        .padding(.bottom, BottomMessagesInset)
+                        .padding(.horizontal, 15)
+                        .padding(.bottom, 15)
                     }
-                    .padding(15)
+                    .scrollDismissesKeyboard(.interactively)
+                    .onAppear {
+                        scrollToLatestMessageIfNeeded(using: scrollProxy)
+                    }
+                    .onChange(of: messages.count) { _, _ in
+                        scrollToLatestMessageIfNeeded(using: scrollProxy)
+                    }
                 }
-                .scrollDismissesKeyboard(.interactively)
 
                 // Input bar
             }
@@ -392,16 +411,20 @@ struct ChatView: View {
             
         }
         .environment(\.bot, bot)
-        .environment(\.showAvatars, showAvatars)
         .environment(\.personaManager, personaManager)
         .environment(\.isGenerating, isGenerating)
         .environment(\.showCursor, true)
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            migrateLegacyWallpaperIfNeeded()
+            refreshWallpaperImage()
             if !isManualHistoryLoad && !isPreviewSeeded {
                 loadHistory()
             }
+        }
+        .onChange(of: chatWallpaperPath) { _, _ in
+            refreshWallpaperImage()
         }
         .onDisappear { saveChatHistory() }
         .sheet(isPresented: $openSettings) {
@@ -417,6 +440,47 @@ struct ChatView: View {
         .navigationDestination(isPresented: $isViewingHistory) {
             ChatHistoryListView(botID: botID, botName: bot.name) { loadSelectedHistory($0) }
         }
+    }
+
+    @ViewBuilder
+    private var chatBackground: some View {
+        GeometryReader { geo in
+            if let chatWallpaperImage {
+                Image(uiImage: chatWallpaperImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .overlay(
+                        Color.black.opacity(0.14)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                    )
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color(.systemBackground),
+                        Color(.systemGroupedBackground)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: geo.size.width, height: geo.size.height)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    @MainActor
+    private func migrateLegacyWallpaperIfNeeded() {
+        ChatWallpaperStore.migrateLegacyBase64IfNeeded(
+            path: &chatWallpaperPath,
+            legacyBase64: &legacyChatWallpaperBase64
+        )
+    }
+
+    @MainActor
+    private func refreshWallpaperImage() {
+        chatWallpaperImage = ChatWallpaperStore.loadImage(from: chatWallpaperPath)
     }
 
     // MARK: – Header helpers
@@ -552,6 +616,7 @@ struct ChatView: View {
     // MARK: – History (load/save)
     private func loadHistory() {
         Task { @MainActor in
+            didApplyInitialScrollPosition = false
             savedBotModel = allBots.first(where: { $0.id == botID })
             do {
                 let descriptor = FetchDescriptor<ChatHistory>(
@@ -595,6 +660,7 @@ struct ChatView: View {
 
     @MainActor
     private func loadSelectedHistory(_ history: ChatHistory) {
+        didApplyInitialScrollPosition = false
         currentHistory = history
         messages = history.messages
             .sorted { $0.index < $1.index }
@@ -616,6 +682,17 @@ struct ChatView: View {
     private func trimMessagesIfNeeded() {
         if messages.count > maxVisibleMessages {
             messages.removeFirst(messages.count - maxVisibleMessages)
+        }
+    }
+
+    @MainActor
+    private func scrollToLatestMessageIfNeeded(using proxy: ScrollViewProxy) {
+        guard !didApplyInitialScrollPosition else { return }
+        guard let latestMessageID = messages.last?.id else { return }
+
+        DispatchQueue.main.async {
+            proxy.scrollTo(latestMessageID, anchor: .bottom)
+            didApplyInitialScrollPosition = true
         }
     }
 }
