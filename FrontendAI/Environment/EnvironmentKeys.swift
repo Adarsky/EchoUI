@@ -60,14 +60,3 @@ extension EnvironmentValues {
         set { self[ShowCursorKey.self] = newValue }
     }
 }
-
-// MARK: - ShowAvatars
-struct ShowAvatarsKey: EnvironmentKey {
-    static let defaultValue: Bool = true
-}
-extension EnvironmentValues {
-    var showAvatars: Bool {
-        get { self[ShowAvatarsKey.self] }
-        set { self[ShowAvatarsKey.self] = newValue }
-    }
-}
