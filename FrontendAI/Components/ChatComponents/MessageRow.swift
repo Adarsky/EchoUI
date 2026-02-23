@@ -16,6 +16,12 @@ struct MessageRow: View {
     let switchVariant: (UUID, Int) -> Void
     let onDelete: (UUID) -> Void
 
+    private struct EditSession: Identifiable {
+        let id = UUID()
+        let text: String
+        let isUser: Bool
+    }
+
     @AppStorage(ChatAppearanceStorageKeys.userBubbleRed) private var userBubbleRed = ChatAppearanceDefaults.userBubbleRed
     @AppStorage(ChatAppearanceStorageKeys.userBubbleGreen) private var userBubbleGreen = ChatAppearanceDefaults.userBubbleGreen
     @AppStorage(ChatAppearanceStorageKeys.userBubbleBlue) private var userBubbleBlue = ChatAppearanceDefaults.userBubbleBlue
@@ -28,8 +34,7 @@ struct MessageRow: View {
     @AppStorage(ChatAppearanceStorageKeys.botBubbleOpacity) private var botBubbleOpacity = ChatAppearanceDefaults.botBubbleOpacity
     @AppStorage(ChatAppearanceStorageKeys.botBubbleTransparent) private var botBubbleTransparent = ChatAppearanceDefaults.botBubbleTransparent
 
-    @State private var isEditing = false
-    @State private var editedText = ""
+    @State private var editSession: EditSession?
     @State private var showDeleteConfirm = false
     @State private var isThinkingExpanded = false
     
@@ -42,7 +47,7 @@ struct MessageRow: View {
             LazyVStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
                 if !msg.isUser, msg.hasThinkingContent {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.26)) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
                             isThinkingExpanded.toggle()
                         }
                     } label: {
@@ -55,7 +60,7 @@ struct MessageRow: View {
                         }
                         .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glass)
 
                     if isThinkingExpanded {
                         ThinkingStreamPanel(
@@ -63,7 +68,7 @@ struct MessageRow: View {
                             isStreaming: msg.isThinkingInProgress
                         )
                             .frame(height: 180)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.opacity)
                     }
                 }
 
@@ -83,10 +88,7 @@ struct MessageRow: View {
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(bubbleFillColor(for: msg.isUser))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(bubbleStrokeColor(for: msg.isUser), lineWidth: 1)
+                                .fill(.ultraThinMaterial)
                         )
                         .foregroundColor(bubbleTextColor(for: msg.isUser))
                         .contextMenu {
@@ -97,8 +99,7 @@ struct MessageRow: View {
                             }
 
                             Button {
-                                editedText = msg.content
-                                isEditing = true
+                                editSession = EditSession(text: msg.content, isUser: msg.isUser)
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }
@@ -173,10 +174,10 @@ struct MessageRow: View {
         }
 
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
-        .sheet(isPresented: $isEditing) {
+        .sheet(item: $editSession) { session in
             LegacyEditMessageSheet(
-                text: editedText,
-                isUser: msg.isUser,
+                text: session.text,
+                isUser: session.isUser,
                 onSave: { newText in
                     Task { @MainActor in
                         msg.replaceCurrentVariant(with: newText)
@@ -249,10 +250,7 @@ private struct ThinkingStreamPanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.gray.opacity(0.12))
-        )
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .transaction { transaction in
             transaction.animation = nil
         }
@@ -288,7 +286,6 @@ struct LegacyEditMessageSheet: View {
     var onSave: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var draftText = ""
-    @State private var didSeedDraft = false
 
     var body: some View {
         NavigationView {
@@ -314,9 +311,10 @@ struct LegacyEditMessageSheet: View {
             )
         }
         .onAppear {
-            guard !didSeedDraft else { return }
             draftText = text
-            didSeedDraft = true
+        }
+        .onChange(of: text) { _, newValue in
+            draftText = newValue
         }
     }
 }
@@ -370,9 +368,11 @@ private func markdownReadyText(from text: String) -> String {
 
 private struct MessageRowPreviewHost: View {
     @StateObject private var message: ChatMessageModel
+    private let useGradientBackground: Bool
 
-    init(message: ChatMessageModel) {
+    init(message: ChatMessageModel, useGradientBackground: Bool = false) {
         _message = StateObject(wrappedValue: message)
+        self.useGradientBackground = useGradientBackground
     }
 
     var body: some View {
@@ -383,7 +383,23 @@ private struct MessageRowPreviewHost: View {
             onDelete: { _ in }
         )
         .padding()
-        .background(Color(.systemBackground))
+        .background(
+            Group {
+                if useGradientBackground {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.09, green: 0.12, blue: 0.20),
+                            Color(red: 0.16, green: 0.23, blue: 0.34),
+                            Color(red: 0.24, green: 0.18, blue: 0.27)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                } else {
+                    Color(.systemBackground)
+                }
+            }
+        )
     }
 }
 
@@ -402,5 +418,15 @@ private struct MessageRowPreviewHost: View {
             content: "Can you add a preview to MessageRow?",
             isUser: true
         )
+    )
+}
+
+#Preview("Bot Thinking + Gradient") {
+    MessageRowPreviewHost(
+        message: ChatMessageModel(
+            content: "<think>Reviewing your prompt and outlining the answer structure before responding.</think>Here is the bot response after thinking mode finishes.",
+            isUser: false
+        ),
+        useGradientBackground: true
     )
 }
