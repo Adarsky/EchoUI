@@ -34,24 +34,14 @@ actor APIService {
 
     static func sendMessage(
         messages: [ChatPayloadMessage],
-        server: APIServer,
+        config: ServerConfig,
         onStream: ((String) -> Void)? = nil
     ) async throws -> String {
-        // snapshot values safely on main actor
-        let cfg = await MainActor.run {
-            ServerConfig(
-                type: server.type,
-                baseURL: server.baseURL,
-                selectedModel: server.selectedModel,
-                apiKey: server.apiKey
-            )
-        }
-
-        switch cfg.type {
+        switch config.type {
         case .openai:
-            return try await sendToOpenAI(messages: messages, config: cfg, onStream: onStream)
+            return try await sendToOpenAI(messages: messages, config: config, onStream: onStream)
         case .openrouter:
-            return try await sendToOpenRouter(messages: messages, config: cfg, onStream: onStream)
+            return try await sendToOpenRouter(messages: messages, config: config, onStream: onStream)
         }
     }
 
