@@ -58,7 +58,10 @@ struct MessageRow: View {
                     .buttonStyle(.plain)
 
                     if isThinkingExpanded {
-                        ThinkingStreamPanel(sourceText: msg.thinkingContent)
+                        ThinkingStreamPanel(
+                            sourceText: msg.thinkingContent,
+                            isStreaming: msg.isThinkingInProgress
+                        )
                             .frame(height: 180)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
@@ -74,7 +77,7 @@ struct MessageRow: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
-                    Text(renderedMarkdown(from: msg.content))
+                    Text(msg.isStreaming ? AttributedString(msg.content) : renderedMarkdown(from: msg.content))
                         .id(msg.currentIndex)
                         .padding(12)
                         .background(
@@ -230,21 +233,51 @@ struct MessageRow: View {
 
 private struct ThinkingStreamPanel: View {
     let sourceText: String
+    let isStreaming: Bool
+
+    @State private var renderedText = ""
+    @State private var lastUpdateTime = Date.distantPast
+
+    private let liveWindowChars = 4_000
+    private let streamingUpdateInterval: TimeInterval = 1.0 / 8.0
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                Text(sourceText)
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Text(renderedText)
+                .font(.footnote.monospaced())
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.gray.opacity(0.12))
         )
+        .transaction { transaction in
+            transaction.animation = nil
+        }
+        .onAppear {
+            renderedText = makeDisplayText(from: sourceText, isStreaming: isStreaming)
+            lastUpdateTime = Date()
+        }
+        .onChange(of: sourceText) { _, newValue in
+            if isStreaming {
+                let now = Date()
+                guard now.timeIntervalSince(lastUpdateTime) >= streamingUpdateInterval else { return }
+                lastUpdateTime = now
+            }
+            renderedText = makeDisplayText(from: newValue, isStreaming: isStreaming)
+        }
+        .onChange(of: isStreaming) { _, newValue in
+            if !newValue {
+                renderedText = makeDisplayText(from: sourceText, isStreaming: false)
+            }
+        }
+    }
+
+    private func makeDisplayText(from text: String, isStreaming: Bool) -> String {
+        guard isStreaming, text.count > liveWindowChars else { return text }
+        return "…\(text.suffix(liveWindowChars))"
     }
 }
 
