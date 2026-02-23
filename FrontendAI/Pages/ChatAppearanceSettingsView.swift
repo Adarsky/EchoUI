@@ -309,6 +309,7 @@ struct ChatAppearanceSettingsView: View {
             path: &wallpaperPath,
             legacyBase64: &legacyWallpaperBase64
         )
+        ChatWallpaperStore.normalizeStoredPath(&wallpaperPath)
     }
 
     private func refreshWallpaperImage() {
@@ -324,7 +325,7 @@ struct ChatAppearanceSettingsView: View {
             let oldPath = wallpaperPath
             wallpaperPath = savedPath
             legacyWallpaperBase64 = ""
-            if oldPath != savedPath {
+            if !ChatWallpaperStore.referencesSameWallpaper(oldPath, savedPath) {
                 ChatWallpaperStore.removeWallpaper(at: oldPath)
             }
             refreshWallpaperImage()
