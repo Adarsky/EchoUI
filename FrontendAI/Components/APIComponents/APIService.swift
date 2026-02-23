@@ -121,6 +121,7 @@ actor APIService {
             "model": config.selectedModel,
             "messages": openRouterMessages,
             "stream": true,
+            "include_reasoning": true,
             "temperature": 0.9
         ]
 
@@ -164,17 +165,48 @@ actor APIService {
         }
 
         var finalResult = ""
+        var injectedThinkingOpened = false
+        var injectedThinkingClosed = false
 
         for try await line in stream.lines {
             if line.starts(with: "data: ") {
                 let jsonString = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if jsonString == "[DONE]" { break }
 
-                if let jsonData = jsonString.data(using: .utf8),
-                   let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
-                   let delta = chunk.choices.first?.delta.content {
-                    finalResult += delta
-                    onStream?(delta)
+                if let jsonData = jsonString.data(using: .utf8) {
+                    // OpenRouter can stream reasoning separately from content.
+                    let parsed = parseOpenRouterStreamDelta(from: jsonData)
+
+                    if !parsed.reasoning.isEmpty {
+                        if !injectedThinkingOpened {
+                            finalResult += "<think>"
+                            onStream?("<think>")
+                            injectedThinkingOpened = true
+                        }
+                        for reasoningChunk in parsed.reasoning {
+                            finalResult += reasoningChunk
+                            onStream?(reasoningChunk)
+                        }
+                    }
+
+                    if !parsed.content.isEmpty {
+                        if injectedThinkingOpened && !injectedThinkingClosed {
+                            finalResult += "</think>"
+                            onStream?("</think>")
+                            injectedThinkingClosed = true
+                        }
+
+                        for contentChunk in parsed.content {
+                            finalResult += contentChunk
+                            onStream?(contentChunk)
+                        }
+                    }
+
+                    if parsed.didFinish && injectedThinkingOpened && !injectedThinkingClosed {
+                        finalResult += "</think>"
+                        onStream?("</think>")
+                        injectedThinkingClosed = true
+                    }
                 }
             }
         }
@@ -206,6 +238,74 @@ actor APIService {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func parseOpenRouterStreamDelta(from data: Data) -> (content: [String], reasoning: [String], didFinish: Bool) {
+        guard
+            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let choices = root["choices"] as? [[String: Any]]
+        else {
+            if let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: data),
+               let content = chunk.choices.first?.delta.content, !content.isEmpty {
+                return ([content], [], false)
+            }
+            return ([], [], false)
+        }
+
+        var contentParts: [String] = []
+        var reasoningParts: [String] = []
+        var didFinish = false
+
+        for choice in choices {
+            if choice["finish_reason"] is String {
+                didFinish = true
+            }
+
+            guard let delta = choice["delta"] as? [String: Any] else { continue }
+
+            if let content = delta["content"] {
+                contentParts.append(contentsOf: stringParts(from: content))
+            }
+
+            if let reasoning = delta["reasoning"] {
+                reasoningParts.append(contentsOf: stringParts(from: reasoning))
+            }
+
+            if let reasoningDetails = delta["reasoning_details"] {
+                reasoningParts.append(contentsOf: stringParts(from: reasoningDetails))
+            }
+        }
+
+        return (contentParts, reasoningParts, didFinish)
+    }
+
+    private static func stringParts(from value: Any) -> [String] {
+        if let string = value as? String {
+            return string.isEmpty ? [] : [string]
+        }
+
+        if let array = value as? [Any] {
+            return array.flatMap { stringParts(from: $0) }
+        }
+
+        if let dict = value as? [String: Any] {
+            var parts: [String] = []
+            if let text = dict["text"] as? String, !text.isEmpty {
+                parts.append(text)
+            }
+            if let content = dict["content"] {
+                parts.append(contentsOf: stringParts(from: content))
+            }
+            if let reasoning = dict["reasoning"] {
+                parts.append(contentsOf: stringParts(from: reasoning))
+            }
+            if let token = dict["token"] as? String, !token.isEmpty {
+                parts.append(token)
+            }
+            return parts
+        }
+
+        return []
     }
 }
 
