@@ -62,7 +62,13 @@ actor APIService {
             "stream": true
         ]
 
-        var request = URLRequest(url: URL(string: "\(config.baseURL)/v1/chat/completions")!)
+        let endpoint = APIType.openai.endpoint(baseURL: config.baseURL, path: "chat/completions")
+        guard let url = URL(string: endpoint) else {
+            throw NSError(domain: "APIService", code: -1000,
+                          userInfo: [NSLocalizedDescriptionKey: "Invalid OpenAI URL: \(endpoint)"])
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
@@ -118,12 +124,18 @@ actor APIService {
             "temperature": 0.9
         ]
 
-        var request = URLRequest(url: URL(string: "\(config.baseURL)/api/v1/chat/completions")!)
+        let endpoint = APIType.openrouter.endpoint(baseURL: config.baseURL, path: "chat/completions")
+        guard let url = URL(string: endpoint) else {
+            throw NSError(domain: "APIService", code: -1000,
+                          userInfo: [NSLocalizedDescriptionKey: "Invalid OpenRouter URL: \(endpoint)"])
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
-        request.addValue("Echo UI app", forHTTPHeaderField: "HTTP-Referer")
-        request.addValue("Echo UI app", forHTTPHeaderField: "X-Title")
+        request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
+        request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         if let apiKey = config.apiKey, !apiKey.isEmpty {
@@ -138,11 +150,17 @@ actor APIService {
 
         let (stream, response) = try await URLSession.shared.bytes(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode) else {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "APIService", code: -1002,
+                          userInfo: [NSLocalizedDescriptionKey: "Invalid response type"])
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let errorBody = try await readErrorBody(from: stream)
+            let details = errorBody.isEmpty ? "" : " - \(errorBody)"
             throw NSError(domain: "APIService", code: -1003,
-                          userInfo: [NSLocalizedDescriptionKey: "Invalid response code (\(code))"])
+                          userInfo: [NSLocalizedDescriptionKey: "OpenRouter request failed (\(code))\(details)"])
         }
 
         var finalResult = ""
@@ -162,6 +180,32 @@ actor APIService {
         }
 
         return finalResult
+    }
+
+    private static func readErrorBody(from stream: URLSession.AsyncBytes) async throws -> String {
+        var lines: [String] = []
+        var charCount = 0
+
+        for try await rawLine in stream.lines {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            if trimmed == "data: [DONE]" { break }
+
+            let line: String
+            if trimmed.hasPrefix("data: ") {
+                line = String(trimmed.dropFirst("data: ".count))
+            } else {
+                line = trimmed
+            }
+
+            lines.append(line)
+            charCount += line.count
+            if lines.count >= 20 || charCount >= 1200 {
+                break
+            }
+        }
+
+        return lines.joined(separator: "\n")
     }
 }
 
