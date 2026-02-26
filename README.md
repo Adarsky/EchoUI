@@ -1,43 +1,34 @@
 # EchoUI ios — simple frotend LLM app for iOS
 
-This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data, so I hope you like the Apple like design. I tried to scatter the code in intuitive folders and make it readable so that you can freely customize it and see the functions. The project was mostly built with the help of ChatGPT. Initially, I created it for personal use, but decided to open source it since there aren’t many solid alternatives to ChatterUI available at the moment.
+![Static Badge](https://img.shields.io/badge/stable_version-green)
+![Static Badge](https://img.shields.io/badge/liquid_glass_support-blue)
+![Static Badge](https://img.shields.io/badge/build-passing-plastic)
 
+This application was written in order to transfer the character of AI and so on experience to open source. The entire app is built on swift, swift, and swift data. The project was mostly built with the help of ChatGPT. Initially, I created it for personal use, but decided to open source it since there aren’t many solid alternatives to ChatterUI available at the moment.
 
+## API support:
+- OpenAI compatitive APIs
+- OpenRouter compatitive APIs
 
-## ✨ Features:
+## Features:
 
-+ The following functions are available::
-+ Character Creation
-+ Creating a persona
-+ Viewing a character's story
-+ Connecting to a custom API
-+ Support for the "character card" 
-(That is, a photo, a description of the character as a system prompt, a character greeting)
-+ Markdown markup in messages
-+ The chat history is saved
+- Character and Persona Creation
+- Viewing older chats
+- Connecting to OpenRouter API and OpenAI compatitive APIs
+- Markdown markup in messages
+- Almost everything that Character AI/Janitor AI have
 
 <p float="left">
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.44.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.09.58.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.12.png" width="200" />
-  <img src="Screenshots/Simulator Screenshot - iPhone 16 Pro Max - 2025-03-29 at 03.10.17.png" width="200" />
+  <img src="Screenshots/scr1-17p.png" width="200" />
+  <img src="Screenshots/scr2-17p.png" width="200" />
+  <img src="Screenshots/scr4-17p.png" width="200" />
+  <img src="Screenshots/scr3-17p.png" width="200" />
 </p>
 
-## 🌐 Connection options:
-+ Chat Completions
-+ KoboldCPP
+## Usage:
 
-Still working on adding support for self-signed (non-secure) TLS connections.
+To get started, build (or download .ipa file if I haven't forgot to upload it) the .ipa file.
 
-## 🛠️ In Progress:
-
-+ roll it out to the app store
-+ Streaming (issues with it, I know I'm stupid)
-+ More features will be brainstormed and added later
-
-## 📲 Usage
-
-To get started, download the .ipa file.
 Currently, the application is not available on the App Store, so you can install it using AltStore (or whatever you using).
 
 Steps for Installation:
