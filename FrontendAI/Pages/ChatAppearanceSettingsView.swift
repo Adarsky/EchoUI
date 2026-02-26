@@ -7,8 +7,54 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
+struct ChatAppearanceViewStyle {
+    var navigationTitle = "Chat Appearance"
+    var previewTitle = "Preview"
+
+    var messageSectionTitle = "Message Bubbles"
+    var messageSectionSystemImage = "ellipsis.message"
+    var wallpaperSectionTitle = "Wallpaper"
+    var wallpaperSectionSystemImage = "photo"
+
+    var userMessageControlsTitle = "Your messages"
+    var botMessageControlsTitle = "Bot messages"
+    var bubbleColorPickerTitle = "Bubble color"
+    var transparencyToggleTitle = "Transparent"
+
+    var chooseWallpaperTitle = "Choose Wallpaper"
+    var removeWallpaperTitle = "Remove Wallpaper"
+
+    var previewHeight: CGFloat = 170
+
+    var previewContainer: (AnyView) -> AnyView = { content in
+        AnyView(
+            content
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+
+    var sectionContainer: (_ title: String, _ systemImage: String, _ content: AnyView) -> AnyView = { title, systemImage, content in
+        AnyView(
+            GroupBox {
+                content
+            } label: {
+                Label(title, systemImage: systemImage)
+            }
+        )
+    }
+
+    static let `default` = ChatAppearanceViewStyle()
+}
+
 struct ChatAppearanceSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
+    private let style: ChatAppearanceViewStyle
+    private let onBack: (() -> Void)?
 
     @AppStorage(ChatAppearanceStorageKeys.userBubbleRed) private var userBubbleRed = ChatAppearanceDefaults.userBubbleRed
     @AppStorage(ChatAppearanceStorageKeys.userBubbleGreen) private var userBubbleGreen = ChatAppearanceDefaults.userBubbleGreen
@@ -29,51 +75,18 @@ struct ChatAppearanceSettingsView: View {
     @State private var wallpaperImage: UIImage?
     @Namespace private var navNamespace
 
+    init(style: ChatAppearanceViewStyle = .default, onBack: (() -> Void)? = nil) {
+        self.style = style
+        self.onBack = onBack
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 topBar
                 previewCard
-
-                GroupBox {
-                    VStack(spacing: 16) {
-                        bubbleControls(
-                            title: "Your messages",
-                            color: userBubbleColorBinding,
-                            transparent: $userBubbleTransparent
-                        )
-
-                        Divider()
-
-                        bubbleControls(
-                            title: "Bot messages",
-                            color: botBubbleColorBinding,
-                            transparent: $botBubbleTransparent
-                        )
-                    }
-                } label: {
-                    Label("Message Bubbles", systemImage: "ellipsis.message")
-                }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
-                        PhotosPicker(selection: $selectedWallpaperItem, matching: .images) {
-                            Label("Choose Wallpaper", systemImage: "photo.on.rectangle")
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        if wallpaperImage != nil {
-                            Button(role: .destructive) {
-                                removeWallpaper()
-                            } label: {
-                                Label("Remove Wallpaper", systemImage: "trash")
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    Label("Wallpaper", systemImage: "photo")
-                }
+                messageBubblesSection
+                wallpaperSection
             }
             .padding(.horizontal)
             .padding(.bottom, 20)
@@ -94,11 +107,61 @@ struct ChatAppearanceSettingsView: View {
         }
     }
 
+    private var messageBubblesSection: some View {
+        style.sectionContainer(
+            style.messageSectionTitle,
+            style.messageSectionSystemImage,
+            AnyView(
+                VStack(spacing: 12) {
+                    bubbleControls(
+                        title: style.userMessageControlsTitle,
+                        color: userBubbleColorBinding,
+                        transparent: $userBubbleTransparent
+                    )
+                    .padding(.top, 8)
+
+                    Divider()
+
+                    bubbleControls(
+                        title: style.botMessageControlsTitle,
+                        color: botBubbleColorBinding,
+                        transparent: $botBubbleTransparent
+                    )
+                    .padding(.top, 8)
+                }
+            )
+        )
+    }
+
+    private var wallpaperSection: some View {
+        style.sectionContainer(
+            style.wallpaperSectionTitle,
+            style.wallpaperSectionSystemImage,
+            AnyView(
+                VStack(alignment: .leading, spacing: 12) {
+                    PhotosPicker(selection: $selectedWallpaperItem, matching: .images) {
+                        Label(style.chooseWallpaperTitle, systemImage: "photo.on.rectangle")
+                    }
+                    .buttonStyle(.glass)
+
+                    if wallpaperImage != nil {
+                        Button(role: .destructive) {
+                            removeWallpaper()
+                        } label: {
+                            Label(style.removeWallpaperTitle, systemImage: "trash")
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            )
+        )
+    }
+
     private var topBar: some View {
         GlassEffectContainer {
             HStack {
                 Button {
-                    dismiss()
+                    handleBack()
                 } label: {
                     Image(systemName: "chevron.left")
                         .imageScale(.large)
@@ -108,7 +171,7 @@ struct ChatAppearanceSettingsView: View {
 
                 Spacer()
 
-                Text("Chat Appearance")
+                Text(style.navigationTitle)
                     .font(.headline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -124,7 +187,7 @@ struct ChatAppearanceSettingsView: View {
                         .imageScale(.medium)
                 }
                 .buttonStyle(.glass)
-                .glassEffectUnion(id: 1, namespace: navNamespace)
+                .glassEffectUnion(id: 3, namespace: navNamespace)
             }
         }
         .padding(.top, 8)
@@ -132,37 +195,36 @@ struct ChatAppearanceSettingsView: View {
 
     private var previewCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Preview")
+            Text(style.previewTitle)
                 .font(.headline)
 
-            ZStack {
-                previewBackground
+            style.previewContainer(
+                AnyView(
+                    ZStack {
+                        previewBackground
 
-                VStack(spacing: 10) {
-                    HStack {
-                        Spacer(minLength: 28)
-                        previewBubble(
-                            text: "Can we tune this chat style?",
-                            isUser: true
-                        )
-                    }
+                        VStack(spacing: 10) {
+                            HStack {
+                                Spacer(minLength: 28)
+                                previewBubble(
+                                    text: "Can we tune this chat style?",
+                                    isUser: true
+                                )
+                            }
 
-                    HStack {
-                        previewBubble(
-                            text: "Yes. Changes appear here instantly.",
-                            isUser: false
-                        )
-                        Spacer(minLength: 28)
+                            HStack {
+                                previewBubble(
+                                    text: "Yes. Changes appear here instantly.",
+                                    isUser: false
+                                )
+                                Spacer(minLength: 28)
+                            }
+                        }
+                        .padding(12)
                     }
-                }
-                .padding(12)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 170)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: style.previewHeight)
+                )
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -200,6 +262,7 @@ struct ChatAppearanceSettingsView: View {
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(previewBubbleFillColor(isUser: isUser))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -217,8 +280,8 @@ struct ChatAppearanceSettingsView: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
 
-            ColorPicker("Bubble color", selection: color, supportsOpacity: true)
-            Toggle("Transparent", isOn: transparent)
+            ColorPicker(style.bubbleColorPickerTitle, selection: color, supportsOpacity: true)
+            Toggle(style.transparencyToggleTitle, isOn: transparent)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -330,5 +393,78 @@ struct ChatAppearanceSettingsView: View {
             }
             refreshWallpaperImage()
         }
+    }
+
+    private func handleBack() {
+        if let onBack {
+            onBack()
+            return
+        }
+        if presentationMode.wrappedValue.isPresented {
+            presentationMode.wrappedValue.dismiss()
+        }
+        dismiss()
+    }
+}
+
+struct ChatAppearanceView: View {
+    private let style: ChatAppearanceViewStyle
+
+    init(style: ChatAppearanceViewStyle = .default) {
+        self.style = style
+    }
+
+    var body: some View {
+        ChatAppearanceSettingsView(style: style)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        ChatAppearanceSettingsView()
+    }
+}
+
+#Preview("Custom Style") {
+    NavigationStack {
+        ChatAppearanceView(
+            style: ChatAppearanceViewStyle(
+                navigationTitle: "Theme Editor",
+                previewTitle: "Live Canvas",
+                messageSectionTitle: "Bubble Studio",
+                messageSectionSystemImage: "paintpalette",
+                wallpaperSectionTitle: "Backdrop",
+                wallpaperSectionSystemImage: "photo",
+                userMessageControlsTitle: "My Bubble",
+                botMessageControlsTitle: "Assistant Bubble",
+                bubbleColorPickerTitle: "Bubble Fill",
+                transparencyToggleTitle: "Use Transparent",
+                chooseWallpaperTitle: "Select Backdrop",
+                removeWallpaperTitle: "Clear Backdrop",
+                previewHeight: 190,
+                previewContainer: { content in
+                    AnyView(
+                        content
+                            .clipShape(Rectangle())
+                            .overlay(
+                                Rectangle()
+                                    .stroke(Color.orange.opacity(0.45), lineWidth: 2)
+                            )
+                    )
+                },
+                sectionContainer: { title, systemImage, content in
+                    AnyView(
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label(title.uppercased(), systemImage: systemImage)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(.orange)
+                            content
+                        }
+                        .padding(14)
+                        .background(Color.orange.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    )
+                }
+            )
+        )
     }
 }
