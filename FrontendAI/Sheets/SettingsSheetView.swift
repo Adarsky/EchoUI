@@ -11,41 +11,13 @@ struct SettingsSheetView: View {
     @Binding var isPresented: Bool
     @Binding var messageLength: Int
     @Binding var endpoint: String
+    var navName: String = "Settings"
 
     @Namespace private var settingsNavNamespace
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                GlassEffectContainer {
-                    HStack {
-                        Button {
-                            isPresented = false
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .imageScale(.large)
-                        }
-                        .buttonStyle(.glass)
-                        .glassEffectUnion(id: 1, namespace: settingsNavNamespace)
-
-                        Spacer()
-
-                        Text("Settings")
-                            .font(.headline)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .glassEffect(.regular)
-                            .glassEffectUnion(id: 2, namespace: settingsNavNamespace)
-
-                        Spacer()
-
-                        Color.clear
-                            .frame(width: 34, height: 34)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-
                 List {
                     Section(header: Text("CUSTOMIZATION")) {
                         NavigationLink(destination: ChatAppearanceSettingsView()) {
@@ -69,8 +41,35 @@ struct SettingsSheetView: View {
 
                 Spacer()
             }
+            .navigationTitle(navName)
+            .navigationBarTitleDisplayMode(.inline)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }
+}
+
+private struct SettingsSheetViewPreviewHost: View {
+    @State private var isPresented = true
+    @State private var messageLength = 1024
+    @State private var endpoint = "http://localhost:1234/v1"
+    var navName: String = "Settings"
+
+    var body: some View {
+        SettingsSheetView(
+            isPresented: $isPresented,
+            messageLength: $messageLength,
+            endpoint: $endpoint,
+            navName: navName
+        )
+    }
+}
+
+#Preview {
+    SettingsSheetViewPreviewHost()
+}
+
+#Preview("Custom Nav Name") {
+    SettingsSheetViewPreviewHost(navName: "App Settings")
+        .environment(\.locale, .init(identifier: "en"))
 }

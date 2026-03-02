@@ -18,15 +18,41 @@ struct APIManagerView: View {
     
     @State private var showCreateSheet = false
     @State private var editServer: APIServer? = nil
+
+    private var activeServer: APIServer? {
+        selectedServer ?? apiManager.selectedServer
+    }
+
+    private var activeServerName: String {
+        activeServer?.name ?? "Not set"
+    }
     
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    HStack(spacing: 8) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                            .foregroundColor(.accentColor)
+                        Text("Active endpoint:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(activeServerName)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+                }
+
                 ForEach(servers) { server in
                     ServerRowView(
                         server: server,
-                        apiManager: apiManager,
+                        isActive: activeServer?.uuid == server.uuid,
                         onEdit: { editServer = server },
+                        onSetActive: {
+                            selectedServer = server
+                            apiManager.selectedServer = server
+                        },
                         onPing: { await ping(server: server) }
                     )
                     .swipeActions(edge: .trailing) {
@@ -87,8 +113,9 @@ struct APIManagerView: View {
 
 struct ServerRowView: View {
     let server: APIServer
-    let apiManager: APIManager
+    let isActive: Bool
     let onEdit: () -> Void
+    let onSetActive: () -> Void
     let onPing: () async -> Void
     
     var body: some View {
@@ -97,6 +124,11 @@ struct ServerRowView: View {
             HStack {
                 Text(server.name)
                     .bold()
+                if isActive {
+                    Label("Active", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
                 Spacer()
                 Circle()
                     .fill(server.isOnline ? Color.green : Color.red)
@@ -124,9 +156,10 @@ struct ServerRowView: View {
             
             // Action buttons
             HStack {
-                Button("Set Active") {
-                    apiManager.selectedServer = server
+                Button(isActive ? "Active" : "Set Active") {
+                    onSetActive()
                 }
+                .disabled(isActive)
                 
                 Button("Restart") {
                     Task { await onPing() }
@@ -136,7 +169,7 @@ struct ServerRowView: View {
                     onEdit()
                 }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
         }
         .padding(.vertical, 4)
     }
@@ -350,9 +383,46 @@ struct OpenAIModelList: Codable {
 // MARK: - Preview
 
 #Preview {
-    APIManagerView(
-        selectedServer: .constant(nil)
+    APIManagerViewPreviewHost()
+        .modelContainer(previewModelContainer)
+        .environmentObject(APIManager())
+}
+
+@MainActor
+private let previewModelContainer: ModelContainer = {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: APIServer.self, configurations: config)
+    let context = container.mainContext
+
+    context.insert(
+        APIServer(
+            name: "OpenAI Prod",
+            baseURL: "https://api.openai.com",
+            selectedModel: "gpt-4.1-mini",
+            availableModels: ["gpt-4.1-mini", "gpt-4.1"],
+            type: .openai,
+            isOnline: true,
+            apiKey: "sk-preview"
+        )
     )
-    .modelContainer(for: APIServer.self, inMemory: true)
-    .environmentObject(APIManager())
+    context.insert(
+        APIServer(
+            name: "OpenRouter Backup",
+            baseURL: "https://openrouter.ai",
+            selectedModel: "openai/gpt-4o-mini",
+            type: .openrouter,
+            isOnline: false
+        )
+    )
+    try? context.save()
+
+    return container
+}()
+
+private struct APIManagerViewPreviewHost: View {
+    @State private var selectedServer: APIServer?
+
+    var body: some View {
+        APIManagerView(selectedServer: $selectedServer)
+    }
 }

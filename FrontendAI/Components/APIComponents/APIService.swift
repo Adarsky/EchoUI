@@ -267,16 +267,16 @@ actor APIService {
                 contentParts.append(contentsOf: stringParts(from: content))
             }
 
+            // Some providers expose both keys simultaneously with overlapping text.
+            // Prefer the direct `reasoning` payload and only fallback to details.
             if let reasoning = delta["reasoning"] {
                 reasoningParts.append(contentsOf: stringParts(from: reasoning))
-            }
-
-            if let reasoningDetails = delta["reasoning_details"] {
+            } else if let reasoningDetails = delta["reasoning_details"] {
                 reasoningParts.append(contentsOf: stringParts(from: reasoningDetails))
             }
         }
 
-        return (contentParts, reasoningParts, didFinish)
+        return (deduplicatedAdjacent(parts: contentParts), deduplicatedAdjacent(parts: reasoningParts), didFinish)
     }
 
     private static func stringParts(from value: Any) -> [String] {
@@ -289,23 +289,36 @@ actor APIService {
         }
 
         if let dict = value as? [String: Any] {
-            var parts: [String] = []
+            // Preserve one canonical textual field to avoid duplicate echoes.
             if let text = dict["text"] as? String, !text.isEmpty {
-                parts.append(text)
+                return [text]
             }
             if let content = dict["content"] {
-                parts.append(contentsOf: stringParts(from: content))
+                return stringParts(from: content)
             }
             if let reasoning = dict["reasoning"] {
-                parts.append(contentsOf: stringParts(from: reasoning))
+                return stringParts(from: reasoning)
             }
             if let token = dict["token"] as? String, !token.isEmpty {
-                parts.append(token)
+                return [token]
             }
-            return parts
         }
 
         return []
+    }
+
+    private static func deduplicatedAdjacent(parts: [String]) -> [String] {
+        guard !parts.isEmpty else { return [] }
+
+        var result: [String] = []
+        result.reserveCapacity(parts.count)
+
+        for part in parts where !part.isEmpty {
+            if result.last == part { continue }
+            result.append(part)
+        }
+
+        return result
     }
 }
 
