@@ -16,6 +16,7 @@ struct MainPage: View {
 
     @State private var botToDelete: BotModel? = nil
     @State private var showDeleteAlert = false
+    @AppStorage("showMainHubAPIStatus") private var showMainHubAPIStatus = true
 
     @State public var Endpoint: String = ""
     @State private var MessageLength: Int = 2048
@@ -27,6 +28,23 @@ struct MainPage: View {
     @Query var servers: [APIServer]
     
     @Namespace var MainPageGlassEffect
+    
+    private var activeServerName: String {
+        apiManager.selectedServer?.name ?? "No API"
+    }
+    
+    private var displayedServerName: String {
+        guard activeServerName.count > 12 else { return activeServerName }
+        return String(activeServerName.prefix(12)) + "…"
+    }
+    
+    private var isAPIServerOnline: Bool {
+        apiManager.selectedServer?.isOnline ?? false
+    }
+    
+    private var apiStatusText: String {
+        isAPIServerOnline ? "Online" : "Offline"
+    }
 
     var body: some View {
         NavigationStack {
@@ -34,9 +52,21 @@ struct MainPage: View {
                 // Header
                 GlassEffectContainer () {
                     HStack {
-                        Text("Echo UI")
-                            .font(.title)
-                            .bold()
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Echo UI")
+                                .font(.title)
+                                .bold()
+                            if showMainHubAPIStatus {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(isAPIServerOnline ? Color.green : Color.red)
+                                        .frame(width: 8, height: 8)
+                                    Text("\(displayedServerName) • \(apiStatusText)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
                         
                         Spacer()
                         
@@ -136,7 +166,8 @@ struct MainPage: View {
             SettingsSheetView(
                 isPresented: $showSheetSettings,
                 messageLength: $MessageLength,
-                endpoint: $Endpoint
+                endpoint: $Endpoint,
+                showAPIStatus: $showMainHubAPIStatus
             )
         }
         .onAppear {
