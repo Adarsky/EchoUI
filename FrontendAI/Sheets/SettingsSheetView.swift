@@ -11,6 +11,7 @@ struct SettingsSheetView: View {
     @Binding var isPresented: Bool
     @Binding var messageLength: Int
     @Binding var endpoint: String
+    @Binding var showAPIStatus: Bool
     var navName: String = "Settings"
 
     @Namespace private var settingsNavNamespace
@@ -27,6 +28,10 @@ struct SettingsSheetView: View {
                             }
                         }
                     }
+                    
+                    Section(header: Text("MAIN HUB")) {
+                        Toggle("Show API Status", isOn: $showAPIStatus)
+                    }
 
                     Section(header: Text("CONNECTION CONFIGURATION")) {
                         NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
@@ -38,9 +43,12 @@ struct SettingsSheetView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .frame(maxWidth: 460, alignment: .leading)
 
                 Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 16)
             .navigationTitle(navName)
             .navigationBarTitleDisplayMode(.inline)
             .presentationDetents([.large])
@@ -53,6 +61,7 @@ private struct SettingsSheetViewPreviewHost: View {
     @State private var isPresented = true
     @State private var messageLength = 1024
     @State private var endpoint = "http://localhost:1234/v1"
+    @State private var showAPIStatus = true
     var navName: String = "Settings"
 
     var body: some View {
@@ -60,6 +69,7 @@ private struct SettingsSheetViewPreviewHost: View {
             isPresented: $isPresented,
             messageLength: $messageLength,
             endpoint: $endpoint,
+            showAPIStatus: $showAPIStatus,
             navName: navName
         )
     }
