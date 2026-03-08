@@ -22,7 +22,7 @@ This application was written in order to transfer the character of AI and so on 
   <img src="Screenshots/scr1-17p.png" width="200" />
   <img src="Screenshots/scr2-17p.png" width="200" />
   <img src="Screenshots/scr4-17p.png" width="200" />
-  <img src="Screenshots/scr3-17p.png" width="200" />
+  <img src="Screenshots/scr5.png" width="200" />
 </p>
 
 ## Usage:
