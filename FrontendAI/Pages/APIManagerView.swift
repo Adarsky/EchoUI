@@ -189,6 +189,8 @@ struct CreateAPIServerView: View {
     @State private var apiKey: String = ""
     @State private var isLoadingModels: Bool = false
     
+    private let maxServerNameLength = 24
+    
     var editingServer: APIServer? = nil
     
     private var isOpenRouter: Bool { selectedType == .openrouter }
@@ -199,6 +201,9 @@ struct CreateAPIServerView: View {
                 Section(header: Text("Server Details")) {
                     TextField("Name", text: $name)
                         .autocorrectionDisabled()
+                        .onChange(of: name) { _, newValue in
+                            name = String(newValue.prefix(maxServerNameLength))
+                        }
                     
                     TextField("Base URL", text: $baseURL)
                         .autocapitalization(.none)
@@ -292,7 +297,9 @@ struct CreateAPIServerView: View {
     // MARK: - Computed Properties
     
     private var canSave: Bool {
-        !name.isEmpty && !baseURL.isEmpty && !selectedModel.isEmpty
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     // MARK: - Methods
@@ -309,25 +316,28 @@ struct CreateAPIServerView: View {
     }
     
     private func saveServer() {
+        let normalizedName = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxServerNameLength))
         let normalizedBaseURL = selectedType.normalizedBaseURL(baseURL)
+        let normalizedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let server = editingServer {
             // Update existing server
-            server.name = name
+            server.name = normalizedName
             server.baseURL = normalizedBaseURL
-            server.selectedModel = selectedModel
+            server.selectedModel = normalizedModel
             server.availableModels = isOpenRouter ? [] : availableModels
             server.type = selectedType
-            server.apiKey = apiKey.isEmpty ? nil : apiKey
+            server.apiKey = normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
         } else {
             // Create new server
             let newServer = APIServer(
-                name: name,
+                name: normalizedName,
                 baseURL: normalizedBaseURL,
-                selectedModel: selectedModel,
+                selectedModel: normalizedModel,
                 availableModels: isOpenRouter ? [] : availableModels,
                 type: selectedType,
-                apiKey: apiKey.isEmpty ? nil : apiKey
+                apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
             )
             modelContext.insert(newServer)
         }
