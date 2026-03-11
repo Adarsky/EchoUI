@@ -1,9 +1,6 @@
 //  ChatView.swift
 //  FrontendAI
 //
-//  Rewritten for iOS 17 / Xcode 16.4
-//  Оптимизации: 1) reference‑based сообщения, 4) обрезка ленты, 5) сохранение по окончании стрима,
-//  6) вибрация через async/await
 //
 
 import SwiftUI
@@ -413,6 +410,24 @@ struct ChatView: View {
                         onSend: sendMessage,
                         onStop: stopGeneration
                     )
+                    .background(alignment: .top) {
+                        GeometryReader { geo in
+                            Rectangle()
+                                .fill(.ultraThickMaterial)
+                                .frame(height: geo.safeAreaInsets.top + 90)
+                                .mask(
+                                    LinearGradient(
+                                        gradient: Gradient(stops: [
+                                            .init(color: .black, location: 0),
+                                            .init(color: .clear, location: 1)
+                                        ]),
+                                        startPoint: .bottom,
+                                        endPoint: .top
+                                    )
+                                )
+                                .ignoresSafeArea(edges: .top)
+                        }
+                    }
                 }
             }
             
