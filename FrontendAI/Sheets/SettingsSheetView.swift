@@ -29,9 +29,6 @@ struct SettingsSheetView: View {
                                 Text("Chat Appearance")
                             }
                         }
-                    }
-                    
-                    Section(header: Text("MAIN HUB")) {
                         Toggle("Show API Status", isOn: $showAPIStatus)
                     }
 

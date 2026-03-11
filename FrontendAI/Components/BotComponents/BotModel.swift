@@ -12,6 +12,9 @@ import SwiftUI
 
 @Model
 class BotModel {
+    static let maxNameLength = 24
+    static let maxSubtitleLength = 10_000
+
     var id: UUID
     var name: String
     var subtitle: String
@@ -44,8 +47,8 @@ class BotModel {
         greeting: String
     ) {
         self.id = id
-        self.name = name
-        self.subtitle = subtitle
+        self.name = Self.clampedName(name)
+        self.subtitle = Self.clampedSubtitle(subtitle)
         self.date = date
         self.avatarSystemName = avatarSystemName
         self.iconColorName = iconColorName
@@ -80,5 +83,13 @@ class BotModel {
             greeting: self.greeting,
             avatarData: self.avatarData
         )
+    }
+
+    static func clampedName(_ value: String) -> String {
+        String(value.prefix(maxNameLength))
+    }
+
+    static func clampedSubtitle(_ value: String) -> String {
+        String(value.prefix(maxSubtitleLength))
     }
 }

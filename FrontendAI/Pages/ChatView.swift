@@ -186,6 +186,7 @@ final class ChatMessageModel: ObservableObject, Identifiable {
 
     let id: UUID
     let isUser: Bool
+    var timestamp: Date
 
     @Published private var variants: [VariantStorage]
     @Published var currentIndex: Int = 0
@@ -219,10 +220,22 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     var allVariants: [String] { variants.map(\.displayContent) }
     var hasMultipleVariants: Bool { variants.count > 1 }
 
-    init(id: UUID = UUID(), content: String, isUser: Bool) {
+    init(
+        id: UUID = UUID(),
+        content: String,
+        isUser: Bool,
+        timestamp: Date = Date(),
+        variants: [String]? = nil,
+        currentIndex: Int = 0
+    ) {
+        let initialVariantTexts = (variants?.isEmpty == false ? variants : [content]) ?? [content]
+        let clampedIndex = max(0, min(currentIndex, initialVariantTexts.count - 1))
+
         self.id = id
         self.isUser = isUser
-        self.variants = [VariantStorage(rawContent: content)]
+        self.timestamp = timestamp
+        self.variants = initialVariantTexts.map { VariantStorage(rawContent: $0) }
+        self.currentIndex = clampedIndex
     }
 
     @MainActor
@@ -261,6 +274,28 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         isStreaming = value
     }
 
+    @MainActor
+    func touchTimestamp(_ value: Date = Date()) {
+        timestamp = value
+    }
+
+    @MainActor
+    func persistableVariantsForLastMessage() -> ([String], Int)? {
+        guard hasMultipleVariants else { return nil }
+        let safeIndex = max(0, min(currentIndex, variants.count - 1))
+        return (variants.map(\.displayContent), safeIndex)
+    }
+
+    @MainActor
+    func keepOnlyCurrentVariant() {
+        guard !variants.isEmpty else { return }
+
+        let safeIndex = max(0, min(currentIndex, variants.count - 1))
+        let currentVariant = variants[safeIndex]
+        variants = [currentVariant]
+        currentIndex = 0
+    }
+
 }
 
 // MARK: – Chat view
@@ -288,6 +323,7 @@ struct ChatView: View {
     @State private var showAlertBanner = false
     @State private var showMissingAPIAlert = false
     @State private var openSettings = false
+    @State private var showPersonaPickerForNewChat = false
     @State private var didApplyInitialScrollPosition = false
 
     @Environment(\.dismiss) private var dismiss
@@ -295,6 +331,7 @@ struct ChatView: View {
     @EnvironmentObject private var apiManager: APIManager
     @Environment(PersonaManager.self) private var personaManager
     @Query private var allBots: [BotModel]
+    @Query(sort: [SortDescriptor(\PersonaModel.name)]) private var personas: [PersonaModel]
     @State private var savedBotModel: BotModel?
     @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var chatWallpaperPath = ""
     @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyChatWallpaperBase64 = ""
@@ -380,7 +417,7 @@ struct ChatView: View {
                             botID: botID,
                             showChatBotSheet: $showChatBotSheet,
                             isViewingHistory: $isViewingHistory,
-                            onNewChat: startNewChat
+                            onNewChat: startNewChatTapped
                         )
                         .background(alignment: .top) {
                             GeometryReader { geo in
@@ -454,6 +491,56 @@ struct ChatView: View {
             APIManagerView(selectedServer: $apiManager.selectedServer)
                 .environmentObject(apiManager)
         }
+        .sheet(isPresented: $showPersonaPickerForNewChat) {
+            NavigationStack {
+                List {
+                    Section("Choose persona for new chat") {
+                        ForEach(personas) { persona in
+                            Button {
+                                personaManager.activePersona = persona
+                                showPersonaPickerForNewChat = false
+                                performStartNewChat()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    persona.avatarImage
+                                        .resizable()
+                                        .frame(width: 32, height: 32)
+                                        .clipShape(Circle())
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(persona.name)
+                                            .foregroundStyle(.primary)
+                                        Text(persona.systemPrompt)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+
+                                    Spacer()
+
+                                    if personaManager.activePersona?.id == persona.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .navigationTitle("New Chat Persona")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showPersonaPickerForNewChat = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .alert("No API server selected", isPresented: $showMissingAPIAlert) {
             Button("Settings") { openSettings = true }
             Button("OK", role: .cancel) { }
@@ -508,7 +595,15 @@ struct ChatView: View {
     }
 
     // MARK: – Header helpers
-    private func startNewChat() {
+    private func startNewChatTapped() {
+        if personas.isEmpty {
+            performStartNewChat()
+            return
+        }
+        showPersonaPickerForNewChat = true
+    }
+
+    private func performStartNewChat() {
         saveChatHistory()
         messages.removeAll()
         currentHistory = nil
@@ -538,6 +633,9 @@ struct ChatView: View {
             selectedModel: server.selectedModel,
             apiKey: server.apiKey
         )
+
+        // User picked a branch; previous alternative variants are no longer needed.
+        pruneAssistantVariants(keepingMessageID: nil)
 
         // 1. append user message
         let userMessage = ChatMessageModel(content: inputText, isUser: true)
@@ -577,6 +675,8 @@ struct ChatView: View {
         let replyID = message.id
         let payload = buildPayload(upTo: index, dummyUser: true)
 
+        pruneAssistantVariants(keepingMessageID: replyID)
+        messages[index].touchTimestamp()
         messages[index].addNewVariant()
         messages[index].setStreaming(true)
         isThinking = false
@@ -592,6 +692,7 @@ struct ChatView: View {
     private func switchVariant(for id: UUID, direction: Int) {
         guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
         messages[index].switchVariant(offset: direction)
+        saveChatHistory()
     }
 
     // MARK: – Streaming helper
@@ -627,7 +728,8 @@ struct ChatView: View {
                     applyStreamChunk(remainingChunk, for: replyID)
                 }
                 if let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                    messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: 0)
+                    let currentVariantIndex = messages[idx].currentIndex
+                    messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: currentVariantIndex)
                     messages[idx].setStreaming(false)
                 }
                 isThinking = false
@@ -709,7 +811,16 @@ struct ChatView: View {
                     currentHistory = last
                     messages = last.messages
                         .sorted { $0.index < $1.index }
-                        .map { ChatMessageModel(content: $0.text, isUser: $0.isUser) }
+                        .map { entity in
+                            ChatMessageModel(
+                                id: entity.id,
+                                content: entity.text,
+                                isUser: entity.isUser,
+                                timestamp: entity.timestamp ?? last.date,
+                                variants: entity.variants,
+                                currentIndex: entity.currentVariantIndex ?? 0
+                            )
+                        }
                 } else {
                     messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
                 }
@@ -723,9 +834,30 @@ struct ChatView: View {
     @MainActor
     private func saveChatHistory() {
         guard !messages.isEmpty else { return }
+        let lastMessageID = messages.last?.id
 
         let entities = messages.enumerated().map { index, msg in
-            ChatMessageEntity(text: msg.content, isUser: msg.isUser, index: index)
+            let shouldSaveVariants = !msg.isUser && msg.id == lastMessageID
+            let storedVariants: [String]?
+            let storedCurrentVariantIndex: Int?
+
+            if shouldSaveVariants, let (variants, currentIndex) = msg.persistableVariantsForLastMessage() {
+                storedVariants = variants
+                storedCurrentVariantIndex = currentIndex
+            } else {
+                storedVariants = nil
+                storedCurrentVariantIndex = nil
+            }
+
+            return ChatMessageEntity(
+                id: msg.id,
+                text: msg.content,
+                isUser: msg.isUser,
+                index: index,
+                timestamp: msg.timestamp,
+                variants: storedVariants,
+                currentVariantIndex: storedCurrentVariantIndex
+            )
         }
 
         if let history = currentHistory {
@@ -745,11 +877,27 @@ struct ChatView: View {
         currentHistory = history
         messages = history.messages
             .sorted { $0.index < $1.index }
-            .map { ChatMessageModel(content: $0.text, isUser: $0.isUser) }
+            .map { entity in
+                ChatMessageModel(
+                    id: entity.id,
+                    content: entity.text,
+                    isUser: entity.isUser,
+                    timestamp: entity.timestamp ?? history.date,
+                    variants: entity.variants,
+                    currentIndex: entity.currentVariantIndex ?? 0
+                )
+            }
         isManualHistoryLoad = true
     }
 
     // MARK: – Utils
+    @MainActor
+    private func pruneAssistantVariants(keepingMessageID: UUID?) {
+        for message in messages where !message.isUser && message.id != keepingMessageID {
+            message.keepOnlyCurrentVariant()
+        }
+    }
+
     private func trimMessagesIfNeeded() {
         if messages.count > maxVisibleMessages {
             messages.removeFirst(messages.count - maxVisibleMessages)
