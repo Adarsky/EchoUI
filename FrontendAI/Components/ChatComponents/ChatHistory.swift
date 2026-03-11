@@ -44,14 +44,26 @@ class ChatMessageEntity: Identifiable {
     var text: String
     var isUser: Bool
     var index: Int
+    var timestamp: Date?
+    var variants: [String]?
+    var currentVariantIndex: Int?
 
-    init(text: String, isUser: Bool, index: Int) {
-        self.id = UUID()
+    init(
+        id: UUID = UUID(),
+        text: String,
+        isUser: Bool,
+        index: Int,
+        timestamp: Date? = nil,
+        variants: [String]? = nil,
+        currentVariantIndex: Int? = nil
+    ) {
+        self.id = id
         self.text = text
         self.isUser = isUser
         self.index = index
+        self.timestamp = timestamp
+        self.variants = variants
+        self.currentVariantIndex = currentVariantIndex
     }
 }
-
-
 

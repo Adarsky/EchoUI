@@ -36,18 +36,15 @@ struct CreatePersonaView: View {
                 headerCard
                 nameCard
                 promptCard
+                createButton
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
-            .padding(.bottom, 100)
+            .padding(.bottom, 24)
         }
-        .background(backgroundGradient.ignoresSafeArea())
         .navigationTitle("New Persona")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom) {
-            actionBar
-        }
         .onChange(of: selectedImageItem) { _, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
@@ -59,7 +56,7 @@ struct CreatePersonaView: View {
 
     private var headerCard: some View {
         VStack(spacing: 14) {
-            PhotosPicker(selection: $selectedImageItem, matching: .images) {
+            PhotosPicker(selection: $selectedImageItem, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 14) {
                     avatarPreview
 
@@ -106,23 +103,39 @@ struct CreatePersonaView: View {
     }
 
     private var promptCard: some View {
+        textEditorCard(
+            title: "System prompt",
+            icon: "bubble.left.and.exclamationmark.bubble.right",
+            placeholder: "Describe tone, behavior and response boundaries...",
+            text: $prompt,
+            field: .prompt
+        )
+    }
+
+    private func textEditorCard(
+        title: String,
+        icon: String,
+        placeholder: String,
+        text: Binding<String>,
+        field: Field
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("System prompt", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+            Label(title, systemImage: icon)
                 .font(.subheadline.weight(.semibold))
 
             ZStack(alignment: .topLeading) {
-                if prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text("Describe tone, behavior and response boundaries...")
+                if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(placeholder)
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .padding(.top, 14)
                         .padding(.leading, 12)
                 }
 
-                TextEditor(text: $prompt)
-                    .focused($focusedField, equals: .prompt)
+                TextEditor(text: text)
+                    .focused($focusedField, equals: field)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 170)
+                    .frame(minHeight: 130)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(Color.clear)
@@ -133,43 +146,16 @@ struct CreatePersonaView: View {
         .background(cardBackground)
     }
 
-    private var actionBar: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .overlay(.white.opacity(0.12))
-
-            Button(action: savePersona) {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Create Persona")
-                        .fontWeight(.semibold)
-                    Spacer()
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+    private var createButton: some View {
+        Button(action: savePersona) {
+            Text("Create Persona")
+                .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.accentColor.opacity(canSave ? 0.95 : 0.45),
-                                    Color.blue.opacity(canSave ? 0.85 : 0.35)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(!canSave)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
+                .padding(.vertical, 10)
         }
-        .background(.ultraThinMaterial)
+        .buttonStyle(.glass)
+        .disabled(!canSave)
+        .padding(.top, 4)
     }
 
     private var avatarPreview: some View {
@@ -179,11 +165,11 @@ struct CreatePersonaView: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Image(systemName: "person.crop.circle.fill")
+                Image(systemName: "person.crop.circle.badge.plus")
                     .resizable()
                     .scaledToFit()
                     .foregroundStyle(Color.accentColor)
-                    .padding(18)
+                    .padding(16)
             }
         }
         .frame(width: 84, height: 84)
@@ -200,29 +186,17 @@ struct CreatePersonaView: View {
             .fill(.ultraThinMaterial)
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(.white.opacity(0.22), lineWidth: 1)
+                    .stroke(.white.opacity(0.22), lineWidth: 0)
             )
     }
 
     private var inputBackground: some View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(.white.opacity(0.08))
+            .fill(.white.opacity(0.03))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(.white.opacity(0.15), lineWidth: 1)
+                    .stroke(.white.opacity(0.15), lineWidth: 0)
             )
-    }
-
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color.accentColor.opacity(0.16),
-                Color.blue.opacity(0.12),
-                Color.clear
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 
     private func savePersona() {

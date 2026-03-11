@@ -21,11 +21,17 @@ struct EditBotView: View {
         Form {
             Section("Name") {
                 TextField("Name", text: $bot.name)
+                    .onChange(of: bot.name) { _, newValue in
+                        bot.name = BotModel.clampedName(newValue)
+                    }
             }
 
             Section("Subtitle (System Prompt)") {
                 TextField("Subtitle", text: $bot.subtitle, axis: .vertical)
                     .lineLimit(3...6)
+                    .onChange(of: bot.subtitle) { _, newValue in
+                        bot.subtitle = BotModel.clampedSubtitle(newValue)
+                    }
             }
 
             Section("Greeting") {
@@ -74,6 +80,8 @@ struct EditBotView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
+                    bot.name = BotModel.clampedName(bot.name.trimmingCharacters(in: .whitespacesAndNewlines))
+                    bot.subtitle = BotModel.clampedSubtitle(bot.subtitle.trimmingCharacters(in: .whitespacesAndNewlines))
                     try? modelContext.save()
                     dismiss()
                 }
