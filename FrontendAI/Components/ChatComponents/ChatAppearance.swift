@@ -38,6 +38,22 @@ enum ChatAppearanceDefaults {
     static let botBubbleTransparent: Bool = false
 }
 
+enum ChatStreamingStorageKeys {
+    static let chunkFlushIntervalMs = "llmStreamChunkFlushIntervalMs"
+}
+
+enum ChatStreamingDefaults {
+    static let chunkMaxChars: Int = 1200
+    static let chunkFlushIntervalMs: Double = 33
+
+    static let minChunkFlushIntervalMs: Double = 10
+    static let maxChunkFlushIntervalMs: Double = 1000
+
+    static func clampedChunkFlushIntervalMs(_ value: Double) -> Double {
+        min(max(value, minChunkFlushIntervalMs), maxChunkFlushIntervalMs)
+    }
+}
+
 enum ChatAppearanceColor {
     static func makeColor(red: Double, green: Double, blue: Double, opacity: Double) -> Color {
         Color(red: clamp(red), green: clamp(green), blue: clamp(blue), opacity: clamp(opacity))
