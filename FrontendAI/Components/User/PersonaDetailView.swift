@@ -29,3 +29,16 @@ struct PersonaDetailView: View {
         .navigationTitle("Persona")
     }
 }
+
+#Preview {
+    NavigationStack {
+        PersonaDetailView(
+            persona: PersonaModel(
+                name: "Product Strategist",
+                systemPrompt: "You are a concise product strategist. Ask one clarifying question before offering a structured plan.",
+                avatarSystemName: "person.crop.circle.fill",
+                iconColorName: "blue"
+            )
+        )
+    }
+}
