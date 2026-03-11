@@ -103,10 +103,11 @@ struct MainPage: View {
 
                 List {
                     ForEach(bots) { bot in
+                        let preview = latestChatPreview(for: bot, in: modelContext)
                         ChatListRow(
                             title: bot.name,
-                            subtitle: latestMessageText(for: bot, in: modelContext),
-                            date: bot.date,
+                            subtitle: preview.subtitle,
+                            date: preview.dateText,
                             isPinned: bot.isPinned,
                             avatarImage: bot.avatarImage
                         )
@@ -182,22 +183,41 @@ struct MainPage: View {
     }
 }
 
-func latestMessageText(for bot: BotModel, in context: ModelContext) -> String {
+private struct ChatPreviewData {
+    let subtitle: String
+    let dateText: String
+}
+
+private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> ChatPreviewData {
     let botID = bot.id
     let descriptor = FetchDescriptor<ChatHistory>(
-        predicate: #Predicate { $0.botID == botID },
-        sortBy: [SortDescriptor(\.date, order: .reverse)]
+        predicate: #Predicate { $0.botID == botID }
     )
 
-    guard let lastHistory = try? context.fetch(descriptor).first,
-          let lastMessage = lastHistory.messages.sorted(by: { $0.index < $1.index }).last else {
-        return "No messages yet"
+    guard
+        let histories = try? context.fetch(descriptor),
+        !histories.isEmpty
+    else {
+        return ChatPreviewData(subtitle: "No messages yet", dateText: bot.date)
     }
 
-    let prefix = lastMessage.isUser ? "You: " : "\(bot.name): "
-    let content = lastMessage.text
+    let latest: (message: ChatMessageEntity, date: Date)? = histories.compactMap { history in
+        guard let message = history.messages.sorted(by: { $0.index < $1.index }).last else { return nil }
+        let messageDate = message.timestamp ?? history.date
+        return (message: message, date: messageDate)
+    }
+    .max(by: { $0.date < $1.date })
+
+    guard let latest else {
+        return ChatPreviewData(subtitle: "No messages yet", dateText: bot.date)
+    }
+
+    let prefix = latest.message.isUser ? "You: " : "\(bot.name): "
+    let content = latest.message.text
     let full = prefix + content
-    return full.count > 40 ? String(full.prefix(40)) + "…" : full
+    let subtitle = full.count > 40 ? String(full.prefix(40)) + "…" : full
+    let dateText = latest.date.formatted(date: .abbreviated, time: .omitted)
+    return ChatPreviewData(subtitle: subtitle, dateText: dateText)
 }
 
 
