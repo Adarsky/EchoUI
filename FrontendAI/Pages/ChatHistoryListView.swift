@@ -69,7 +69,7 @@ struct ChatHistoryListView: View {
                                     .padding(.vertical, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(Color(.clear))
+                                            .fill(Color(.gray).opacity(0.1))
                                     )
                                 }
                                 .buttonStyle(.plain)
