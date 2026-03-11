@@ -1,0 +1,23 @@
+{
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatePersonaView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatingBot.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/EditBotView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.swiftdeps"
+  }
+}

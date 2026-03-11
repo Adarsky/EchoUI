@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests-primary.dia",
+    "emit-module-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests-primary-emit-module.dia",
+    "pch" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests-primary.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAITests/FrontendAITests.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAITests.build/Objects-normal/x86_64/FrontendAITests~partial.swiftmodule"
+  }
+}

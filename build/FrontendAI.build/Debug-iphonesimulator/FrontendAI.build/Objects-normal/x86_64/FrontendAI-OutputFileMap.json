@@ -1,0 +1,399 @@
+{
+  "" : {
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAI-primary.dia",
+    "emit-module-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAI-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAI-primary-emit-module.dia",
+    "pch" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAI-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAI-primary.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/APIComponents/APIConfiguration.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIConfiguration~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/APIComponents/APIManager.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManager~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/APIComponents/APIService.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIService~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/APIComponents/ChatAPIPayloadMessage.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAPIPayloadMessage~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/BotComponents/Bot.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Bot~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/BotComponents/BotModel.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/BotModel~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatAppearance.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearance~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatHistory.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistory~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatHistoryDetailView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryDetailView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/MessageRow.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MessageRow~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ThinkingField.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ThinkingField~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/Views/ChatHeaderBar.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHeaderBar~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/Views/ChatInputBar.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatInputBar~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/Views/TextEditorApproachView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TextEditorApproachView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/Views/TypingIndicator.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/TypingIndicator~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/Models/ChatListRow.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatListRow~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/Models/Item.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Item~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/Models/Message.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Message~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/User/Persona.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/Persona~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/User/PersonaDetailView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaDetailView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/User/PersonaManager.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaManager~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/User/PersonaModel.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/PersonaModel~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Environment/EnvironmentKeys.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EnvironmentKeys~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/FrontendAIApp.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/FrontendAIApp~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/APIManagerView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/APIManagerView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatAppearanceSettingsView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatAppearanceSettingsView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatHistoryListView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatHistoryListView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatePersonaView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatePersonaView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatingBot.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/CreatingBot~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/EditBotView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditBotView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/EditPersonaView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditPersonaView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/HubView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/HubView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/MainPage.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/MainPage~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/AccountSheetView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/AccountSheetView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/ChatBotSheetView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/ChatBotSheetView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/EditMessageSheet.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/EditMessageSheet~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/SettingsSheetView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/SettingsSheetView~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/x86_64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

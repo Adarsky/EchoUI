@@ -1,0 +1,23 @@
+{
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatAppearance.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAppearance.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAppearance.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAppearance.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAppearance.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAppearance.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatHistory.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistory.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistory.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistory.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistory.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistory.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/Views/TypingIndicator.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/TypingIndicator.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/TypingIndicator.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/TypingIndicator.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/TypingIndicator.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/TypingIndicator.swiftdeps"
+  }
+}

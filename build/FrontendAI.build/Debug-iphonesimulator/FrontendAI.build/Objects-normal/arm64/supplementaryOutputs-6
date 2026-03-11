@@ -1,0 +1,23 @@
+{
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/APIComponents/ChatAPIPayloadMessage.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAPIPayloadMessage.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAPIPayloadMessage.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAPIPayloadMessage.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAPIPayloadMessage.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatAPIPayloadMessage.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/BotComponents/Bot.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/Bot.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/Bot.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/Bot.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/Bot.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/Bot.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/BotComponents/BotModel.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/BotModel.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/BotModel.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/BotModel.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/BotModel.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/BotModel.swiftdeps"
+  }
+}

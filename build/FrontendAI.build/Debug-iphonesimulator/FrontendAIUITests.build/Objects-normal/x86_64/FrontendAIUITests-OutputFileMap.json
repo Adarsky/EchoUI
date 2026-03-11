@@ -1,0 +1,29 @@
+{
+  "" : {
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests-primary.dia",
+    "emit-module-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests-primary-emit-module.dia",
+    "pch" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests-primary.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAIUITests/FrontendAIUITests.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITests~partial.swiftmodule"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAIUITests/FrontendAIUITestsLaunchTests.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.dia",
+    "index-unit-output-path" : "/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.o",
+    "llvm-bc" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.bc",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests.swiftdeps",
+    "swiftmodule" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAIUITests.build/Objects-normal/x86_64/FrontendAIUITestsLaunchTests~partial.swiftmodule"
+  }
+}

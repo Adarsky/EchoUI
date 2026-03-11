@@ -1,0 +1,16 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatHistoryDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "History",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 40
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,16 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/User/PersonaDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Persona",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 29
+        }
+      }
+    ]
+  },
+  "version": 1
+}

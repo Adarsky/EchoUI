@@ -1,0 +1,23 @@
+{
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ChatHistoryDetailView.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistoryDetailView.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistoryDetailView.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistoryDetailView.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistoryDetailView.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ChatHistoryDetailView.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/MessageRow.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/MessageRow.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/MessageRow.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/MessageRow.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/MessageRow.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/MessageRow.swiftdeps"
+  },
+  "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/ThinkingField.swift" : {
+    "const-values" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ThinkingField.swiftconstvalues",
+    "dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ThinkingField.d",
+    "diagnostics" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ThinkingField.dia",
+    "object" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ThinkingField.o",
+    "swift-dependencies" : "/Users/macbook/Documents/FrontendAI/build/FrontendAI.build/Debug-iphonesimulator/FrontendAI.build/Objects-normal/arm64/ThinkingField.swiftdeps"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatAppearanceSettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Chat Appearance",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preview",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "Message Bubbles",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Wallpaper",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove Wallpaper",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose Wallpaper",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bubble color",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "Transparent",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 160
+        }
+      }
+    ]
+  },
+  "version": 1
+}

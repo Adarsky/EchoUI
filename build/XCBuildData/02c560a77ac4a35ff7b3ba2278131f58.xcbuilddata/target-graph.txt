@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'FrontendAIUITests' in project 'FrontendAI'
+➜ Explicit dependency on target 'FrontendAI' in project 'FrontendAI'
+Target 'FrontendAI' in project 'FrontendAI' (no dependencies)

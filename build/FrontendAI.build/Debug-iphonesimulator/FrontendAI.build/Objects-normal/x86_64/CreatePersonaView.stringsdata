@@ -1,0 +1,72 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatePersonaView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Persona",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Persona avatar",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose a profile image or keep the default icon",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Product Strategist",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "",
+        "key": "System prompt",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "Describe tone, behavior and response boundaries...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create Persona",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 144
+        }
+      }
+    ]
+  },
+  "version": 1
+}

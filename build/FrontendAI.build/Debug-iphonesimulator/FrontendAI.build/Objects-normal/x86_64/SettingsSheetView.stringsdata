@@ -1,0 +1,96 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/SettingsSheetView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "CUSTOMIZATION",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "MAIN HUB",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "CONNECTION CONFIGURATION",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "LLM STREAMING",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chat Appearance",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show API Status",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manage API Servers",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset LLM streaming defaults",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chunk size: %lld chars",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chunk time: %lld ms",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 61
+        }
+      }
+    ]
+  },
+  "version": 1
+}

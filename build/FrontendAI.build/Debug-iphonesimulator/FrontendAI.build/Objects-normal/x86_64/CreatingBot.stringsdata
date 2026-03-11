@@ -1,0 +1,72 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/CreatingBot.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Character",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Photo was not selected, please select it",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Character avatar",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "A photo is required before saving",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Luna",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create Character",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 176
+        }
+      }
+    ]
+  },
+  "version": 1
+}

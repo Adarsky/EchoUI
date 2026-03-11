@@ -298,6 +298,7 @@ struct ChatView: View {
     @State private var savedBotModel: BotModel?
     @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var chatWallpaperPath = ""
     @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyChatWallpaperBase64 = ""
+    @AppStorage(ChatStreamingStorageKeys.chunkFlushIntervalMs) private var streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
     @State private var chatWallpaperImage: UIImage?
 
     init(bot: Bot) {
@@ -595,7 +596,11 @@ struct ChatView: View {
 
     // MARK: – Streaming helper
     private func streamReply(payload: [ChatPayloadMessage], config: ServerConfig, replyID: UUID) async {
-        let coalescer = StreamChunkCoalescer()
+        let clampedChunkFlushIntervalMs = ChatStreamingDefaults.clampedChunkFlushIntervalMs(streamChunkFlushIntervalMs)
+        let coalescer = StreamChunkCoalescer(
+            minInterval: clampedChunkFlushIntervalMs / 1000.0,
+            maxBufferedChars: ChatStreamingDefaults.chunkMaxChars
+        )
 
         do {
             _ = try await APIService.sendMessage(
@@ -742,16 +747,6 @@ struct ChatView: View {
             .sorted { $0.index < $1.index }
             .map { ChatMessageModel(content: $0.text, isUser: $0.isUser) }
         isManualHistoryLoad = true
-    }
-
-    // MARK: – Alert helper
-    @MainActor
-    private func showError(_ message: String) {
-        alertMessage = message
-        showAlertBanner = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-            withAnimation { showAlertBanner = false }
-        }
     }
 
     // MARK: – Utils

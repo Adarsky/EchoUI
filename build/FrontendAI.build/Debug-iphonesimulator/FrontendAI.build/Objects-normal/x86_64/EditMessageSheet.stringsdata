@@ -1,0 +1,40 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/EditMessageSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Edit (you)",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit (bot)",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 32
+        }
+      }
+    ]
+  },
+  "version": 1
+}

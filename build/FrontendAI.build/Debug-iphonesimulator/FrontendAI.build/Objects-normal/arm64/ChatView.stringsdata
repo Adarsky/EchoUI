@@ -1,0 +1,40 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No API server selected",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 458
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 459
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 460
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please select or configure an API endpoint to continue.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 462
+        }
+      }
+    ]
+  },
+  "version": 1
+}

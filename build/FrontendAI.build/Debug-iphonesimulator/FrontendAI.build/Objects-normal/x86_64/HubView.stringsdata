@@ -1,0 +1,32 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/HubView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Echo UI",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 18
+        }
+      },
+      {
+        "comment": "",
+        "key": "Janitor AI HUB",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search...",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 30
+        }
+      }
+    ]
+  },
+  "version": 1
+}

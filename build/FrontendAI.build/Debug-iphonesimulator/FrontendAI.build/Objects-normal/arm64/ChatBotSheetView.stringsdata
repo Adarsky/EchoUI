@@ -1,0 +1,40 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Sheets/ChatBotSheetView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Show Less",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show More",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "View Previous Chats",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start New Chat",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 89
+        }
+      }
+    ]
+  },
+  "version": 1
+}

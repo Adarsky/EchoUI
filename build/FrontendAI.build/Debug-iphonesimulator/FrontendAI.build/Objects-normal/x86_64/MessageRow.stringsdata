@@ -1,0 +1,112 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Components/ChatComponents/MessageRow.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "User's message",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bot's message",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you surе?",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Copy",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld/%lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit (you)",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit (bot)",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 304
+        }
+      }
+    ]
+  },
+  "version": 1
+}

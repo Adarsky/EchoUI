@@ -1,0 +1,32 @@
+{
+  "source": "/Users/macbook/Documents/FrontendAI/FrontendAI/Pages/ChatHistoryListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%@ History",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "",
+        "key": "No history found for %@.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld messages",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 43
+        }
+      }
+    ]
+  },
+  "version": 1
+}
