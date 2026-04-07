@@ -36,15 +36,6 @@ struct SettingsSheetView: View {
                             }
                         }
                         Toggle("Show API Status", isOn: $showAPIStatus)
-                    }
-
-                    Section(header: Text("Connection configuration")) {
-                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
-                            HStack {
-                                Image(systemName: "server.rack")
-                                Text("Manage API Servers")
-                            }
-                        }
                         HStack {
                             Image(systemName: "hare")
                             Text("Chunk time: \(Int(streamChunkFlushIntervalMs.rounded())) ms")
@@ -69,6 +60,27 @@ struct SettingsSheetView: View {
                                 Image(systemName: "arrow.counterclockwise")
                             }
                             .buttonStyle(.glass)
+                        }
+                    }
+
+                    Section(header: Text("Connection configuration")) {
+                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
+                            HStack {
+                                Image(systemName: "server.rack")
+                                Text("Manage API Servers")
+                            }
+                        }
+                        NavigationLink(destination: VLESSProxiesManagerView()) {
+                            HStack {
+                                Image(systemName: "hat.widebrim")
+                                Text("VLESS proxy")
+                            }
+                        }
+                        NavigationLink(destination: HisteriumEnvironmentManager()) {
+                            HStack {
+                                Image(systemName: "network.badge.shield.half.filled")
+                                Text("Histerium environment")
+                            }
                         }
                     }
                     Section(header: Text("Information")) {
