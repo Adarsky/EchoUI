@@ -33,6 +33,8 @@ struct MessageRow: View {
     @AppStorage(ChatAppearanceStorageKeys.botBubbleBlue) private var botBubbleBlue = ChatAppearanceDefaults.botBubbleBlue
     @AppStorage(ChatAppearanceStorageKeys.botBubbleOpacity) private var botBubbleOpacity = ChatAppearanceDefaults.botBubbleOpacity
     @AppStorage(ChatAppearanceStorageKeys.botBubbleTransparent) private var botBubbleTransparent = ChatAppearanceDefaults.botBubbleTransparent
+    @AppStorage(ChatAppearanceStorageKeys.userMessageBubbleWidthRatio) private var userMessageBubbleWidthRatio = ChatAppearanceDefaults.userMessageBubbleWidthRatio
+    @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleWidthRatio) private var botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
 
     @State private var editSession: EditSession?
     @State private var showDeleteConfirm = false
@@ -42,7 +44,7 @@ struct MessageRow: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            if msg.isUser { Spacer(minLength: 40) }
+            if msg.isUser { Spacer(minLength: sideSpacerMinLength(for: true)) }
 
             LazyVStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
                 if !msg.isUser, msg.hasThinkingContent {
@@ -81,16 +83,20 @@ struct MessageRow: View {
                                 .stroke(bubbleStrokeColor(for: false), lineWidth: 1)
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
                 } else {
                     Text(msg.isStreaming ? AttributedString(msg.content) : renderedMarkdown(from: msg.content))
                         .id(msg.currentIndex)
                         .padding(12)
                         .background(
+                            bubbleBackground(for: msg.isUser)
+                        )
+                        .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(bubbleFillColor(for: msg.isUser))
-                                .fill(.ultraThinMaterial)
+                                .stroke(bubbleStrokeColor(for: msg.isUser), lineWidth: 1)
                         )
                         .foregroundColor(bubbleTextColor(for: msg.isUser))
+                        .frame(maxWidth: maxBubbleWidth(for: msg.isUser), alignment: msg.isUser ? .trailing : .leading)
                         .contextMenu {
                             Button {
                                 UIPasteboard.general.string = msg.content
@@ -170,7 +176,7 @@ struct MessageRow: View {
             .frame(maxWidth: .infinity,
                    alignment: msg.isUser ? .trailing : .leading)
 
-            if !msg.isUser { Spacer(minLength: 40) }
+            if !msg.isUser { Spacer(minLength: sideSpacerMinLength(for: false)) }
         }
 
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
@@ -210,6 +216,19 @@ struct MessageRow: View {
         )
     }
 
+    @ViewBuilder
+    private func bubbleBackground(for isUser: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        shape.fill(bubbleFillColor(for: isUser))
+        if !isBubbleTransparent(for: isUser) {
+            shape.fill(.ultraThinMaterial)
+        }
+    }
+
+    private func isBubbleTransparent(for isUser: Bool) -> Bool {
+        isUser ? userBubbleTransparent : botBubbleTransparent
+    }
+
     private func bubbleFillColor(for isUser: Bool) -> Color {
         if isUser {
             return userBubbleTransparent ? .clear : userConfiguredColor
@@ -218,17 +237,33 @@ struct MessageRow: View {
     }
 
     private func bubbleStrokeColor(for isUser: Bool) -> Color {
-        let isTransparent = isUser ? userBubbleTransparent : botBubbleTransparent
-        if isTransparent {
-            return Color.primary.opacity(0.24)
-        }
-        return Color.clear
+        Color.clear
     }
 
     private func bubbleTextColor(for isUser: Bool) -> Color {
         let isTransparent = isUser ? userBubbleTransparent : botBubbleTransparent
         if isTransparent { return .primary }
         return isUser ? .white : .primary
+    }
+
+    private func maxBubbleWidth(for isUser: Bool) -> CGFloat {
+        UIScreen.main.bounds.width * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio)
+    }
+
+    private func sideSpacerMinLength(for isUser: Bool) -> CGFloat {
+        widthRatio(for: isUser) >= 1.0 ? 0 : 40
+    }
+
+    private func widthRatio(for isUser: Bool) -> CGFloat {
+        isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio
+    }
+
+    private var clampedUserMessageBubbleWidthRatio: CGFloat {
+        CGFloat(min(max(userMessageBubbleWidthRatio, 0.45), 1.0))
+    }
+
+    private var clampedBotMessageBubbleWidthRatio: CGFloat {
+        CGFloat(min(max(botMessageBubbleWidthRatio, 0.45), 1.0))
     }
 }
 

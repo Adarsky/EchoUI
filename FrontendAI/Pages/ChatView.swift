@@ -410,63 +410,44 @@ struct ChatView: View {
 
                 // Input bar
             }
+            bottomInputMaterialFade
             VStack {
-                    ZStack {
-                        ChatHeaderBar(
-                            bot: bot,
-                            botID: botID,
-                            showChatBotSheet: $showChatBotSheet,
-                            isViewingHistory: $isViewingHistory,
-                            onNewChat: startNewChatTapped
-                        )
-                        .background(alignment: .top) {
-                            GeometryReader { geo in
-                                Rectangle()
-                                    .fill(.ultraThickMaterial)
-                                    .frame(height: geo.safeAreaInsets.top + 70)
-                                    .mask(
-                                        LinearGradient(
-                                            gradient: Gradient(stops: [
-                                                .init(color: .black, location: 0),
-                                                .init(color: .clear, location: 1)
-                                            ]),
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                    .ignoresSafeArea(edges: .top)
-                            }
-                        }
-                    }
-                Spacer()
                 ZStack {
-                    ChatInputBar(
-                        inputText: $inputText,
-                        isGenerating: $isGenerating,
-                        isThinking: $isThinking,
-                        placeholder: "Message \(bot.name)",
-                        onSend: sendMessage,
-                        onStop: stopGeneration
+                    ChatHeaderBar(
+                        bot: bot,
+                        botID: botID,
+                        showChatBotSheet: $showChatBotSheet,
+                        isViewingHistory: $isViewingHistory,
+                        onNewChat: startNewChatTapped
                     )
                     .background(alignment: .top) {
                         GeometryReader { geo in
                             Rectangle()
                                 .fill(.ultraThickMaterial)
-                                .frame(height: geo.safeAreaInsets.top + 90)
+                                .frame(height: geo.safeAreaInsets.top + 70)
                                 .mask(
                                     LinearGradient(
                                         gradient: Gradient(stops: [
                                             .init(color: .black, location: 0),
                                             .init(color: .clear, location: 1)
                                         ]),
-                                        startPoint: .bottom,
-                                        endPoint: .top
+                                        startPoint: .top,
+                                        endPoint: .bottom
                                     )
                                 )
                                 .ignoresSafeArea(edges: .top)
                         }
                     }
                 }
+                Spacer()
+                ChatInputBar(
+                    inputText: $inputText,
+                    isGenerating: $isGenerating,
+                    isThinking: $isThinking,
+                    placeholder: "Message \(bot.name)",
+                    onSend: sendMessage,
+                    onStop: stopGeneration
+                )
             }
             
         }
@@ -578,6 +559,28 @@ struct ChatView: View {
             }
         }
         .ignoresSafeArea()
+    }
+
+    private var bottomInputMaterialFade: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(.ultraThickMaterial)
+                .frame(height: geo.safeAreaInsets.bottom + 90)
+                .mask(
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .clear, location: 1)
+                        ]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+        .allowsHitTesting(false)
     }
 
     @MainActor

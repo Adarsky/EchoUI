@@ -19,6 +19,8 @@ struct ChatAppearanceSettingsView: View {
     @AppStorage(ChatAppearanceStorageKeys.botBubbleBlue) private var botBubbleBlue = ChatAppearanceDefaults.botBubbleBlue
     @AppStorage(ChatAppearanceStorageKeys.botBubbleOpacity) private var botBubbleOpacity = ChatAppearanceDefaults.botBubbleOpacity
     @AppStorage(ChatAppearanceStorageKeys.botBubbleTransparent) private var botBubbleTransparent = ChatAppearanceDefaults.botBubbleTransparent
+    @AppStorage(ChatAppearanceStorageKeys.userMessageBubbleWidthRatio) private var userMessageBubbleWidthRatio = ChatAppearanceDefaults.userMessageBubbleWidthRatio
+    @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleWidthRatio) private var botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
 
     @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var wallpaperPath = ""
     @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyWallpaperBase64 = ""
@@ -47,6 +49,28 @@ struct ChatAppearanceSettingsView: View {
                 )
             }
 
+            Section("Message Width") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Your messages")
+                        Spacer()
+                        Text("\(Int(clampedUserMessageBubbleWidthRatio * 100))%")
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $userMessageBubbleWidthRatio, in: 0.45...1.0, step: 0.05)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Bot messages")
+                        Spacer()
+                        Text("\(Int(clampedBotMessageBubbleWidthRatio * 100))%")
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $botMessageBubbleWidthRatio, in: 0.45...1.0, step: 0.05)
+                }
+            }
+
             Section("Wallpaper") {
                 PhotosPicker(selection: $selectedWallpaperItem, matching: .images) {
                     Label("Choose Wallpaper", systemImage: "photo.on.rectangle")
@@ -69,6 +93,7 @@ struct ChatAppearanceSettingsView: View {
             }
         }
         .onAppear {
+            migrateLegacyMessageWidthIfNeeded()
             migrateLegacyWallpaperIfNeeded()
             refreshWallpaperImage()
         }
@@ -137,6 +162,7 @@ struct ChatAppearanceSettingsView: View {
             .font(.subheadline)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .frame(maxWidth: 280 * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio), alignment: isUser ? .trailing : .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(previewBubbleFillColor(isUser: isUser))
@@ -232,8 +258,34 @@ struct ChatAppearanceSettingsView: View {
         botBubbleBlue = ChatAppearanceDefaults.botBubbleBlue
         botBubbleOpacity = ChatAppearanceDefaults.botBubbleOpacity
         botBubbleTransparent = ChatAppearanceDefaults.botBubbleTransparent
+        userMessageBubbleWidthRatio = ChatAppearanceDefaults.userMessageBubbleWidthRatio
+        botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
 
         removeWallpaper()
+    }
+
+    private var clampedUserMessageBubbleWidthRatio: CGFloat {
+        CGFloat(min(max(userMessageBubbleWidthRatio, 0.45), 1.0))
+    }
+
+    private var clampedBotMessageBubbleWidthRatio: CGFloat {
+        CGFloat(min(max(botMessageBubbleWidthRatio, 0.45), 1.0))
+    }
+
+    private func migrateLegacyMessageWidthIfNeeded() {
+        let defaults = UserDefaults.standard
+        let legacyKey = ChatAppearanceStorageKeys.messageBubbleWidthRatio
+        let userKey = ChatAppearanceStorageKeys.userMessageBubbleWidthRatio
+        let botKey = ChatAppearanceStorageKeys.botMessageBubbleWidthRatio
+
+        guard defaults.object(forKey: userKey) == nil,
+              defaults.object(forKey: botKey) == nil,
+              defaults.object(forKey: legacyKey) != nil
+        else { return }
+
+        let legacyValue = defaults.double(forKey: legacyKey)
+        userMessageBubbleWidthRatio = legacyValue
+        botMessageBubbleWidthRatio = legacyValue
     }
 
     private func removeWallpaper() {

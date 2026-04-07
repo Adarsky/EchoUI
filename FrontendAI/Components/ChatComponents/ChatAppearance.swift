@@ -19,6 +19,9 @@ enum ChatAppearanceStorageKeys {
     static let botBubbleBlue = "chatBotBubbleBlue"
     static let botBubbleOpacity = "chatBotBubbleOpacity"
     static let botBubbleTransparent = "chatBotBubbleTransparent"
+    static let userMessageBubbleWidthRatio = "chatUserMessageBubbleWidthRatio"
+    static let botMessageBubbleWidthRatio = "chatBotMessageBubbleWidthRatio"
+    static let messageBubbleWidthRatio = "chatMessageBubbleWidthRatio"
 
     static let wallpaperPath = "chatWallpaperPath"
     static let wallpaperBase64 = "chatWallpaperBase64" // legacy key for migration
@@ -36,6 +39,9 @@ enum ChatAppearanceDefaults {
     static let botBubbleBlue: Double = 0.576
     static let botBubbleOpacity: Double = 0.2
     static let botBubbleTransparent: Bool = false
+    static let userMessageBubbleWidthRatio: Double = 0.82
+    static let botMessageBubbleWidthRatio: Double = 0.82
+    static let messageBubbleWidthRatio: Double = 0.82
 }
 
 enum ChatStreamingStorageKeys {
