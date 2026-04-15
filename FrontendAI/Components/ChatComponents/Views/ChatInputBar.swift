@@ -47,34 +47,7 @@ struct ChatInputBar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 4) {
-                TextField(placeholder, text: $inputText, axis: .vertical)
-                    .lineLimit(1...8)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 14)
-                    .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 18))
-                    .frame(maxWidth: .infinity)
-                Spacer()
-
-                Button(action: {
-                    if buttonVisualState.isStopAction {
-                        onStop()
-                    } else {
-                        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                        onSend()
-                    }
-                }) {
-                    Image(systemName: buttonVisualState.symbolName)
-                        .font(.system(size: 24, weight: .semibold))
-                        .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
-                        .symbolEffect(
-                            .breathe.pulse.byLayer,
-                            options: .repeat(.continuous),
-                            isActive: buttonVisualState == .thinking
-                        )
-                }
-                .frame(width: 25, height: 30)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+                inputField
             }
             .padding(.horizontal)
             .padding(.bottom, 10)
@@ -117,6 +90,46 @@ struct ChatInputBar: View {
         }
 
         setButtonState(.generating, animated: animated)
+    }
+
+    private var inputField: some View {
+        TextField(placeholder, text: $inputText, axis: .vertical)
+            .lineLimit(1...10)
+            .padding(.vertical)
+            .padding(.leading, 14)
+            .padding(.trailing, 56)
+            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 30))
+            .frame(maxWidth: .infinity)
+            .overlay(alignment: .trailing) {
+                sendButton
+            }
+    }
+
+    private var sendButton: some View {
+        Button(action: performPrimaryAction) {
+            Image(systemName: buttonVisualState.symbolName)
+                .font(.system(size: 27, weight: .semibold))
+                .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
+                .symbolEffect(
+                    .breathe.pulse.byLayer,
+                    options: .repeat(.continuous),
+                    isActive: buttonVisualState == .thinking
+                )
+        }
+        .frame(width: 30, height: 40)
+        .buttonBorderShape(.circle)
+        .buttonStyle(.glass)
+        .padding(.trailing, 12)
+    }
+
+    private func performPrimaryAction() {
+        if buttonVisualState.isStopAction {
+            onStop()
+            return
+        }
+
+        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        onSend()
     }
 
     private func setButtonState(_ newState: ButtonVisualState, animated: Bool) {

@@ -26,7 +26,6 @@ struct SettingsSheetView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
                 List {
                     Section(header: Text("Customization")) {
                         NavigationLink(destination: ChatAppearanceSettingsView()) {
@@ -115,7 +114,6 @@ struct SettingsSheetView: View {
                             }
                             .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
                         }
-                    }
                 }
                 .listStyle(.insetGrouped)
                 .frame(maxWidth: 460, alignment: .leading)

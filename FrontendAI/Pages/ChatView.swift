@@ -423,7 +423,7 @@ struct ChatView: View {
                     .background(alignment: .top) {
                         GeometryReader { geo in
                             Rectangle()
-                                .fill(.ultraThickMaterial)
+                                .fill(.black)
                                 .frame(height: geo.safeAreaInsets.top + 70)
                                 .mask(
                                     LinearGradient(
@@ -564,7 +564,7 @@ struct ChatView: View {
     private var bottomInputMaterialFade: some View {
         GeometryReader { geo in
             Rectangle()
-                .fill(.ultraThickMaterial)
+                .fill(.black)
                 .frame(height: geo.safeAreaInsets.bottom + 90)
                 .mask(
                     LinearGradient(

@@ -16,6 +16,7 @@ struct ChatBotSheetView: View {
     @Environment(\.dismiss) var dismiss
     @State private var isDescriptionExpandedManually = false
     @State private var selectedDetent: PresentationDetent = .medium
+    @State private var isShowingChatViewSettings = false
     private let collapsedDescriptionCharacterLimit = 140
 
     var body: some View {
@@ -91,34 +92,48 @@ struct ChatBotSheetView: View {
                     .padding(.horizontal)
                 }
                 .padding()
+                .padding(.top, 20)
                 .frame(maxWidth: .infinity)
             }
 
             Divider()
 
             // Fixed bottom buttons
-            HStack(spacing: 12) {
-                Button(action: onViewHistory) {
-                    HStack {
-                        Image(systemName: "clock")
-                        Text("History")
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(10)
-                }
-
+            VStack {
                 Button(action: onNewChat) {
                     HStack {
                         Image(systemName: "plus")
-                        Text("New Chat")
+                        Text("Create new Chat")
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(10)
+                }
+                HStack(spacing: 12) {
+                    Button {
+                        isShowingChatViewSettings = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "gearshape")
+                            Text("View settings")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(10)
+                    }
+                    Button(action: onViewHistory) {
+                        HStack {
+                            Image(systemName: "clock")
+                            Text("History")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(10)
+                    }
                 }
             }
             .padding()
@@ -127,6 +142,9 @@ struct ChatBotSheetView: View {
         .presentationDragIndicator(.visible)
         .onChange(of: bot.id) { _, _ in
             isDescriptionExpandedManually = false
+        }
+        .sheet(isPresented: $isShowingChatViewSettings) {
+            ChatAppearanceSettingsView()
         }
     }
 

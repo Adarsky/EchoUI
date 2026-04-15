@@ -361,13 +361,14 @@ private func renderedMarkdown(from text: String) -> AttributedString {
         failurePolicy: .returnPartiallyParsedIfPossible
     )
     if let attributed = try? AttributedString(markdown: markdownText, options: options) {
-        return attributed
+        return applyingNoHyphenation(to: attributed)
     }
-    return AttributedString(text)
+    return applyingNoHyphenation(to: AttributedString(markdownText))
 }
 
 private func markdownReadyText(from text: String) -> String {
     let normalizedText = text
+        .replacingOccurrences(of: "\u{00AD}", with: "")
         .replacingOccurrences(of: "/n/n", with: "\n\n")
         .replacingOccurrences(of: "/n", with: "\n")
         .replacingOccurrences(of: "\\n", with: "\n")
@@ -399,6 +400,21 @@ private func markdownReadyText(from text: String) -> String {
     }
 
     return result
+}
+
+private func applyingNoHyphenation(to attributed: AttributedString) -> AttributedString {
+    let nsAttributed = NSAttributedString(attributed)
+    let mutable = NSMutableAttributedString(attributedString: nsAttributed)
+    let fullRange = NSRange(location: 0, length: mutable.length)
+
+    mutable.enumerateAttribute(.paragraphStyle, in: fullRange) { value, range, _ in
+        let paragraphStyle = (value as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+        paragraphStyle.hyphenationFactor = 0
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        mutable.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+    }
+
+    return (try? AttributedString(mutable, including: \.uiKit)) ?? attributed
 }
 
 private struct MessageRowPreviewHost: View {
