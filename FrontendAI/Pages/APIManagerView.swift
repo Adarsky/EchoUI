@@ -226,6 +226,8 @@ struct CreateAPIServerView: View {
                         .autocapitalization(.none)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .textContentType(.oneTimeCode)
+                        .privacySensitive()
                 }
                 
                 Section(header: Text("Model Selection")) {

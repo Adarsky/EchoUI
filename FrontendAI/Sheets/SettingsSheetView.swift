@@ -13,12 +13,11 @@ struct SettingsSheetView: View {
     @Binding var messageLength: Int
     @Binding var endpoint: String
     @Binding var showAPIStatus: Bool
-    @AppStorage(ChatStreamingStorageKeys.chunkFlushIntervalMs) private var streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
+
     @AppStorage("selectedServerUUID") private var selectedServerUUID: String = ""
     @AppStorage("openRouterBalancePingEnabled") private var openRouterBalancePingEnabled = true
     @Query private var servers: [APIServer]
 
-    @State private var showChunkTimeInfo = false
     @State private var openRouterBalanceState: OpenRouterBalanceState = .disabled
     var navName: String = "Settings"
 
@@ -34,32 +33,13 @@ struct SettingsSheetView: View {
                                 Text("Chat Appearance")
                             }
                         }
+                        NavigationLink(destination: TokenSpeedChangeView()) {
+                            HStack {
+                                Image(systemName: "hare")
+                                Text("Token Speed")
+                            }
+                        }
                         Toggle("Show API Status", isOn: $showAPIStatus)
-                        HStack {
-                            Image(systemName: "hare")
-                            Text("Chunk time: \(Int(streamChunkFlushIntervalMs.rounded())) ms")
-                            Spacer()
-                            Button {
-                                showChunkTimeInfo = true
-                            } label: {
-                                Image(systemName: "info.circle")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .accessibilityLabel("Chunk time info")
-                        }
-                        HStack {
-                            Slider(
-                                value: $streamChunkFlushIntervalMs,
-                                in: ChatStreamingDefaults.minChunkFlushIntervalMs...ChatStreamingDefaults.maxChunkFlushIntervalMs,
-                                step: 10
-                            )
-                            Button() {
-                                streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
-                            } label: {
-                                Image(systemName: "arrow.counterclockwise")
-                            }
-                            .buttonStyle(.glass)
-                        }
                     }
 
                     Section(header: Text("Connection configuration")) {
@@ -126,7 +106,6 @@ struct SettingsSheetView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .onAppear {
-                streamChunkFlushIntervalMs = ChatStreamingDefaults.clampedChunkFlushIntervalMs(streamChunkFlushIntervalMs)
                 Task {
                     await refreshOpenRouterBalance()
                 }
@@ -140,11 +119,6 @@ struct SettingsSheetView: View {
                 Task {
                     await refreshOpenRouterBalance()
                 }
-            }
-            .alert("Chunk Time", isPresented: $showChunkTimeInfo) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("This controls how often streamed LLM text is flushed to the chat UI. Lower values update text more frequently with smaller chunks. Higher values batch more text per update, which can feel less live but may reduce UI update overhead.")
             }
         }
     }
