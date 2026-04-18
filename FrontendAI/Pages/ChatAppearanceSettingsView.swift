@@ -27,14 +27,16 @@ struct ChatAppearanceSettingsView: View {
 
     @State private var selectedWallpaperItem: PhotosPickerItem?
     @State private var wallpaperImage: UIImage?
+    private let previewUserMessage = "Can we tune this chat style so user bubbles stay readable while still looking clean across long replies and smaller screens?"
+    private let previewBotMessage = "Yes. Adjust color, opacity, transparency, and width together. This longer sample helps you clearly see how the maxWidth slider changes wrapping and alignment in real conversations."
 
     var body: some View {
         Form {
-            Section("Preview") {
-                previewCard
-                    .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+            Section() {
+                VStack {
+                    previewCard
+                }
             }
-
             Section("Message Bubbles") {
                 bubbleControls(
                     title: "Your messages",
@@ -114,23 +116,18 @@ struct ChatAppearanceSettingsView: View {
             VStack(spacing: 10) {
                 HStack {
                     Spacer(minLength: 28)
-                    previewBubble(text: "Can we tune this chat style?", isUser: true)
+                    previewBubble(text: previewUserMessage, isUser: true)
                 }
 
                 HStack {
-                    previewBubble(text: "Yes. Changes appear here instantly.", isUser: false)
+                    previewBubble(text: previewBotMessage, isUser: false)
                     Spacer(minLength: 28)
                 }
             }
             .padding(12)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 170)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .frame(minHeight: 170)
     }
 
     @ViewBuilder
@@ -147,12 +144,8 @@ struct ChatAppearanceSettingsView: View {
                             .frame(width: geo.size.width, height: geo.size.height)
                     )
             } else {
-                LinearGradient(
-                    colors: [Color(.secondarySystemBackground), Color(.systemBackground)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .frame(width: geo.size.width, height: geo.size.height)
+                Color.clear
+                    .frame(width: geo.size.width, height: geo.size.height)
             }
         }
     }
@@ -160,13 +153,12 @@ struct ChatAppearanceSettingsView: View {
     private func previewBubble(text: String, isUser: Bool) -> some View {
         Text(text)
             .font(.subheadline)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: 280 * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio), alignment: isUser ? .trailing : .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(previewBubbleFillColor(isUser: isUser))
-            )
+            .background(previewBubbleBackground(isUser: isUser))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(previewBubbleStrokeColor(isUser: isUser), lineWidth: 1)
@@ -235,9 +227,17 @@ struct ChatAppearanceSettingsView: View {
         return botBubbleTransparent ? .clear : botBubbleColorBinding.wrappedValue
     }
 
+    @ViewBuilder
+    private func previewBubbleBackground(isUser: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        shape.fill(previewBubbleFillColor(isUser: isUser))
+        if !(isUser ? userBubbleTransparent : botBubbleTransparent) {
+            shape.fill(.ultraThinMaterial)
+        }
+    }
+
     private func previewBubbleStrokeColor(isUser: Bool) -> Color {
-        let isTransparent = isUser ? userBubbleTransparent : botBubbleTransparent
-        return isTransparent ? Color.primary.opacity(0.24) : .clear
+        Color.clear
     }
 
     private func previewBubbleTextColor(isUser: Bool) -> Color {

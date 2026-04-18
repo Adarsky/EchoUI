@@ -4,6 +4,8 @@
 //
 //  Created by macbook on 07.04.2026.
 //
+// IN PREVIEW STAGE, DOES NOT WORK
+//
 
 import SwiftUI
 

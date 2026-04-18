@@ -725,12 +725,15 @@ struct ChatView: View {
                 }
             }
         } catch {
-            print("❌ API Error: \(error.localizedDescription)")
+            let canceled = isCancellationError(error)
+            if !canceled {
+                print("❌ API Error: \(error.localizedDescription)")
+            }
             await MainActor.run {
                 if let remainingChunk = coalescer.drain() {
                     applyStreamChunk(remainingChunk, for: replyID)
                 }
-                if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                if !canceled, let idx = messages.firstIndex(where: { $0.id == replyID }) {
                     let currentVariantIndex = messages[idx].currentIndex
                     messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: currentVariantIndex)
                     messages[idx].setStreaming(false)
@@ -752,6 +755,21 @@ struct ChatView: View {
             streamingReply = nil
             saveChatHistory()
         }
+    }
+
+    private func isCancellationError(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+            return true
+        }
+
+        let normalized = nsError.localizedDescription.lowercased()
+        return normalized == "canceled"
+            || normalized == "cancelled"
+            || normalized.contains("canceled")
+            || normalized.contains("cancelled")
     }
 
     @MainActor

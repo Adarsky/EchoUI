@@ -13,6 +13,7 @@ struct SettingsSheetView: View {
     @Binding var messageLength: Int
     @Binding var endpoint: String
     @Binding var showAPIStatus: Bool
+    @EnvironmentObject private var apiManager: APIManager
 
     @AppStorage("selectedServerUUID") private var selectedServerUUID: String = ""
     @AppStorage("openRouterBalancePingEnabled") private var openRouterBalancePingEnabled = true
@@ -39,11 +40,14 @@ struct SettingsSheetView: View {
                                 Text("Token Speed")
                             }
                         }
-                        Toggle("Show API Status", isOn: $showAPIStatus)
+                        HStack {
+                            Image(systemName: "dollarsign")
+                            Toggle("Show API Status", isOn: $showAPIStatus)
+                        }
                     }
 
                     Section(header: Text("Connection configuration")) {
-                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil))) {
+                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
                             HStack {
                                 Image(systemName: "server.rack")
                                 Text("Manage API Servers")
@@ -55,12 +59,12 @@ struct SettingsSheetView: View {
                                 Text("VLESS proxy")
                             }
                         }
-                        NavigationLink(destination: HisteriumEnvironmentManager()) {
+/*                        NavigationLink(destination: HisteriumEnvironmentManager()) {
                             HStack {
                                 Image(systemName: "network.badge.shield.half.filled")
                                 Text("Histerium environment")
                             }
-                        }
+                        } */
                     }
                     Section(header: Text("Information")) {
                         Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
@@ -97,8 +101,6 @@ struct SettingsSheetView: View {
                 }
                 .listStyle(.insetGrouped)
                 .frame(maxWidth: 460, alignment: .leading)
-
-                Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .navigationTitle(navName)
@@ -265,11 +267,13 @@ private struct SettingsSheetViewPreviewHost: View {
 
 #Preview {
     SettingsSheetViewPreviewHost()
+        .environmentObject(APIManager())
         .modelContainer(settingsPreviewModelContainer)
 }
 
 #Preview("Custom Nav Name") {
     SettingsSheetViewPreviewHost(navName: "App Settings")
+        .environmentObject(APIManager())
         .environment(\.locale, .init(identifier: "en"))
         .modelContainer(settingsPreviewModelContainer)
 }

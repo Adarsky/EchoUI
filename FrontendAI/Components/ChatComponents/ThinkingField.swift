@@ -2,84 +2,92 @@ import SwiftUI
 
 struct ThinkingField: View {
     @ObservedObject var msg: ChatMessageModel
-    @State private var isExpanded = false
+    @State private var isSheetPresented = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text(msg.thinkingStatusText)
-                        .font(.footnote.weight(.semibold))
+        Button {
+            isSheetPresented = true
+        } label: {
+            HStack(spacing: 6) {
+                Text(msg.thinkingStatusText)
+                    .font(.footnote.weight(.semibold))
 
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundStyle(.secondary)
+                Image(systemName: "chevron.up.forward")
+                    .font(.caption2.weight(.semibold))
             }
-            .buttonStyle(.glass)
-
-            if isExpanded {
-                ThinkingStreamPanel(
-                    sourceText: msg.thinkingContent,
-                    isStreaming: msg.isThinkingInProgress
-                )
-                .frame(height: 180)
-                .transition(.opacity)
-            }
+            .foregroundStyle(.secondary)
         }
+        .buttonStyle(.glass)
         .onChange(of: msg.currentIndex) { _, _ in
-            isExpanded = false
+            isSheetPresented = false
+        }
+        .sheet(isPresented: $isSheetPresented) {
+            ThinkingReasoningSheet(
+                sourceText: msg.thinkingContent,
+                isStreaming: msg.isThinkingInProgress
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
     }
 }
 
-private struct ThinkingStreamPanel: View {
+private struct ThinkingReasoningSheet: View {
     let sourceText: String
     let isStreaming: Bool
 
-    @State private var renderedText = ""
-    @State private var lastUpdateTime = Date.distantPast
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text(isStreaming ? "Reasoning (in progress)" : "Reasoning")
+                    .font(.headline.weight(.semibold))
+                if isStreaming {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
 
-    private let liveWindowChars = 4_000
-    private let streamingUpdateInterval: TimeInterval = 1.0 / 8.0
+            ScrollView(.vertical, showsIndicators: true) {
+                Text(sourceText.isEmpty ? "No reasoning available yet." : sourceText)
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding()
+    }
+}
+
+private struct ThinkingFieldPreviewHost: View {
+    @StateObject private var message: ChatMessageModel
+
+    init(message: ChatMessageModel) {
+        _message = StateObject(wrappedValue: message)
+    }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            Text(renderedText)
-                .font(.footnote.monospaced())
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(10)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .transaction { transaction in
-            transaction.animation = nil
-        }
-        .onAppear {
-            renderedText = makeDisplayText(from: sourceText, isStreaming: isStreaming)
-            lastUpdateTime = Date()
-        }
-        .onChange(of: sourceText) { _, newValue in
-            if isStreaming {
-                let now = Date()
-                guard now.timeIntervalSince(lastUpdateTime) >= streamingUpdateInterval else { return }
-                lastUpdateTime = now
-            }
-            renderedText = makeDisplayText(from: newValue, isStreaming: isStreaming)
-        }
-        .onChange(of: isStreaming) { _, newValue in
-            if !newValue {
-                renderedText = makeDisplayText(from: sourceText, isStreaming: false)
-            }
-        }
+        ThinkingField(msg: message)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.systemBackground))
     }
+}
 
-    private func makeDisplayText(from text: String, isStreaming: Bool) -> String {
-        guard isStreaming, text.count > liveWindowChars else { return text }
-        return "…\(text.suffix(liveWindowChars))"
-    }
+#Preview("Thinking In Progress") {
+    ThinkingFieldPreviewHost(
+        message: ChatMessageModel(
+            content: "<think>Analyzing your input and checking constraints while I prepare the response.",
+            isUser: false
+        )
+    )
+}
+
+#Preview("Thinking Completed") {
+    ThinkingFieldPreviewHost(
+        message: ChatMessageModel(
+            content: "<think>Collected relevant context, then drafted a concise result.</think>Here is the final assistant message.",
+            isUser: false
+        )
+    )
 }
