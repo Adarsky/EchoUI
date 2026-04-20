@@ -27,6 +27,17 @@ struct ServerConfig: Sendable {
     let baseURL: String
     let selectedModel: String
     let apiKey: String?
+    let allowInsecureTLS: Bool
+    let customCACertificateData: Data?
+}
+
+extension ServerConfig {
+    var tlsPolicy: TLSPolicy {
+        TLSPolicy(
+            allowInsecureTLS: allowInsecureTLS,
+            customCACertificateData: customCACertificateData
+        )
+    }
 }
 
 // MARK: - API Service
@@ -79,7 +90,8 @@ actor APIService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (stream, response) = try await URLSession.shared.bytes(for: request)
+        let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
+        let (stream, response) = try await session.bytes(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200..<300).contains(httpResponse.statusCode) else {
@@ -143,13 +155,8 @@ actor APIService {
             request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
 
-        // Optional: log request body
-        if let bodyData = try? JSONSerialization.data(withJSONObject: body, options: .prettyPrinted),
-           let bodyString = String(data: bodyData, encoding: .utf8) {
-            print("📤 Full OpenRouter Request Body:\n\(bodyString)")
-        }
-
-        let (stream, response) = try await URLSession.shared.bytes(for: request)
+        let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
+        let (stream, response) = try await session.bytes(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "APIService", code: -1002,
@@ -159,9 +166,12 @@ actor APIService {
         guard (200..<300).contains(httpResponse.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             let errorBody = try await readErrorBody(from: stream)
-            let details = errorBody.isEmpty ? "" : " - \(errorBody)"
+            let diagnostic = sanitizedDiagnosticMessage(from: errorBody)
+            if !diagnostic.isEmpty {
+                print("⚠️ OpenRouter HTTP \(code) diagnostic: \(diagnostic)")
+            }
             throw NSError(domain: "APIService", code: -1003,
-                          userInfo: [NSLocalizedDescriptionKey: "OpenRouter request failed (\(code))\(details)"])
+                          userInfo: [NSLocalizedDescriptionKey: userFacingHTTPErrorMessage(statusCode: code)])
         }
 
         var finalResult = ""
@@ -238,6 +248,41 @@ actor APIService {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func userFacingHTTPErrorMessage(statusCode: Int) -> String {
+        switch statusCode {
+        case 401, 403:
+            return "Authentication failed. Check your API key and permissions."
+        case 404:
+            return "API endpoint was not found. Verify the base URL."
+        case 408, 504:
+            return "The server timed out. Please try again."
+        case 429:
+            return "Rate limit reached. Please retry in a moment."
+        case 500...599:
+            return "Server unavailable right now. Please try again later."
+        case 400...499:
+            return "Request rejected by the API (HTTP \(statusCode))."
+        default:
+            return "Request failed (HTTP \(statusCode))."
+        }
+    }
+
+    private static func sanitizedDiagnosticMessage(from raw: String) -> String {
+        guard !raw.isEmpty else { return "" }
+
+        let allowed = CharacterSet(charactersIn: "\n\t").union(.alphanumerics).union(.punctuationCharacters).union(.whitespaces)
+        let filteredScalars = raw.unicodeScalars.filter { allowed.contains($0) }
+        var cleaned = String(String.UnicodeScalarView(filteredScalars))
+            .replacingOccurrences(of: "\r", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let maxCount = 320
+        if cleaned.count > maxCount {
+            cleaned = String(cleaned.prefix(maxCount)) + "…"
+        }
+        return cleaned
     }
 
     private static func parseOpenRouterStreamDelta(from data: Data) -> (content: [String], reasoning: [String], didFinish: Bool) {

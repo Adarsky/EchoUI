@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 // MARK: - API Manager View
 
@@ -57,6 +58,7 @@ struct APIManagerView: View {
                     )
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
+                            server.deleteAPIKeyFromKeychain()
                             modelContext.delete(server)
                             try? modelContext.save()
                         } label: {
@@ -80,6 +82,16 @@ struct APIManagerView: View {
                 CreateAPIServerView(editingServer: server)
             }
             .task {
+                var didMigrateLegacyKeys = false
+                for server in servers {
+                    if server.migrateAPIKeyToKeychainIfNeeded() {
+                        didMigrateLegacyKeys = true
+                    }
+                }
+                if didMigrateLegacyKeys {
+                    try? modelContext.save()
+                }
+
                 for server in servers {
                     await ping(server: server)
                 }
@@ -90,6 +102,7 @@ struct APIManagerView: View {
     // MARK: - Ping Server
     
     func ping(server: APIServer) async {
+        _ = server.migrateAPIKeyToKeychainIfNeeded()
         let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
         
         guard let url = URL(string: endpoint) else { return }
@@ -100,7 +113,8 @@ struct APIManagerView: View {
         }
         
         do {
-            _ = try await URLSession.shared.data(for: request)
+            let session = TLSSessionFactory.makeSession(policy: server.tlsPolicy)
+            _ = try await session.data(for: request)
             server.isOnline = true
         } catch {
             server.isOnline = false
@@ -188,6 +202,13 @@ struct CreateAPIServerView: View {
     @State private var selectedType: APIType = .openai
     @State private var apiKey: String = ""
     @State private var isLoadingModels: Bool = false
+    @State private var allowInsecureTLS: Bool = false
+    @State private var customCACertificateData: Data? = nil
+    @State private var customCACertificateName: String = ""
+    @State private var isImportingTLSCertificate: Bool = false
+    @State private var showTLSImportError: Bool = false
+    @State private var tlsImportErrorMessage: String = ""
+    @State private var showTLSConfigurationAlert: Bool = false
     
     private let maxServerNameLength = 24
     
@@ -198,76 +219,10 @@ struct CreateAPIServerView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Server Details")) {
-                    TextField("Name", text: $name)
-                        .autocorrectionDisabled()
-                        .onChange(of: name) { _, newValue in
-                            name = String(newValue.prefix(maxServerNameLength))
-                        }
-                    
-                    TextField("Base URL", text: $baseURL)
-                        .autocapitalization(.none)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                        .onSubmit {
-                            if !isOpenRouter {
-                                Task { await fetchModels() }
-                            }
-                        }
-                    
-                    Picker("Type", selection: $selectedType) {
-                        ForEach(APIType.allCases, id: \.self) { type in
-                            Text(type.rawValue.capitalized).tag(type)
-                        }
-                    }
-                    
-                    SecureField("API Key (optional)", text: $apiKey)
-                        .autocapitalization(.none)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textContentType(.oneTimeCode)
-                        .privacySensitive()
-                }
+                serverDetailsSection
+                modelSelectionSection
+                tlsSection
                 
-                Section(header: Text("Model Selection")) {
-                    if isOpenRouter {
-                        TextField("Model name (e.g. openai/gpt-4o-mini)", text: $selectedModel)
-                            .autocapitalization(.none)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        
-                        Text("Enter the exact OpenRouter model ID (provider/model). The list of models is not loaded for OpenRouter.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        if availableModels.isEmpty {
-                            Button {
-                                Task { await fetchModels() }
-                            } label: {
-                                HStack {
-                                    Text("Load Models")
-                                    if isLoadingModels {
-                                        Spacer()
-                                        ProgressView()
-                                    }
-                                }
-                            }
-                            .disabled(baseURL.isEmpty || isLoadingModels)
-                        } else {
-                            Picker("Select Model", selection: $selectedModel) {
-                                ForEach(availableModels, id: \.self) { model in
-                                    Text(model).tag(model)
-                                }
-                            }
-                            
-                            Button("Reload Models") {
-                                Task { await fetchModels() }
-                            }
-                            .disabled(isLoadingModels)
-                        }
-                    }
-                }
             }
             .navigationTitle(editingServer == nil ? "Add API Server" : "Edit API Server")
             .navigationBarTitleDisplayMode(.inline)
@@ -293,7 +248,125 @@ struct CreateAPIServerView: View {
                     availableModels.removeAll()
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingTLSCertificate,
+                allowedContentTypes: [.data],
+                allowsMultipleSelection: false
+            ) { result in
+                handleTLSCertificateImport(result)
+            }
+            .alert("TLS Certificate Import Failed", isPresented: $showTLSImportError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(tlsImportErrorMessage)
+            }
+            .alert("TLS Certificate Required", isPresented: $showTLSConfigurationAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Import the exact CA certificate for your endpoint before enabling custom TLS.")
+            }
         }
+    }
+    
+    private var serverDetailsSection: some View {
+        Section(header: Text("Server Details")) {
+            TextField("Name", text: $name)
+                .autocorrectionDisabled()
+                .onChange(of: name) { _, newValue in
+                    name = String(newValue.prefix(maxServerNameLength))
+                }
+            
+            TextField("Base URL", text: $baseURL)
+                .autocapitalization(.none)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .onSubmit {
+                    if !isOpenRouter {
+                        Task { await fetchModels() }
+                    }
+                }
+            
+            Picker("Type", selection: $selectedType) {
+                ForEach(APIType.allCases, id: \.self) { type in
+                    Text(type.rawValue.capitalized).tag(type)
+                }
+            }
+            
+            SecureField("API Key (optional)", text: $apiKey)
+                .autocapitalization(.none)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textContentType(.oneTimeCode)
+                .privacySensitive()
+        }
+    }
+    
+    private var modelSelectionSection: some View {
+        Section(header: Text("Model Selection"), footer: Text("Enter the exact OpenRouter model ID (provider/model). The list of models is not loaded for OpenRouter.")) {
+            if isOpenRouter {
+                TextField("Model name (e.g. openai/gpt-4o-mini)", text: $selectedModel)
+                    .autocapitalization(.none)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } else if availableModels.isEmpty {
+                Button {
+                    Task { await fetchModels() }
+                } label: {
+                    HStack {
+                        Text("Load Models")
+                        if isLoadingModels {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(baseURL.isEmpty || isLoadingModels)
+            } else {
+                Picker("Select Model", selection: $selectedModel) {
+                    ForEach(availableModels, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                }
+                
+                Button("Reload Models") {
+                    Task { await fetchModels() }
+                }
+                .disabled(isLoadingModels)
+            }
+        }
+    }
+    
+    private var tlsSection: some View {
+        Section(header: Text("TLS"), footer: Text(tlsFooterText)) {
+            
+            Toggle("Use custom CA for self-signed TLS", isOn: $allowInsecureTLS)
+            
+            if allowInsecureTLS {
+                Text("Connections are rejected unless the exact CA certificate is imported.")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+
+                Button(customCACertificateData == nil ? "Import CA Certificate (.crt/.pem/.cer)" : "Replace CA Certificate") {
+                    isImportingTLSCertificate = true
+                }
+                
+                if customCACertificateData != nil {
+                    Button("Remove Trusted Certificate", role: .destructive) {
+                        customCACertificateData = nil
+                        customCACertificateName = ""
+                    }
+                }
+            }
+        }
+    }
+    
+    private var tlsFooterText: String {
+        let guidance = "Enable this only when you can import the exact CA certificate for your endpoint. The app never trusts unknown certificates."
+        if allowInsecureTLS && !customCACertificateName.isEmpty {
+            return "Trusted certificate: \(customCACertificateName)\n\n\(guidance)"
+        }
+        return guidance
     }
     
     // MARK: - Computed Properties
@@ -301,7 +374,8 @@ struct CreateAPIServerView: View {
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (!allowInsecureTLS || customCACertificateData != nil)
     }
     
     // MARK: - Methods
@@ -315,6 +389,9 @@ struct CreateAPIServerView: View {
         availableModels = server.availableModels
         selectedType = server.type
         apiKey = server.apiKey ?? ""
+        allowInsecureTLS = server.allowInsecureTLS
+        customCACertificateData = server.customCACertificateData
+        customCACertificateName = server.customCACertificateName ?? ""
     }
     
     private func saveServer() {
@@ -322,6 +399,11 @@ struct CreateAPIServerView: View {
         let normalizedBaseURL = selectedType.normalizedBaseURL(baseURL)
         let normalizedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if allowInsecureTLS && customCACertificateData == nil {
+            showTLSConfigurationAlert = true
+            return
+        }
 
         if let server = editingServer {
             // Update existing server
@@ -331,6 +413,9 @@ struct CreateAPIServerView: View {
             server.availableModels = isOpenRouter ? [] : availableModels
             server.type = selectedType
             server.apiKey = normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
+            server.allowInsecureTLS = allowInsecureTLS
+            server.customCACertificateData = customCACertificateData
+            server.customCACertificateName = customCACertificateName.isEmpty ? nil : customCACertificateName
         } else {
             // Create new server
             let newServer = APIServer(
@@ -339,7 +424,10 @@ struct CreateAPIServerView: View {
                 selectedModel: normalizedModel,
                 availableModels: isOpenRouter ? [] : availableModels,
                 type: selectedType,
-                apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
+                apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey,
+                allowInsecureTLS: allowInsecureTLS,
+                customCACertificateData: customCACertificateData,
+                customCACertificateName: customCACertificateName.isEmpty ? nil : customCACertificateName
             )
             modelContext.insert(newServer)
         }
@@ -368,7 +456,12 @@ struct CreateAPIServerView: View {
         }
         
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let tlsPolicy = TLSPolicy(
+                allowInsecureTLS: allowInsecureTLS,
+                customCACertificateData: customCACertificateData
+            )
+            let session = TLSSessionFactory.makeSession(policy: tlsPolicy)
+            let (data, _) = try await session.data(for: request)
             
             if let result = try? JSONDecoder().decode(OpenAIModelList.self, from: data) {
                 availableModels = result.data.map { $0.id }
@@ -379,6 +472,42 @@ struct CreateAPIServerView: View {
             }
         } catch {
             print("Failed to fetch models: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleTLSCertificateImport(_ result: Result<[URL], Error>) {
+        do {
+            let urls = try result.get()
+            guard let url = urls.first else { return }
+
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data = try Data(contentsOf: url)
+            guard !TLSCertificateDecoder.decodeCertificates(from: data).isEmpty else {
+                throw TLSCertificateImportError.invalidCertificate
+            }
+
+            customCACertificateData = data
+            customCACertificateName = url.lastPathComponent
+        } catch {
+            tlsImportErrorMessage = error.localizedDescription
+            showTLSImportError = true
+        }
+    }
+}
+
+private enum TLSCertificateImportError: LocalizedError {
+    case invalidCertificate
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidCertificate:
+            return "The selected file is not a valid X.509 certificate (.crt/.pem/.cer)."
         }
     }
 }

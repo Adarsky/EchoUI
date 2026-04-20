@@ -69,7 +69,7 @@ struct EditPersonaView: View {
 
                     Spacer()
 
-                    Image(systemName: "photo.badge.plus")
+                    Image(systemName: "photo.badge.plus.fill")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
@@ -203,5 +203,18 @@ struct EditPersonaView: View {
         persona.systemPrompt = persona.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         try? modelContext.save()
         dismiss()
+    }
+}
+
+#Preview {
+    NavigationStack {
+        EditPersonaView(
+            persona: PersonaModel(
+                name: "Product Strategist",
+                systemPrompt: "You are a concise product strategist. Ask one clarifying question before proposing a structured plan.",
+                avatarSystemName: "",
+                iconColorName: "blue"
+            )
+        )
     }
 }

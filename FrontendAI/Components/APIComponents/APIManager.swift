@@ -29,19 +29,20 @@ class APIManager: ObservableObject {
     }
 
     func ping(server: APIServer, modelContext: ModelContext) async {
+        _ = server.migrateAPIKeyToKeychainIfNeeded()
         let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
         
         guard let url = URL(string: endpoint) else { return }
         
         var request = URLRequest(url: url)
         
-        // Добавляем API ключ если есть
         if let apiKey = server.apiKey, !apiKey.isEmpty {
             request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         
         do {
-            _ = try await URLSession.shared.data(for: request)
+            let session = TLSSessionFactory.makeSession(policy: server.tlsPolicy)
+            _ = try await session.data(for: request)
             server.isOnline = true
         } catch {
             server.isOnline = false

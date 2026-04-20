@@ -17,33 +17,14 @@ struct ChatBotSheetView: View {
     @State private var isDescriptionExpandedManually = false
     @State private var selectedDetent: PresentationDetent = .medium
     @State private var isShowingChatViewSettings = false
+    @Namespace private var headerNamespace
     private let collapsedDescriptionCharacterLimit = 140
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 20) {
-                    // Avatar
-                    if let data = bot.avatarData, let uiImage = UIImage(data: data) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                            .shadow(radius: 5)
-                    } else {
-                        Image(systemName: bot.avatarSystemName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 80, height: 80)
-                            .foregroundColor(bot.iconColor)
-                    }
-
-                    // Name
-                    Text(bot.name)
-                        .font(.title2.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                    headerSection
 
                     // Greeting
                     VStack(spacing: 8) {
@@ -148,6 +129,62 @@ struct ChatBotSheetView: View {
         }
     }
 
+    private var headerSection: some View {
+        Group {
+            if isLargeDetent {
+                VStack(spacing: 20) {
+                    avatarView
+                        .frame(maxWidth: .infinity)
+                    nameView(multilineAlignment: .center, maxWidth: .infinity, frameAlignment: .center)
+                }
+            } else {
+                HStack(spacing: 14) {
+                    avatarView
+                        .padding(.horizontal, 16)
+                    nameView(multilineAlignment: .leading, maxWidth: nil, frameAlignment: .leading)
+                        .layoutPriority(1)
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isLargeDetent)
+    }
+
+    private var avatarView: some View {
+        let avatarImageSize: CGFloat = isLargeDetent ? 100 : 64
+        let avatarSymbolSize: CGFloat = isLargeDetent ? 80 : 52
+
+        return Group {
+            if let data = bot.avatarData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: avatarImageSize, height: avatarImageSize)
+                    .clipShape(Circle())
+                    .shadow(radius: 5)
+            } else {
+                Image(systemName: bot.avatarSystemName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: avatarSymbolSize, height: avatarSymbolSize)
+                    .foregroundColor(bot.iconColor)
+            }
+        }
+        .matchedGeometryEffect(id: "botAvatar", in: headerNamespace)
+    }
+
+    private func nameView(multilineAlignment: TextAlignment, maxWidth: CGFloat?, frameAlignment: Alignment) -> some View {
+        Text(bot.name)
+            .font(.title2.weight(.semibold))
+            .multilineTextAlignment(multilineAlignment)
+            .lineLimit(isLargeDetent ? nil : 1)
+            .minimumScaleFactor(isLargeDetent ? 1.0 : 0.8)
+            .allowsTightening(!isLargeDetent)
+            .frame(maxWidth: maxWidth, alignment: frameAlignment)
+            .padding(.horizontal, isLargeDetent ? 16 : 0)
+            .matchedGeometryEffect(id: "botName", in: headerNamespace)
+    }
+
     private var isLargeDetent: Bool {
         selectedDetent == .large
     }
@@ -190,7 +227,7 @@ struct ChatBotSheetView: View {
     ChatBotSheetView(
         bot: Bot(
             name: "Luna",
-            avatarSystemName: "moon.fill",
+            avatarSystemName: "livephoto",
             iconColor: .purple,
             subtitle: "Luna is your dreamy assistant, always ready to talk about the stars and the universe in poetic ways.",
             date: "Today",

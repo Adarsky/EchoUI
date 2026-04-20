@@ -23,7 +23,6 @@ struct ChatAppearanceSettingsView: View {
     @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleWidthRatio) private var botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
 
     @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var wallpaperPath = ""
-    @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyWallpaperBase64 = ""
 
     @State private var selectedWallpaperItem: PhotosPickerItem?
     @State private var wallpaperImage: UIImage?
@@ -291,15 +290,12 @@ struct ChatAppearanceSettingsView: View {
     private func removeWallpaper() {
         ChatWallpaperStore.removeWallpaper(at: wallpaperPath)
         wallpaperPath = ""
-        legacyWallpaperBase64 = ""
+        ChatWallpaperStore.clearLegacyBase64Storage()
         refreshWallpaperImage()
     }
 
     private func migrateLegacyWallpaperIfNeeded() {
-        ChatWallpaperStore.migrateLegacyBase64IfNeeded(
-            path: &wallpaperPath,
-            legacyBase64: &legacyWallpaperBase64
-        )
+        ChatWallpaperStore.migrateLegacyBase64IfNeeded(path: &wallpaperPath)
         ChatWallpaperStore.normalizeStoredPath(&wallpaperPath)
     }
 
@@ -315,7 +311,7 @@ struct ChatAppearanceSettingsView: View {
         await MainActor.run {
             let oldPath = wallpaperPath
             wallpaperPath = savedPath
-            legacyWallpaperBase64 = ""
+            ChatWallpaperStore.clearLegacyBase64Storage()
             if !ChatWallpaperStore.referencesSameWallpaper(oldPath, savedPath) {
                 ChatWallpaperStore.removeWallpaper(at: oldPath)
             }

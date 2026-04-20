@@ -100,8 +100,9 @@ struct ChatInputBar: View {
             .padding(.trailing, 56)
             .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 30))
             .frame(maxWidth: .infinity)
-            .overlay(alignment: .trailing) {
+            .overlay(alignment: .bottomTrailing) {
                 sendButton
+                    .padding(.bottom, 8)
             }
     }
 

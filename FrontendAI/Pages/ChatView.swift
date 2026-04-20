@@ -149,21 +149,26 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         }
 
         var thinkingStatusText: String {
-            guard hasLeadingThink else { return "thinking" }
-            guard let started = thinkingStartedAt, let ended = thinkingClosedAt else { return "thinking" }
+            guard let duration = thinkingDurationText else { return "thinking" }
+            return "thought for \(duration)"
+        }
+
+        var thinkingDurationText: String? {
+            guard hasLeadingThink else { return nil }
+            guard let started = thinkingStartedAt, let ended = thinkingClosedAt else { return nil }
 
             let totalSeconds = max(0, Int(ended.timeIntervalSince(started).rounded(.down)))
             if totalSeconds < 60 {
-                return "thought for \(totalSeconds) \(pluralized(totalSeconds, singular: "second"))"
+                return "\(totalSeconds) \(pluralized(totalSeconds, singular: "second"))"
             }
 
             let minutes = totalSeconds / 60
             let seconds = totalSeconds % 60
             if seconds > 0 {
-                return "thought for \(minutes) \(pluralized(minutes, singular: "minute")) and \(seconds) \(pluralized(seconds, singular: "second"))"
+                return "\(minutes) \(pluralized(minutes, singular: "minute")) and \(seconds) \(pluralized(seconds, singular: "second"))"
             }
 
-            return "thought for \(minutes) \(pluralized(minutes, singular: "minute"))"
+            return "\(minutes) \(pluralized(minutes, singular: "minute"))"
         }
 
         private func pluralized(_ value: Int, singular: String) -> String {
@@ -210,6 +215,11 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     var thinkingStatusText: String {
         guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingStatusText ?? "thinking" }
         return variants[currentIndex].thinkingStatusText
+    }
+
+    var thinkingDurationText: String? {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingDurationText }
+        return variants[currentIndex].thinkingDurationText
     }
 
     var isThinkingInProgress: Bool {
@@ -334,7 +344,6 @@ struct ChatView: View {
     @Query(sort: [SortDescriptor(\PersonaModel.name)]) private var personas: [PersonaModel]
     @State private var savedBotModel: BotModel?
     @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) private var chatWallpaperPath = ""
-    @AppStorage(ChatAppearanceStorageKeys.wallpaperBase64) private var legacyChatWallpaperBase64 = ""
     @AppStorage(ChatStreamingStorageKeys.chunkFlushIntervalMs) private var streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
     @State private var chatWallpaperImage: UIImage?
 
@@ -585,10 +594,7 @@ struct ChatView: View {
 
     @MainActor
     private func migrateLegacyWallpaperIfNeeded() {
-        ChatWallpaperStore.migrateLegacyBase64IfNeeded(
-            path: &chatWallpaperPath,
-            legacyBase64: &legacyChatWallpaperBase64
-        )
+        ChatWallpaperStore.migrateLegacyBase64IfNeeded(path: &chatWallpaperPath)
         ChatWallpaperStore.normalizeStoredPath(&chatWallpaperPath)
     }
 
@@ -629,12 +635,17 @@ struct ChatView: View {
         guard let server = apiManager.selectedServer else {
             showMissingAPIAlert = true; return
         }
+        if server.migrateAPIKeyToKeychainIfNeeded() {
+            try? modelContext.save()
+        }
         guard !inputText.isEmpty else { return }
         let config = ServerConfig(
             type: server.type,
             baseURL: server.baseURL,
             selectedModel: server.selectedModel,
-            apiKey: server.apiKey
+            apiKey: server.apiKey,
+            allowInsecureTLS: server.allowInsecureTLS,
+            customCACertificateData: server.customCACertificateData
         )
 
         // User picked a branch; previous alternative variants are no longer needed.
@@ -667,11 +678,16 @@ struct ChatView: View {
         guard let server = apiManager.selectedServer else {
             showMissingAPIAlert = true; return
         }
+        if server.migrateAPIKeyToKeychainIfNeeded() {
+            try? modelContext.save()
+        }
         let config = ServerConfig(
             type: server.type,
             baseURL: server.baseURL,
             selectedModel: server.selectedModel,
-            apiKey: server.apiKey
+            apiKey: server.apiKey,
+            allowInsecureTLS: server.allowInsecureTLS,
+            customCACertificateData: server.customCACertificateData
         )
         guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 
@@ -701,75 +717,38 @@ struct ChatView: View {
     // MARK: – Streaming helper
     private func streamReply(payload: [ChatPayloadMessage], config: ServerConfig, replyID: UUID) async {
         let clampedChunkFlushIntervalMs = ChatStreamingDefaults.clampedChunkFlushIntervalMs(streamChunkFlushIntervalMs)
-        let coalescer = StreamChunkCoalescer(
-            minInterval: clampedChunkFlushIntervalMs / 1000.0,
-            maxBufferedChars: ChatStreamingDefaults.chunkMaxChars
+        let eventStream = ChatReplyStreamService.makeEventStream(
+            payload: payload,
+            config: config,
+            chunkFlushIntervalMs: clampedChunkFlushIntervalMs
         )
 
-        do {
-            _ = try await APIService.sendMessage(
-                messages: payload,
-                config: config,
-                onStream: { chunk in
-                    if let batchedChunk = coalescer.append(chunk) {
-                        Task { @MainActor in
-                            applyStreamChunk(batchedChunk, for: replyID)
-                        }
-                    }
-                }
-            )
-
-            if let remainingChunk = coalescer.drain() {
-                await MainActor.run {
-                    applyStreamChunk(remainingChunk, for: replyID)
-                }
-            }
-        } catch {
-            let canceled = isCancellationError(error)
-            if !canceled {
-                print("❌ API Error: \(error.localizedDescription)")
-            }
+        for await event in eventStream {
             await MainActor.run {
-                if let remainingChunk = coalescer.drain() {
-                    applyStreamChunk(remainingChunk, for: replyID)
+                switch event {
+                case let .chunk(chunk):
+                    applyStreamChunk(chunk, for: replyID)
+                case let .failed(message):
+                    if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                        let currentVariantIndex = messages[idx].currentIndex
+                        messages[idx].appendChunk("⚠️ Error: \(message)", to: currentVariantIndex)
+                        messages[idx].setStreaming(false)
+                    }
+                    isThinking = false
+                case .finished:
+                    if let streamingReply, streamingReply.id == replyID {
+                        streamingReply.setStreaming(false)
+                    } else if let idx = messages.firstIndex(where: { $0.id == replyID }) {
+                        messages[idx].setStreaming(false)
+                    }
+                    isThinking = false
+                    isGenerating = false
+                    generationTask = nil
+                    streamingReply = nil
+                    saveChatHistory()
                 }
-                if !canceled, let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                    let currentVariantIndex = messages[idx].currentIndex
-                    messages[idx].appendChunk("⚠️ Error: \(error.localizedDescription)", to: currentVariantIndex)
-                    messages[idx].setStreaming(false)
-                }
-                isThinking = false
             }
         }
-
-        // end‑of‑stream
-        await MainActor.run {
-            if let streamingReply, streamingReply.id == replyID {
-                streamingReply.setStreaming(false)
-            } else if let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                messages[idx].setStreaming(false)
-            }
-            isThinking = false
-            isGenerating = false
-            generationTask = nil
-            streamingReply = nil
-            saveChatHistory()
-        }
-    }
-
-    private func isCancellationError(_ error: Error) -> Bool {
-        if error is CancellationError { return true }
-
-        let nsError = error as NSError
-        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
-            return true
-        }
-
-        let normalized = nsError.localizedDescription.lowercased()
-        return normalized == "canceled"
-            || normalized == "cancelled"
-            || normalized.contains("canceled")
-            || normalized.contains("cancelled")
     }
 
     @MainActor
@@ -980,6 +959,116 @@ private final class StreamChunkCoalescer: @unchecked Sendable {
         buffer.removeAll(keepingCapacity: true)
         lastFlushTime = CFAbsoluteTimeGetCurrent()
         return output
+    }
+}
+
+private enum ChatReplyStreamEvent: Sendable {
+    case chunk(String)
+    case failed(String)
+    case finished
+}
+
+private enum ChatReplyStreamService {
+    static func makeEventStream(
+        payload: [ChatPayloadMessage],
+        config: ServerConfig,
+        chunkFlushIntervalMs: Double
+    ) -> AsyncStream<ChatReplyStreamEvent> {
+        let coalescer = StreamChunkCoalescer(
+            minInterval: chunkFlushIntervalMs / 1000.0,
+            maxBufferedChars: ChatStreamingDefaults.chunkMaxChars
+        )
+
+        return AsyncStream { continuation in
+            Task {
+                do {
+                    _ = try await APIService.sendMessage(
+                        messages: payload,
+                        config: config,
+                        onStream: { chunk in
+                            if let batchedChunk = coalescer.append(chunk) {
+                                continuation.yield(.chunk(batchedChunk))
+                            }
+                        }
+                    )
+
+                    if let remainingChunk = coalescer.drain() {
+                        continuation.yield(.chunk(remainingChunk))
+                    }
+                } catch {
+                    if let remainingChunk = coalescer.drain() {
+                        continuation.yield(.chunk(remainingChunk))
+                    }
+                    if !isCancellationError(error) {
+                        continuation.yield(.failed(userFacingStreamErrorMessage(from: error)))
+                    }
+                }
+
+                continuation.yield(.finished)
+                continuation.finish()
+            }
+        }
+    }
+
+    private static func isCancellationError(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+            return true
+        }
+
+        let normalized = nsError.localizedDescription.lowercased()
+        return normalized == "canceled"
+            || normalized == "cancelled"
+            || normalized.contains("canceled")
+            || normalized.contains("cancelled")
+    }
+
+    private static func userFacingStreamErrorMessage(from error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet:
+                return "No internet connection."
+            case NSURLErrorTimedOut:
+                return "The request timed out."
+            case NSURLErrorCannotConnectToHost:
+                return "Cannot connect to the server."
+            case NSURLErrorNetworkConnectionLost:
+                return "Network connection was interrupted."
+            default:
+                break
+            }
+        }
+
+        let normalized = error.localizedDescription
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalized.isEmpty else {
+            return "Request failed. Please try again."
+        }
+
+        let blockedTokens = [
+            "<script",
+            "file://",
+            "/users/",
+            "/var/",
+            "authorization:",
+            "bearer "
+        ]
+        let lowercased = normalized.lowercased()
+        if blockedTokens.contains(where: { lowercased.contains($0) }) {
+            return "Request failed. Please check server settings and try again."
+        }
+
+        let maxLength = 180
+        if normalized.count > maxLength {
+            return String(normalized.prefix(maxLength)) + "…"
+        }
+        return normalized
     }
 }
 

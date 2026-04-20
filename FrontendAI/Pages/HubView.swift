@@ -49,7 +49,5 @@ struct HubView: View {
 
 
 #Preview {
-    @State var searchText = ""
-    return HubView(seatchText: $searchText)
+    HubView(seatchText: .constant(""))
 }
-

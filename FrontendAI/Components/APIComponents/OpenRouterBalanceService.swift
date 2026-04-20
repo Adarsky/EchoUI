@@ -40,7 +40,11 @@ enum OpenRouterBalanceServiceError: LocalizedError {
 }
 
 enum OpenRouterBalanceService {
-    static func fetchBalance(baseURL: String, apiKey: String) async throws -> OpenRouterBalanceSnapshot {
+    static func fetchBalance(
+        baseURL: String,
+        apiKey: String,
+        tlsPolicy: TLSPolicy = .strict
+    ) async throws -> OpenRouterBalanceSnapshot {
         let normalizedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedKey.isEmpty else {
             throw OpenRouterBalanceServiceError.missingAPIKey
@@ -58,7 +62,8 @@ enum OpenRouterBalanceService {
         request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
         request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let session = TLSSessionFactory.makeSession(policy: tlsPolicy)
+        let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw OpenRouterBalanceServiceError.invalidResponse
         }
@@ -66,7 +71,7 @@ enum OpenRouterBalanceService {
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw OpenRouterBalanceServiceError.server(
                 statusCode: httpResponse.statusCode,
-                message: parseErrorMessage(from: data)
+                message: userFacingServerMessage(statusCode: httpResponse.statusCode, data: data)
             )
         }
 
@@ -107,30 +112,82 @@ enum OpenRouterBalanceService {
         return nil
     }
 
-    private static func parseErrorMessage(from data: Data) -> String? {
+    private static func userFacingServerMessage(statusCode: Int, data: Data) -> String? {
+        switch statusCode {
+        case 401, 403:
+            return "Authentication failed. Check your OpenRouter API key."
+        case 404:
+            return "OpenRouter endpoint was not found."
+        case 408, 504:
+            return "OpenRouter timed out. Please try again."
+        case 429:
+            return "OpenRouter rate limit reached. Please retry shortly."
+        case 500...599:
+            return "OpenRouter is currently unavailable."
+        default:
+            break
+        }
+
+        if let parsed = parseStructuredErrorMessage(from: data) {
+            return parsed
+        }
+
+        if (400..<500).contains(statusCode) {
+            return "OpenRouter rejected the request."
+        }
+
+        return nil
+    }
+
+    private static func parseStructuredErrorMessage(from data: Data) -> String? {
         guard !data.isEmpty else { return nil }
 
         if
             let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let error = root["error"] as? [String: Any]
         {
-            if let message = error["message"] as? String, !message.isEmpty {
-                return message
+            if let message = error["message"] as? String {
+                return sanitizedMessageForDisplay(message)
             }
         }
 
         if
             let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let message = root["message"] as? String,
-            !message.isEmpty
+            let message = root["message"] as? String
         {
-            return message
-        }
-
-        if let plain = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !plain.isEmpty {
-            return plain
+            return sanitizedMessageForDisplay(message)
         }
 
         return nil
+    }
+
+    private static func sanitizedMessageForDisplay(_ raw: String) -> String? {
+        let normalized = raw
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalized.isEmpty else { return nil }
+
+        let lowercased = normalized.lowercased()
+        let blockedTokens = [
+            "<script",
+            "file://",
+            "/users/",
+            "/var/",
+            "begin private key",
+            "secret=",
+            "token=",
+            "authorization:"
+        ]
+        if blockedTokens.contains(where: { lowercased.contains($0) }) {
+            return nil
+        }
+
+        let maxCount = 140
+        if normalized.count > maxCount {
+            return String(normalized.prefix(maxCount)) + "…"
+        }
+        return normalized
     }
 }

@@ -196,11 +196,9 @@ struct CreateCharacterView: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Image(systemName: "person.crop.circle.badge.plus")
-                    .resizable()
-                    .scaledToFit()
+                Image(systemName: "photo.badge.plus")
+                    .font(Font.largeTitle)
                     .foregroundStyle(Color.accentColor)
-                    .padding(16)
             }
         }
         .frame(width: 84, height: 84)

@@ -23,12 +23,26 @@ struct FrontendAIApp: App {
             PersonaModel.self
         ])
 
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            "FrontendAI",
+            schema: schema,
+            isStoredInMemoryOnly: false
+        )
+        let storeURL = modelConfiguration.url
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Не удалось создать ModelContainer: \(error)")
+            // Recovery path for incompatible stores after schema changes.
+            // We recreate only when container initialization fails.
+            print("⚠️ SwiftData load failed: \(error). Attempting store reset.")
+
+            do {
+                try resetStore(at: storeURL)
+                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            } catch {
+                fatalError("Не удалось создать ModelContainer после сброса хранилища: \(error)")
+            }
         }
     }()
 
@@ -50,4 +64,15 @@ struct FrontendAIApp: App {
     }
 }
 
+private func resetStore(at storeURL: URL) throws {
+    let fileManager = FileManager.default
+    let paths = [
+        storeURL.path,
+        storeURL.path + "-shm",
+        storeURL.path + "-wal"
+    ]
 
+    for path in paths where fileManager.fileExists(atPath: path) {
+        try fileManager.removeItem(atPath: path)
+    }
+}

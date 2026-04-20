@@ -172,6 +172,16 @@ struct MainPage: View {
             )
         }
         .onAppear {
+            var didMigrateLegacyKeys = false
+            for server in servers {
+                if server.migrateAPIKeyToKeychainIfNeeded() {
+                    didMigrateLegacyKeys = true
+                }
+            }
+            if didMigrateLegacyKeys {
+                try? modelContext.save()
+            }
+
             apiManager.restoreLastSelectedServer(from: servers)
             
             if let server = apiManager.selectedServer {

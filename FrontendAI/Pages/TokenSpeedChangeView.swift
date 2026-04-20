@@ -146,6 +146,7 @@ private struct TokenSpeedChatPreview: View {
     @AppStorage(ChatAppearanceStorageKeys.userMessageBubbleWidthRatio) private var userMessageBubbleWidthRatio = ChatAppearanceDefaults.userMessageBubbleWidthRatio
 
     @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleWidthRatio) private var botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
+    @State private var availableWidth: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -156,6 +157,17 @@ private struct TokenSpeedChatPreview: View {
                     bubbleContent(isUser: false)
                 }
                 Spacer(minLength: 36)
+            }
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        availableWidth = proxy.size.width
+                    }
+                    .onChange(of: proxy.size.width) { _, newValue in
+                        availableWidth = newValue
+                    }
             }
         }
     }
@@ -218,7 +230,8 @@ private struct TokenSpeedChatPreview: View {
         let ratio = isUser
             ? CGFloat(min(max(userMessageBubbleWidthRatio, 0.45), 1.0))
             : CGFloat(min(max(botMessageBubbleWidthRatio, 0.45), 1.0))
-        return UIScreen.main.bounds.width * ratio
+        let baseWidth = availableWidth > 0 ? availableWidth : 390
+        return baseWidth * ratio
     }
 
     private var userConfiguredColor: Color {

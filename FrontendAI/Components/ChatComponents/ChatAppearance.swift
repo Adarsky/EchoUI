@@ -172,17 +172,23 @@ enum ChatWallpaperStore {
         return lhsResolved == rhsResolved
     }
 
-    static func migrateLegacyBase64IfNeeded(path: inout String, legacyBase64: inout String) {
-        guard path.isEmpty, !legacyBase64.isEmpty else { return }
+    static func migrateLegacyBase64IfNeeded(path: inout String, defaults: UserDefaults = .standard) {
+        let legacyKey = ChatAppearanceStorageKeys.wallpaperBase64
+        guard let legacyBase64 = defaults.string(forKey: legacyKey), !legacyBase64.isEmpty else { return }
+        defer { defaults.removeObject(forKey: legacyKey) }
+
+        guard path.isEmpty else { return }
         guard let data = Data(base64Encoded: legacyBase64),
               let savedPath = saveFromRawImageData(data)
         else {
-            legacyBase64 = ""
             return
         }
 
         path = savedPath
-        legacyBase64 = ""
+    }
+
+    static func clearLegacyBase64Storage(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: ChatAppearanceStorageKeys.wallpaperBase64)
     }
 
     private static func resolveExistingPath(from path: String) -> String? {

@@ -13,6 +13,7 @@ struct SettingsSheetView: View {
     @Binding var messageLength: Int
     @Binding var endpoint: String
     @Binding var showAPIStatus: Bool
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var apiManager: APIManager
 
     @AppStorage("selectedServerUUID") private var selectedServerUUID: String = ""
@@ -29,35 +30,20 @@ struct SettingsSheetView: View {
                 List {
                     Section(header: Text("Customization")) {
                         NavigationLink(destination: ChatAppearanceSettingsView()) {
-                            HStack {
-                                Image(systemName: "paintpalette")
-                                Text("Chat Appearance")
-                            }
+                            Label("Chat Appearance", systemImage: "paintpalette")
                         }
                         NavigationLink(destination: TokenSpeedChangeView()) {
-                            HStack {
-                                Image(systemName: "hare")
-                                Text("Token Speed")
-                            }
+                            Label("Token Speed", systemImage: "hare")
                         }
-                        HStack {
-                            Image(systemName: "dollarsign")
-                            Toggle("Show API Status", isOn: $showAPIStatus)
-                        }
+                        Toggle("Show API Status", systemImage:"network", isOn: $showAPIStatus)
                     }
 
                     Section(header: Text("Connection configuration")) {
                         NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
-                            HStack {
-                                Image(systemName: "server.rack")
-                                Text("Manage API Servers")
-                            }
+                            Label("Manage API Servers", systemImage: "server.rack")
                         }
                         NavigationLink(destination: VLESSProxiesManagerView()) {
-                            HStack {
-                                Image(systemName: "hat.widebrim")
-                                Text("VLESS proxy")
-                            }
+                            Label("VLESS proxy", systemImage: "hat.widebrim")
                         }
 /*                        NavigationLink(destination: HisteriumEnvironmentManager()) {
                             HStack {
@@ -72,7 +58,6 @@ struct SettingsSheetView: View {
                         if openRouterBalancePingEnabled {
                             HStack(spacing: 10) {
                                 Image(systemName: "creditcard")
-                                    .foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("OpenRouter balance")
                                     Text(openRouterBalanceSubtitle)
@@ -218,6 +203,10 @@ struct SettingsSheetView: View {
             return
         }
 
+        if server.migrateAPIKeyToKeychainIfNeeded() {
+            try? modelContext.save()
+        }
+
         let apiKey = (server.apiKey ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else {
             openRouterBalanceState = .missingKey
@@ -229,7 +218,8 @@ struct SettingsSheetView: View {
         do {
             let snapshot = try await OpenRouterBalanceService.fetchBalance(
                 baseURL: server.baseURL,
-                apiKey: apiKey
+                apiKey: apiKey,
+                tlsPolicy: server.tlsPolicy
             )
             openRouterBalanceState = .loaded(snapshot)
         } catch {

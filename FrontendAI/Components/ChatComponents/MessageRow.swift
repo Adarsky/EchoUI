@@ -38,6 +38,7 @@ struct MessageRow: View {
 
     @State private var editSession: EditSession?
     @State private var showDeleteConfirm = false
+    @State private var availableWidth: CGFloat = 0
     
     @Namespace var MessageRowGlassContainer
 
@@ -156,6 +157,17 @@ struct MessageRow: View {
         }
 
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        availableWidth = proxy.size.width
+                    }
+                    .onChange(of: proxy.size.width) { _, newValue in
+                        availableWidth = newValue
+                    }
+            }
+        }
         .sheet(item: $editSession) { session in
             LegacyEditMessageSheet(
                 text: session.text,
@@ -220,7 +232,8 @@ struct MessageRow: View {
     }
 
     private func maxBubbleWidth(for isUser: Bool) -> CGFloat {
-        UIScreen.main.bounds.width * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio)
+        let baseWidth = availableWidth > 0 ? availableWidth : 390
+        return baseWidth * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio)
     }
 
     private func sideSpacerMinLength(for isUser: Bool) -> CGFloat {

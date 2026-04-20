@@ -50,21 +50,6 @@ struct AccountSheetView: View {
                                         .padding(.horizontal, 12)
                                 }
                             }
-                            .background {
-                                if isSelected {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.clear.opacity(1),
-                                                    Color.blue.opacity(0.1)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                }
-                            }
                             .onTapGesture {
                                 personaManager.activePersona = persona
                             }
