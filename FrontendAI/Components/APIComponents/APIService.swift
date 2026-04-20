@@ -142,6 +142,10 @@ actor APIService {
             throw NSError(domain: "APIService", code: -1000,
                           userInfo: [NSLocalizedDescriptionKey: "Invalid OpenRouter URL: \(endpoint)"])
         }
+        guard APIType.openrouter.isSecureTransportURL(url, baseURL: config.baseURL) else {
+            throw NSError(domain: "APIService", code: -1001,
+                          userInfo: [NSLocalizedDescriptionKey: "Official OpenRouter endpoints must use HTTPS."])
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

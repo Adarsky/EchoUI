@@ -16,6 +16,7 @@ struct OpenRouterBalanceSnapshot: Sendable {
 enum OpenRouterBalanceServiceError: LocalizedError {
     case missingAPIKey
     case invalidURL(String)
+    case insecureTransportRequired
     case invalidResponse
     case invalidPayload
     case server(statusCode: Int, message: String?)
@@ -26,6 +27,8 @@ enum OpenRouterBalanceServiceError: LocalizedError {
             return "Missing OpenRouter API key."
         case .invalidURL:
             return "Invalid OpenRouter URL."
+        case .insecureTransportRequired:
+            return "Official OpenRouter endpoints must use HTTPS."
         case .invalidResponse:
             return "Invalid response from OpenRouter."
         case .invalidPayload:
@@ -53,6 +56,9 @@ enum OpenRouterBalanceService {
         let endpoint = APIType.openrouter.endpoint(baseURL: baseURL, path: "credits")
         guard let url = URL(string: endpoint) else {
             throw OpenRouterBalanceServiceError.invalidURL(endpoint)
+        }
+        guard APIType.openrouter.isSecureTransportURL(url, baseURL: baseURL) else {
+            throw OpenRouterBalanceServiceError.insecureTransportRequired
         }
 
         var request = URLRequest(url: url)

@@ -157,7 +157,7 @@ struct ServerRowView: View {
                 .font(.subheadline)
             
             // Type info
-            Text("Type: \(server.type.rawValue.capitalized)")
+            Text("Type: \(server.type.displayName)")
                 .font(.caption)
                 .foregroundColor(.secondary)
             
@@ -286,10 +286,16 @@ struct CreateAPIServerView: View {
                         Task { await fetchModels() }
                     }
                 }
+
+            if isOpenRouter {
+                Button("Use Official OpenRouter URL") {
+                    baseURL = "https://openrouter.ai"
+                }
+            }
             
             Picker("Type", selection: $selectedType) {
                 ForEach(APIType.allCases, id: \.self) { type in
-                    Text(type.rawValue.capitalized).tag(type)
+                    Text(type.displayName).tag(type)
                 }
             }
             

@@ -15,6 +15,15 @@ enum APIType: String, Codable, CaseIterable {
 }
 
 extension APIType {
+    var displayName: String {
+        switch self {
+        case .openai:
+            return "OpenAI"
+        case .openrouter:
+            return "OpenRouter"
+        }
+    }
+
     func normalizedBaseURL(_ rawValue: String) -> String {
         var value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -35,6 +44,8 @@ extension APIType {
             value.removeLast()
         }
 
+        value = enforcedHTTPSForOfficialOpenRouter(baseURL: value)
+
         return value
     }
 
@@ -48,6 +59,57 @@ extension APIType {
         case .openrouter:
             return "\(root)/api/v1/\(normalizedPath)"
         }
+    }
+
+    func requiresHTTPSForOfficialOpenRouter(baseURL: String) -> Bool {
+        guard self == .openrouter else { return false }
+        let normalized = normalizedBaseURL(baseURL)
+        guard let components = openRouterURLComponents(from: normalized) else { return false }
+        return isOfficialOpenRouterHost(components.host)
+    }
+
+    func isSecureTransportURL(_ url: URL, baseURL: String) -> Bool {
+        guard requiresHTTPSForOfficialOpenRouter(baseURL: baseURL) else { return true }
+        return url.scheme?.lowercased() == "https"
+    }
+
+    private func enforcedHTTPSForOfficialOpenRouter(baseURL rawValue: String) -> String {
+        guard var components = openRouterURLComponents(from: rawValue) else { return rawValue }
+        guard isOfficialOpenRouterHost(components.host) else { return rawValue }
+
+        components.scheme = "https"
+        components.user = nil
+        components.password = nil
+        if components.port == 80 {
+            components.port = nil
+        }
+
+        return components.string ?? rawValue
+    }
+
+    private func openRouterURLComponents(from rawValue: String) -> URLComponents? {
+        if let components = URLComponents(string: rawValue), components.host != nil {
+            return components
+        }
+
+        let candidate: String
+        if rawValue.hasPrefix("//") {
+            candidate = "https:\(rawValue)"
+        } else {
+            candidate = "https://\(rawValue)"
+        }
+
+        if let components = URLComponents(string: candidate), components.host != nil {
+            return components
+        }
+
+        return nil
+    }
+
+    private func isOfficialOpenRouterHost(_ host: String?) -> Bool {
+        guard let host else { return false }
+        let normalizedHost = host.lowercased()
+        return normalizedHost == "openrouter.ai" || normalizedHost.hasSuffix(".openrouter.ai")
     }
 }
 
