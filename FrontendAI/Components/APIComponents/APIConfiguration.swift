@@ -14,6 +14,29 @@ enum APIType: String, Codable, CaseIterable {
     case openrouter
 }
 
+enum APIConnectionStatus: String, Codable, CaseIterable {
+    case online
+    case warning
+    case offline
+
+    var displayName: String {
+        switch self {
+        case .online:
+            return "Online"
+        case .warning:
+            return "Warning"
+        case .offline:
+            return "Offline"
+        }
+    }
+}
+
+enum APIConnectionStatusMapper {
+    static func status(forHTTPStatusCode statusCode: Int) -> APIConnectionStatus {
+        (200..<300).contains(statusCode) ? .online : .warning
+    }
+}
+
 extension APIType {
     var displayName: String {
         switch self {
@@ -31,20 +54,25 @@ extension APIType {
             value.removeLast()
         }
 
-        guard self == .openrouter else { return value }
-
         let lowercased = value.lowercased()
-        if lowercased.hasSuffix("/api/v1") {
-            value = String(value.dropLast("/api/v1".count))
-        } else if lowercased.hasSuffix("/v1") {
-            value = String(value.dropLast("/v1".count))
+        switch self {
+        case .openai:
+            if lowercased.hasSuffix("/v1") {
+                value = String(value.dropLast("/v1".count))
+            }
+            value = enforcingHTTPSForOfficialEndpoint(baseURL: value)
+        case .openrouter:
+            if lowercased.hasSuffix("/api/v1") {
+                value = String(value.dropLast("/api/v1".count))
+            } else if lowercased.hasSuffix("/v1") {
+                value = String(value.dropLast("/v1".count))
+            }
+            value = enforcingHTTPSForOfficialEndpoint(baseURL: value)
         }
 
         while value.hasSuffix("/") {
             value.removeLast()
         }
-
-        value = enforcedHTTPSForOfficialOpenRouter(baseURL: value)
 
         return value
     }
@@ -61,21 +89,51 @@ extension APIType {
         }
     }
 
+    func requiresHTTPAPIKeyConfirmation(baseURL: String, apiKey: String) -> Bool {
+        let normalizedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedKey.isEmpty else { return false }
+        return usesInsecureHTTPTransport(baseURL: baseURL)
+    }
+
+    func usesInsecureHTTPTransport(baseURL: String) -> Bool {
+        let normalized = normalizedBaseURL(baseURL)
+        guard let components = urlComponents(from: normalized) else { return false }
+        return components.scheme?.lowercased() == "http"
+    }
+
+    func requiresHTTPSForOfficialEndpoint(baseURL: String) -> Bool {
+        let normalized = normalizedBaseURL(baseURL)
+        guard let components = urlComponents(from: normalized) else { return false }
+
+        switch self {
+        case .openai:
+            return isOfficialOpenAIHost(components.host)
+        case .openrouter:
+            return isOfficialOpenRouterHost(components.host)
+        }
+    }
+
     func requiresHTTPSForOfficialOpenRouter(baseURL: String) -> Bool {
         guard self == .openrouter else { return false }
-        let normalized = normalizedBaseURL(baseURL)
-        guard let components = openRouterURLComponents(from: normalized) else { return false }
-        return isOfficialOpenRouterHost(components.host)
+        return requiresHTTPSForOfficialEndpoint(baseURL: baseURL)
     }
 
     func isSecureTransportURL(_ url: URL, baseURL: String) -> Bool {
-        guard requiresHTTPSForOfficialOpenRouter(baseURL: baseURL) else { return true }
+        guard requiresHTTPSForOfficialEndpoint(baseURL: baseURL) else { return true }
         return url.scheme?.lowercased() == "https"
     }
 
-    private func enforcedHTTPSForOfficialOpenRouter(baseURL rawValue: String) -> String {
-        guard var components = openRouterURLComponents(from: rawValue) else { return rawValue }
-        guard isOfficialOpenRouterHost(components.host) else { return rawValue }
+    private func enforcingHTTPSForOfficialEndpoint(baseURL rawValue: String) -> String {
+        guard var components = urlComponents(from: rawValue) else { return rawValue }
+
+        let isOfficialHost: Bool
+        switch self {
+        case .openai:
+            isOfficialHost = isOfficialOpenAIHost(components.host)
+        case .openrouter:
+            isOfficialHost = isOfficialOpenRouterHost(components.host)
+        }
+        guard isOfficialHost else { return rawValue }
 
         components.scheme = "https"
         components.user = nil
@@ -87,7 +145,7 @@ extension APIType {
         return components.string ?? rawValue
     }
 
-    private func openRouterURLComponents(from rawValue: String) -> URLComponents? {
+    private func urlComponents(from rawValue: String) -> URLComponents? {
         if let components = URLComponents(string: rawValue), components.host != nil {
             return components
         }
@@ -104,6 +162,11 @@ extension APIType {
         }
 
         return nil
+    }
+
+    private func isOfficialOpenAIHost(_ host: String?) -> Bool {
+        guard let host else { return false }
+        return host.lowercased() == "api.openai.com"
     }
 
     private func isOfficialOpenRouterHost(_ host: String?) -> Bool {
@@ -336,6 +399,7 @@ final class APIServer {
     var availableModels: [String]
     var type: APIType
     var isOnline: Bool
+    @Attribute(originalName: "connectionStatus") private var persistedConnectionStatus: APIConnectionStatus? = nil
     @Attribute(originalName: "apiKey") private var legacyAPIKeyStorage: String?
     var allowInsecureTLS: Bool = false
     var customCACertificateData: Data? = nil
@@ -349,6 +413,7 @@ final class APIServer {
         availableModels: [String] = [],
         type: APIType,
         isOnline: Bool = false,
+        connectionStatus: APIConnectionStatus? = nil,
         apiKey: String? = nil,
         allowInsecureTLS: Bool = false,
         customCACertificateData: Data? = nil,
@@ -360,7 +425,9 @@ final class APIServer {
         self.selectedModel = selectedModel
         self.availableModels = availableModels
         self.type = type
-        self.isOnline = isOnline
+        let resolvedStatus = connectionStatus ?? (isOnline ? .online : .offline)
+        self.persistedConnectionStatus = resolvedStatus
+        self.isOnline = resolvedStatus == .online
         self.legacyAPIKeyStorage = nil
         self.apiKey = apiKey
         self.allowInsecureTLS = allowInsecureTLS
@@ -370,6 +437,16 @@ final class APIServer {
 }
 
 extension APIServer {
+    var connectionStatus: APIConnectionStatus {
+        get {
+            persistedConnectionStatus ?? (isOnline ? .online : .offline)
+        }
+        set {
+            persistedConnectionStatus = newValue
+            isOnline = newValue == .online
+        }
+    }
+
     var apiKey: String? {
         get {
             return APIKeychainStore.loadAPIKey(for: uuid)
@@ -400,5 +477,10 @@ extension APIServer {
     func deleteAPIKeyFromKeychain() {
         APIKeychainStore.deleteAPIKey(for: uuid)
         legacyAPIKeyStorage = nil
+    }
+
+    func updateConnectionStatus(_ status: APIConnectionStatus) {
+        connectionStatus = status
+        isOnline = status == .online
     }
 }

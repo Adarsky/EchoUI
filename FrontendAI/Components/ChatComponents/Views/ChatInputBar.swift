@@ -111,15 +111,17 @@ struct ChatInputBar: View {
             Image(systemName: buttonVisualState.symbolName)
                 .font(.system(size: 27, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
+                .foregroundColor(Color(.black))
+                .frame(width: 40, height: 40)
                 .symbolEffect(
                     .breathe.pulse.byLayer,
                     options: .repeat(.continuous),
                     isActive: buttonVisualState == .thinking
                 )
         }
-        .frame(width: 30, height: 40)
         .buttonBorderShape(.circle)
-        .buttonStyle(.glass)
+        .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
+        .frame(width: 30, height: 40)
         .padding(.trailing, 12)
     }
 

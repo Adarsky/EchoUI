@@ -18,6 +18,7 @@ struct CreatePersonaView: View {
     @State private var prompt: String = ""
     @State private var avatarData: Data? = nil
     @State private var selectedImageItem: PhotosPickerItem? = nil
+    @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -47,10 +48,27 @@ struct CreatePersonaView: View {
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: selectedImageItem) { _, newItem in
             Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                    avatarData = data
+                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        pendingAvatarImage = AvatarEditorDraftImage(image: image)
+                    }
                 }
             }
+        }
+        .sheet(item: $pendingAvatarImage) { draft in
+            AvatarImageEditorView(
+                image: draft.image,
+                onCancel: {
+                    pendingAvatarImage = nil
+                    selectedImageItem = nil
+                },
+                onApply: { editedImage in
+                    avatarData = editedImage.jpegData(compressionQuality: 0.9)
+                    pendingAvatarImage = nil
+                    selectedImageItem = nil
+                }
+            )
         }
     }
 
@@ -210,4 +228,3 @@ struct CreatePersonaView: View {
         dismiss()
     }
 }
-

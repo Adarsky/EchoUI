@@ -102,23 +102,8 @@ struct APIManagerView: View {
     // MARK: - Ping Server
     
     func ping(server: APIServer) async {
-        _ = server.migrateAPIKeyToKeychainIfNeeded()
-        let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
-        
-        guard let url = URL(string: endpoint) else { return }
-        var request = URLRequest(url: url)
-        
-        if let apiKey = server.apiKey, !apiKey.isEmpty {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-        
-        do {
-            let session = TLSSessionFactory.makeSession(policy: server.tlsPolicy)
-            _ = try await session.data(for: request)
-            server.isOnline = true
-        } catch {
-            server.isOnline = false
-        }
+        let status = await APIManager.evaluateConnectionStatus(for: server)
+        server.updateConnectionStatus(status)
         try? modelContext.save()
     }
 }
@@ -131,6 +116,17 @@ struct ServerRowView: View {
     let onEdit: () -> Void
     let onSetActive: () -> Void
     let onPing: () async -> Void
+
+    private var statusColor: Color {
+        switch server.connectionStatus {
+        case .online:
+            return .green
+        case .warning:
+            return .orange
+        case .offline:
+            return .red
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -145,9 +141,9 @@ struct ServerRowView: View {
                 }
                 Spacer()
                 Circle()
-                    .fill(server.isOnline ? Color.green : Color.red)
+                    .fill(statusColor)
                     .frame(width: 10, height: 10)
-                Text(server.isOnline ? "Online" : "Offline")
+                Text(server.connectionStatus.displayName)
                     .font(.caption)
                     .foregroundColor(.gray)
             }
@@ -192,6 +188,11 @@ struct ServerRowView: View {
 // MARK: - Create/Edit API Server View
 
 struct CreateAPIServerView: View {
+    private enum HTTPAPIKeyWarningAction {
+        case save
+        case loadModels
+    }
+
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
     
@@ -209,6 +210,8 @@ struct CreateAPIServerView: View {
     @State private var showTLSImportError: Bool = false
     @State private var tlsImportErrorMessage: String = ""
     @State private var showTLSConfigurationAlert: Bool = false
+    @State private var showHTTPAPIKeyWarning: Bool = false
+    @State private var pendingHTTPAPIKeyWarningAction: HTTPAPIKeyWarningAction? = nil
     
     private let maxServerNameLength = 24
     
@@ -265,6 +268,16 @@ struct CreateAPIServerView: View {
             } message: {
                 Text("Import the exact CA certificate for your endpoint before enabling custom TLS.")
             }
+            .alert("API Key Over HTTP", isPresented: $showHTTPAPIKeyWarning) {
+                Button("Continue", role: .destructive) {
+                    continuePendingHTTPAPIKeyAction()
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingHTTPAPIKeyWarningAction = nil
+                }
+            } message: {
+                Text("This endpoint uses plain HTTP. Your API key and chat traffic may be visible on the network. Continue only for local or fully trusted endpoints.")
+            }
         }
     }
     
@@ -283,7 +296,7 @@ struct CreateAPIServerView: View {
                 .keyboardType(.URL)
                 .onSubmit {
                     if !isOpenRouter {
-                        Task { await fetchModels() }
+                        requestFetchModels()
                     }
                 }
 
@@ -317,7 +330,7 @@ struct CreateAPIServerView: View {
                     .autocorrectionDisabled()
             } else if availableModels.isEmpty {
                 Button {
-                    Task { await fetchModels() }
+                    requestFetchModels()
                 } label: {
                     HStack {
                         Text("Load Models")
@@ -336,7 +349,7 @@ struct CreateAPIServerView: View {
                 }
                 
                 Button("Reload Models") {
-                    Task { await fetchModels() }
+                    requestFetchModels()
                 }
                 .disabled(isLoadingModels)
             }
@@ -349,9 +362,9 @@ struct CreateAPIServerView: View {
             Toggle("Use custom CA for self-signed TLS", isOn: $allowInsecureTLS)
             
             if allowInsecureTLS {
-                Text("Connections are rejected unless the exact CA certificate is imported.")
+/*                Text("Connections are rejected unless the exact CA certificate is imported.")
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.red)*/
 
                 Button(customCACertificateData == nil ? "Import CA Certificate (.crt/.pem/.cer)" : "Replace CA Certificate") {
                     isImportingTLSCertificate = true
@@ -400,7 +413,7 @@ struct CreateAPIServerView: View {
         customCACertificateName = server.customCACertificateName ?? ""
     }
     
-    private func saveServer() {
+    private func saveServer(confirmedHTTPAPIKey: Bool = false) {
         let normalizedName = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxServerNameLength))
         let normalizedBaseURL = selectedType.normalizedBaseURL(baseURL)
         let normalizedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -408,6 +421,13 @@ struct CreateAPIServerView: View {
 
         if allowInsecureTLS && customCACertificateData == nil {
             showTLSConfigurationAlert = true
+            return
+        }
+
+        if !confirmedHTTPAPIKey,
+           selectedType.requiresHTTPAPIKeyConfirmation(baseURL: normalizedBaseURL, apiKey: normalizedAPIKey) {
+            pendingHTTPAPIKeyWarningAction = .save
+            showHTTPAPIKeyWarning = true
             return
         }
 
@@ -440,6 +460,31 @@ struct CreateAPIServerView: View {
         
         try? modelContext.save()
         dismiss()
+    }
+
+    private func requestFetchModels() {
+        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if selectedType.requiresHTTPAPIKeyConfirmation(baseURL: baseURL, apiKey: normalizedAPIKey) {
+            pendingHTTPAPIKeyWarningAction = .loadModels
+            showHTTPAPIKeyWarning = true
+            return
+        }
+
+        Task { await fetchModels() }
+    }
+
+    private func continuePendingHTTPAPIKeyAction() {
+        let action = pendingHTTPAPIKeyWarningAction
+        pendingHTTPAPIKeyWarningAction = nil
+
+        switch action {
+        case .save:
+            saveServer(confirmedHTTPAPIKey: true)
+        case .loadModels:
+            Task { await fetchModels() }
+        case .none:
+            break
+        }
     }
     
     private func fetchModels() async {

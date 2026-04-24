@@ -78,6 +78,10 @@ actor APIService {
             throw NSError(domain: "APIService", code: -1000,
                           userInfo: [NSLocalizedDescriptionKey: "Invalid OpenAI URL: \(endpoint)"])
         }
+        guard APIType.openai.isSecureTransportURL(url, baseURL: config.baseURL) else {
+            throw NSError(domain: "APIService", code: -1001,
+                          userInfo: [NSLocalizedDescriptionKey: "Official OpenAI endpoints must use HTTPS."])
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -90,6 +94,7 @@ actor APIService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        try Task.checkCancellation()
         let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
         let (stream, response) = try await session.bytes(for: request)
 
@@ -99,9 +104,10 @@ actor APIService {
                           userInfo: [NSLocalizedDescriptionKey: "Invalid response code"])
         }
 
-        var finalResult = ""
+        var finalResultParts: [String] = []
 
         for try await line in stream.lines {
+            try Task.checkCancellation()
             if line.starts(with: "data: ") {
                 let jsonString = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if jsonString == "[DONE]" { break }
@@ -109,13 +115,13 @@ actor APIService {
                 if let jsonData = jsonString.data(using: .utf8),
                    let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
                    let delta = chunk.choices.first?.delta.content {
-                    finalResult += delta
+                    finalResultParts.append(delta)
                     onStream?(delta)
                 }
             }
         }
 
-        return finalResult
+        return finalResultParts.joined()
     }
 
     private static func sendToOpenRouter(
@@ -159,6 +165,7 @@ actor APIService {
             request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
 
+        try Task.checkCancellation()
         let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
         let (stream, response) = try await session.bytes(for: request)
 
@@ -169,20 +176,19 @@ actor APIService {
 
         guard (200..<300).contains(httpResponse.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let errorBody = try await readErrorBody(from: stream)
-            let diagnostic = sanitizedDiagnosticMessage(from: errorBody)
-            if !diagnostic.isEmpty {
-                print("⚠️ OpenRouter HTTP \(code) diagnostic: \(diagnostic)")
-            }
+            #if DEBUG
+            print("OpenRouter request failed with HTTP \(code)")
+            #endif
             throw NSError(domain: "APIService", code: -1003,
                           userInfo: [NSLocalizedDescriptionKey: userFacingHTTPErrorMessage(statusCode: code)])
         }
 
-        var finalResult = ""
+        var finalResultParts: [String] = []
         var injectedThinkingOpened = false
         var injectedThinkingClosed = false
 
         for try await line in stream.lines {
+            try Task.checkCancellation()
             if line.starts(with: "data: ") {
                 let jsonString = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if jsonString == "[DONE]" { break }
@@ -193,31 +199,31 @@ actor APIService {
 
                     if !parsed.reasoning.isEmpty {
                         if !injectedThinkingOpened {
-                            finalResult += "<think>"
+                            finalResultParts.append("<think>")
                             onStream?("<think>")
                             injectedThinkingOpened = true
                         }
                         for reasoningChunk in parsed.reasoning {
-                            finalResult += reasoningChunk
+                            finalResultParts.append(reasoningChunk)
                             onStream?(reasoningChunk)
                         }
                     }
 
                     if !parsed.content.isEmpty {
                         if injectedThinkingOpened && !injectedThinkingClosed {
-                            finalResult += "</think>"
+                            finalResultParts.append("</think>")
                             onStream?("</think>")
                             injectedThinkingClosed = true
                         }
 
                         for contentChunk in parsed.content {
-                            finalResult += contentChunk
+                            finalResultParts.append(contentChunk)
                             onStream?(contentChunk)
                         }
                     }
 
                     if parsed.didFinish && injectedThinkingOpened && !injectedThinkingClosed {
-                        finalResult += "</think>"
+                        finalResultParts.append("</think>")
                         onStream?("</think>")
                         injectedThinkingClosed = true
                     }
@@ -225,33 +231,7 @@ actor APIService {
             }
         }
 
-        return finalResult
-    }
-
-    private static func readErrorBody(from stream: URLSession.AsyncBytes) async throws -> String {
-        var lines: [String] = []
-        var charCount = 0
-
-        for try await rawLine in stream.lines {
-            let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            if trimmed == "data: [DONE]" { break }
-
-            let line: String
-            if trimmed.hasPrefix("data: ") {
-                line = String(trimmed.dropFirst("data: ".count))
-            } else {
-                line = trimmed
-            }
-
-            lines.append(line)
-            charCount += line.count
-            if lines.count >= 20 || charCount >= 1200 {
-                break
-            }
-        }
-
-        return lines.joined(separator: "\n")
+        return finalResultParts.joined()
     }
 
     private static func userFacingHTTPErrorMessage(statusCode: Int) -> String {
@@ -271,22 +251,6 @@ actor APIService {
         default:
             return "Request failed (HTTP \(statusCode))."
         }
-    }
-
-    private static func sanitizedDiagnosticMessage(from raw: String) -> String {
-        guard !raw.isEmpty else { return "" }
-
-        let allowed = CharacterSet(charactersIn: "\n\t").union(.alphanumerics).union(.punctuationCharacters).union(.whitespaces)
-        let filteredScalars = raw.unicodeScalars.filter { allowed.contains($0) }
-        var cleaned = String(String.UnicodeScalarView(filteredScalars))
-            .replacingOccurrences(of: "\r", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let maxCount = 320
-        if cleaned.count > maxCount {
-            cleaned = String(cleaned.prefix(maxCount)) + "…"
-        }
-        return cleaned
     }
 
     private static func parseOpenRouterStreamDelta(from data: Data) -> (content: [String], reasoning: [String], didFinish: Bool) {

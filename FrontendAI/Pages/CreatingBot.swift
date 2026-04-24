@@ -14,6 +14,7 @@ struct CreateCharacterView: View {
 
     @State private var avatarImage: UIImage? = nil
     @State private var selectedItem: PhotosPickerItem? = nil
+    @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
 
     @State private var name: String = ""
     @State private var description: String = ""
@@ -53,7 +54,9 @@ struct CreateCharacterView: View {
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
-                    avatarImage = uiImage
+                    await MainActor.run {
+                        pendingAvatarImage = AvatarEditorDraftImage(image: uiImage)
+                    }
                 }
             }
         }
@@ -65,6 +68,20 @@ struct CreateCharacterView: View {
         }
         .alert("Photo was not selected, please select it", isPresented: $showMissingPhotoAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .sheet(item: $pendingAvatarImage) { draft in
+            AvatarImageEditorView(
+                image: draft.image,
+                onCancel: {
+                    pendingAvatarImage = nil
+                    selectedItem = nil
+                },
+                onApply: { editedImage in
+                    avatarImage = editedImage
+                    pendingAvatarImage = nil
+                    selectedItem = nil
+                }
+            )
         }
     }
 

@@ -9,8 +9,8 @@ import SwiftUI
 
 
 struct ExportPage: View {
-    @State private var selectedOption: String = "Choose option"
-    private let options = ["none", "AES-256-XTS", "AES-128-XTS", "Threefish", "Serpent"]
+    @State private var selectedOption: String = "Choose"
+    private let options = ["none", "AES-256-GCM", "xchacha20poly1305", "Serpent"]
     
 
     var body: some View {
@@ -34,7 +34,7 @@ struct ExportPage: View {
                 Section(header: Text("Export")) {
                     Button() {
                     } label: {
-                        Label("Export JSON, \(selectedOption) encryption", systemImage: "square.and.arrow.up")
+                        Label("Export .tar., \(selectedOption) encryption", systemImage: "square.and.arrow.up")
                     }
                 }
             }

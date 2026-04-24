@@ -38,12 +38,23 @@ struct MainPage: View {
         return String(activeServerName.prefix(12)) + "…"
     }
     
-    private var isAPIServerOnline: Bool {
-        apiManager.selectedServer?.isOnline ?? false
+    private var apiConnectionStatus: APIConnectionStatus {
+        apiManager.selectedServer?.connectionStatus ?? .offline
     }
     
     private var apiStatusText: String {
-        isAPIServerOnline ? "Online" : "Offline"
+        apiConnectionStatus.displayName
+    }
+
+    private var apiStatusColor: Color {
+        switch apiConnectionStatus {
+        case .online:
+            return .green
+        case .warning:
+            return .orange
+        case .offline:
+            return .red
+        }
     }
 
     var body: some View {
@@ -59,7 +70,7 @@ struct MainPage: View {
                             if showMainHubAPIStatus {
                                 HStack(spacing: 6) {
                                     Circle()
-                                        .fill(isAPIServerOnline ? Color.green : Color.red)
+                                        .fill(apiStatusColor)
                                         .frame(width: 8, height: 8)
                                     Text("\(displayedServerName) • \(apiStatusText)")
                                         .font(.caption)

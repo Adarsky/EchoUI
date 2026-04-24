@@ -16,6 +16,7 @@ struct EditBotView: View {
     @Environment(\.modelContext) var modelContext
 
     @State private var selectedImageItem: PhotosPickerItem? = nil
+    @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -47,8 +48,11 @@ struct EditBotView: View {
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: selectedImageItem) { _, newItem in
             Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                    bot.avatarData = data
+                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        pendingAvatarImage = AvatarEditorDraftImage(image: image)
+                    }
                 }
             }
         }
@@ -57,6 +61,20 @@ struct EditBotView: View {
         }
         .onChange(of: bot.subtitle) { _, newValue in
             bot.subtitle = BotModel.clampedSubtitle(newValue)
+        }
+        .sheet(item: $pendingAvatarImage) { draft in
+            AvatarImageEditorView(
+                image: draft.image,
+                onCancel: {
+                    pendingAvatarImage = nil
+                    selectedImageItem = nil
+                },
+                onApply: { editedImage in
+                    bot.avatarData = editedImage.jpegData(compressionQuality: 0.9)
+                    pendingAvatarImage = nil
+                    selectedImageItem = nil
+                }
+            )
         }
     }
 

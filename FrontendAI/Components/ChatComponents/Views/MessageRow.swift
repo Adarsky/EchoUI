@@ -62,7 +62,7 @@ struct MessageRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
                 } else {
-                    Text(msg.isStreaming ? AttributedString(msg.content) : renderedMarkdown(from: msg.content))
+                    messageText
                         .id(msg.currentIndex)
                         .padding(12)
                         .background(
@@ -181,6 +181,15 @@ struct MessageRow: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityHint(msg.isUser ? "User's message" : "Bot's message")
+    }
+
+    @ViewBuilder
+    private var messageText: some View {
+        if msg.isStreaming {
+            Text(verbatim: msg.content)
+        } else {
+            Text(renderedMarkdown(from: msg.content))
+        }
     }
 
     private var userConfiguredColor: Color {

@@ -29,10 +29,16 @@ class APIManager: ObservableObject {
     }
 
     func ping(server: APIServer, modelContext: ModelContext) async {
+        let status = await Self.evaluateConnectionStatus(for: server)
+        server.updateConnectionStatus(status)
+        try? modelContext.save()
+    }
+
+    static func evaluateConnectionStatus(for server: APIServer) async -> APIConnectionStatus {
         _ = server.migrateAPIKeyToKeychainIfNeeded()
         let endpoint = server.type.endpoint(baseURL: server.baseURL, path: "models")
         
-        guard let url = URL(string: endpoint) else { return }
+        guard let url = URL(string: endpoint) else { return .offline }
         
         var request = URLRequest(url: url)
         
@@ -42,11 +48,13 @@ class APIManager: ObservableObject {
         
         do {
             let session = TLSSessionFactory.makeSession(policy: server.tlsPolicy)
-            _ = try await session.data(for: request)
-            server.isOnline = true
+            let (_, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return .offline
+            }
+            return APIConnectionStatusMapper.status(forHTTPStatusCode: httpResponse.statusCode)
         } catch {
-            server.isOnline = false
+            return .offline
         }
-        try? modelContext.save()
     }
 }
