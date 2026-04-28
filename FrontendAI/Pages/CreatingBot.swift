@@ -100,10 +100,6 @@ struct CreateCharacterView: View {
                     }
 
                     Spacer()
-
-                    Image(systemName: "photo.badge.plus")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
                 }
                 .padding(14)
             }

@@ -5,13 +5,14 @@ import SwiftData
 struct MainPage: View {
     // Sheets
     @State private var showSheetSettings = false
-    @State private var showSheetAccount = false
+    @State private var showSheetPersona = false
 
 
     @State private var selectedBot: BotModel? = nil
     @State private var selectedBotForEdit: BotModel? = nil
     @State private var navigateToChat = false
     @State private var showCreatePage = false
+    @State private var showAPIpage = false
 
 
     @State private var botToDelete: BotModel? = nil
@@ -68,13 +69,17 @@ struct MainPage: View {
                                 .font(.title)
                                 .bold()
                             if showMainHubAPIStatus {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(apiStatusColor)
-                                        .frame(width: 8, height: 8)
-                                    Text("\(displayedServerName) • \(apiStatusText)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                Button {
+                                    showAPIpage = true
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(apiStatusColor)
+                                            .frame(width: 8, height: 8)
+                                        Text("\(displayedServerName) • \(apiStatusText)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
                         }
@@ -91,7 +96,7 @@ struct MainPage: View {
                         .glassEffectUnion(id: 1, namespace: MainPageGlassEffect)
                         
                         Button {
-                            showSheetAccount = true
+                            showSheetPersona = true
                         } label: {
                             Image(systemName: "person.circle.fill")
                                 .font(.title3)
@@ -154,8 +159,6 @@ struct MainPage: View {
                 } message: { bot in
                     Text("Bot \(bot.name) will be destroyed.")
                 }
-
-                Spacer()
             }
 
             .navigationDestination(isPresented: $navigateToChat) {
@@ -171,8 +174,8 @@ struct MainPage: View {
             }
         }
 
-        .sheet(isPresented: $showSheetAccount) {
-            AccountSheetView(isPresented: $showSheetAccount)
+        .sheet(isPresented: $showSheetPersona) {
+            PersonaSheetView(isPresented: $showSheetPersona)
         }
         .sheet(isPresented: $showSheetSettings) {
             SettingsSheetView(
@@ -181,6 +184,9 @@ struct MainPage: View {
                 endpoint: $Endpoint,
                 showAPIStatus: $showMainHubAPIStatus
             )
+        }
+        .sheet(isPresented: $showAPIpage) {
+            APIManagerView(selectedServer: $apiManager.selectedServer)
         }
         .onAppear {
             var didMigrateLegacyKeys = false

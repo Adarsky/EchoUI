@@ -86,10 +86,6 @@ struct EditPersonaView: View {
                     }
 
                     Spacer()
-
-                    Image(systemName: "photo.badge.plus.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
                 }
                 .padding(14)
             }

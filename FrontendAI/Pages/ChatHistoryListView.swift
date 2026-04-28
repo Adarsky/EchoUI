@@ -14,6 +14,7 @@ struct ChatHistoryListView: View {
     var onSelectHistory: ((ChatHistory) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
 
 
@@ -37,71 +38,126 @@ struct ChatHistoryListView: View {
     }
 
     var body: some View {
-        ScrollView {
-            if histories.isEmpty {
-                Text("No history found for \(botName).")
-                    .foregroundColor(.secondary)
-                    .padding()
-            } else {
-                LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
-                    ForEach(sectionedHistories) { section in
-                        Section {
-                            ForEach(section.items) { history in
-                                Button {
-                                    onSelectHistory?(history)
-                                    dismiss()
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text(displayDate(for: history).formatted(date: .abbreviated, time: .shortened))
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-
-                                        Text(lastMessageText(for: history))
-                                            .font(.body)
-                                            .lineLimit(1)
-
-                                        Text("\(history.messages.count) messages")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(Color(.gray).opacity(0.1))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 4)
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        deleteHistory(history)
+        ZStack {
+            ScrollView {
+                if histories.isEmpty {
+                    Text("No history found for \(botName).")
+                        .foregroundColor(.secondary)
+                        .padding()
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
+                        ForEach(sectionedHistories) { section in
+                            Section {
+                                ForEach(section.items) { history in
+                                    Button {
+                                        onSelectHistory?(history)
+                                        dismiss()
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            /*Text(displayDate(for: history).formatted(date: .abbreviated, time: .shortened))
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)*/
+
+                                            lastMessagePreview(for: history)
+                                                .font(.body)
+                                                .lineLimit(2)
+                                            HStack {
+                                                Text("\(history.messages.count) messages")
+                                                    .foregroundColor(.gray)
+                                                    .font(.system(.caption, design: .monospaced))
+                                                Spacer()
+                                                Text(displayDate(for: history).formatted(date: .numeric, time: .shortened))
+                                                    .font(.system(.caption, design: .monospaced))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 18)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .fill(Color(.gray).opacity(0.1))
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 4)
+                                    .contextMenu {
+                                        Button(role: .destructive) {
+                                            deleteHistory(history)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
+                            } header: {
+                                HStack {
+                                    Text(section.title)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
                             }
-                        } header: {
-                            HStack {
-                                Text(section.title)
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
                         }
                     }
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
             }
+//            historyTopFade
+            historyBottomFade
         }
         .navigationTitle("\(botName) History")
         .onAppear {
             loadHistory()
         }
+    }
+
+/*    private var historyTopFade: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(historyFadeColor)
+                .frame(height: geo.safeAreaInsets.top + 120)
+                .mask(
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .clear, location: 1)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .ignoresSafeArea(edges: .top)
+        }
+        .allowsHitTesting(false)
+    } */
+
+    private var historyBottomFade: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(historyFadeColor)
+                .frame(height: geo.safeAreaInsets.bottom + 70)
+                .mask(
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .clear, location: 1)
+                        ]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var historyFadeColor: Color {
+        colorScheme == .light ? .white : .black
     }
 
     private func loadHistory() {
@@ -173,17 +229,24 @@ struct ChatHistoryListView: View {
         }
     }
     
-    private func lastMessageText(for history: ChatHistory) -> String {
+    private func lastMessagePreview(for history: ChatHistory) -> Text {
         guard let last = history.messages
             .sorted(by: { $0.index < $1.index })
             .last
         else {
-            return "Empty chat"
+            return Text("Empty chat")
         }
 
         let prefix = last.isUser ? "You: " : "\(botName): "
-        let full = prefix + last.text
-        return full.count > 80 ? String(full.prefix(80)) + "…" : full
+        let previewText = truncatedPreviewText(prefix: prefix, message: last.text)
+        return Text(prefix).fontWeight(.semibold) + Text(previewText)
+    }
+
+    private func truncatedPreviewText(prefix: String, message: String) -> String {
+        let maxLength = 80
+        let availableMessageLength = max(0, maxLength - prefix.count)
+        guard message.count > availableMessageLength else { return message }
+        return String(message.prefix(availableMessageLength)) + "…"
     }
 }
 

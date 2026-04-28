@@ -10,6 +10,8 @@ import SwiftUI
 
 struct ChatBotSheetView: View {
     let bot: Bot
+    let botID: UUID
+    let chatAppearanceID: String?
     var onNewChat: () -> Void
     var onViewHistory: () -> Void
 
@@ -125,7 +127,13 @@ struct ChatBotSheetView: View {
             isDescriptionExpandedManually = false
         }
         .sheet(isPresented: $isShowingChatViewSettings) {
-            ChatAppearanceSettingsView()
+            NavigationStack {
+                ChatAppearanceSettingsView(
+                    botID: botID,
+                    botName: bot.name,
+                    chatID: chatAppearanceID
+                )
+            }
         }
     }
 
@@ -235,6 +243,8 @@ struct ChatBotSheetView: View {
             greeting: "Hi! I'm Luna. Let's explore the stars together. ✨",
             avatarData: nil
         ),
+        botID: UUID(),
+        chatAppearanceID: nil,
         onNewChat: {},
         onViewHistory: {}
     )

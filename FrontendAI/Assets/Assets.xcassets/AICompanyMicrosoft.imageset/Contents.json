@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "microsoft-color.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

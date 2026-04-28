@@ -17,6 +17,8 @@ struct AvatarImageEditorView: View {
     let onCancel: () -> Void
     let onApply: (UIImage) -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @State private var workingImage: UIImage
     @State private var rotationQuarterTurns: Int = 0
     @State private var isMirrored: Bool = false
@@ -52,7 +54,7 @@ struct AvatarImageEditorView: View {
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 20)
-            .background(Color.black.opacity(0.92).ignoresSafeArea())
+            .background(editorBackground.ignoresSafeArea())
             .navigationTitle("Edit Avatar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -67,7 +69,6 @@ struct AvatarImageEditorView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private func editorCanvas(cropSize: CGFloat) -> some View {
@@ -76,7 +77,7 @@ struct AvatarImageEditorView: View {
         return VStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(canvasBackground)
 
                 Image(uiImage: workingImage)
                     .resizable()
@@ -94,7 +95,7 @@ struct AvatarImageEditorView: View {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.32), lineWidth: 1)
+                    .stroke(canvasBorder, lineWidth: 1)
             )
             .contentShape(Rectangle())
             .gesture(dragGesture(cropSize: cropSize))
@@ -197,10 +198,26 @@ struct AvatarImageEditorView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
                 .frame(maxWidth: .infinity)
-                .background(Color.white.opacity(0.1))
+                .background(controlBackground)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    private var editorBackground: Color {
+        Color(.systemBackground)
+    }
+
+    private var canvasBackground: Color {
+        colorScheme == .light ? Color(.secondarySystemGroupedBackground) : Color.white.opacity(0.06)
+    }
+
+    private var canvasBorder: Color {
+        colorScheme == .light ? Color.primary.opacity(0.16) : Color.white.opacity(0.32)
+    }
+
+    private var controlBackground: Color {
+        colorScheme == .light ? Color(.secondarySystemFill) : Color.white.opacity(0.1)
     }
 
     private func baseDisplaySize(for imageSize: CGSize, cropSize: CGFloat) -> CGSize {

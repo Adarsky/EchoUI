@@ -30,8 +30,10 @@ extension ChatView {
                                     currentIndex: entity.currentVariantIndex ?? 0
                                 )
                             }
+                        refreshActiveAppearance()
                     } else {
                         messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
+                        refreshActiveAppearance()
                     }
                 } catch {
                     print("⚠️ Load failed: \(error)")
@@ -97,5 +99,6 @@ extension ChatView {
                     )
                 }
             isManualHistoryLoad = true
+            refreshActiveAppearance()
         }
 }

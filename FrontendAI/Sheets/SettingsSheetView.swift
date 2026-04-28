@@ -35,6 +35,9 @@ struct SettingsSheetView: View {
                         NavigationLink(destination: TokenSpeedChangeView()) {
                             Label("Token Speed", systemImage: "hare")
                         }
+                        NavigationLink(destination: AppIconSettingsView()) {
+                            Label("App Icon", systemImage: "app.dashed")
+                        }
                         Toggle("Show API Status", systemImage:"network", isOn: $showAPIStatus)
                     }
 
@@ -42,10 +45,10 @@ struct SettingsSheetView: View {
                         NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
                             Label("Manage API Servers", systemImage: "server.rack")
                         }
-                        NavigationLink(destination: VLESSProxiesManagerView()) {
+                        /*                         NavigationLink(destination: VLESSProxiesManagerView()) {
                             Label("VLESS proxy", systemImage: "hat.widebrim")
                         }
-/*                        NavigationLink(destination: HisteriumEnvironmentManager()) {
+                       NavigationLink(destination: HisteriumEnvironmentManager()) {
                             HStack {
                                 Image(systemName: "network.badge.shield.half.filled")
                                 Text("Histerium environment")

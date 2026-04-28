@@ -37,15 +37,18 @@ struct ChatView: View {
     @State var didApplyInitialScrollPosition = false
 
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var apiManager: APIManager
     @Environment(PersonaManager.self) var personaManager
     @Query var allBots: [BotModel]
     @Query(sort: [SortDescriptor(\PersonaModel.name)]) var personas: [PersonaModel]
     @State var savedBotModel: BotModel?
-    @AppStorage(ChatAppearanceStorageKeys.wallpaperPath) var chatWallpaperPath = ""
+    @AppStorage(ChatAppearanceStorageKeys.appearanceRevision) var chatAppearanceRevision = 0
     @AppStorage(ChatStreamingStorageKeys.chunkFlushIntervalMs) var streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
+    @State var activeChatAppearance = ChatAppearanceSnapshot.global()
     @State var chatWallpaperImage: UIImage?
+    @State var chatWallpaperSmartGradient: ChatWallpaperSmartGradient?
 
     init(bot: Bot) {
         self.bot = bot
@@ -119,12 +122,14 @@ struct ChatView: View {
 
                 // Input bar
             }
+            .environment(\.chatAppearance, activeChatAppearance)
             bottomInputMaterialFade
             VStack {
                 ZStack {
                     ChatHeaderBar(
                         bot: bot,
                         botID: botID,
+                        chatAppearanceID: currentChatAppearanceID,
                         showChatBotSheet: $showChatBotSheet,
                         isViewingHistory: $isViewingHistory,
                         onNewChat: startNewChatTapped
@@ -132,7 +137,7 @@ struct ChatView: View {
                     .background(alignment: .top) {
                         GeometryReader { geo in
                             Rectangle()
-                                .fill(.black)
+                                .fill(chatTopChromeFadeColor)
                                 .frame(height: geo.safeAreaInsets.top + 70)
                                 .mask(
                                     LinearGradient(
@@ -168,13 +173,16 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
-            refreshWallpaperImage()
+            refreshActiveAppearance()
             if !isManualHistoryLoad && !isPreviewSeeded {
                 loadHistory()
             }
         }
-        .onChange(of: chatWallpaperPath) { _, _ in
-            refreshWallpaperImage()
+        .onChange(of: chatAppearanceRevision) { _, _ in
+            refreshActiveAppearance()
+        }
+        .onChange(of: currentChatAppearanceID) { _, _ in
+            refreshActiveAppearance()
         }
         .onDisappear { saveChatHistory() }
         .sheet(isPresented: $openSettings) {

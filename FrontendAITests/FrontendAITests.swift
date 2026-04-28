@@ -35,6 +35,132 @@ struct FrontendAITests {
         #expect(APIType.openrouter.endpoint(baseURL: normalized, path: "credits") == "https://openrouter.ai/api/v1/credits")
     }
 
+    @Test func openRouterModelListDecodesPayloadWithMetadata() throws {
+        let data = Data("""
+        {
+          "data": [
+            {
+              "id": "z-ai/glm-4.5-air:free",
+              "name": "Z.ai: GLM 4.5 Air (free)",
+              "context_length": 131072,
+              "architecture": {
+                "input_modalities": ["text"],
+                "output_modalities": ["text"]
+              },
+              "pricing": {
+                "prompt": "0",
+                "completion": "0"
+              },
+              "supported_parameters": ["max_tokens", "temperature"]
+            }
+          ]
+        }
+        """.utf8)
+
+        let list = try JSONDecoder().decode(OpenRouterModelList.self, from: data)
+
+        #expect(list.data == [
+            OpenRouterModel(
+                id: "z-ai/glm-4.5-air:free",
+                name: "Z.ai: GLM 4.5 Air (free)",
+                contextLength: 131072,
+                architecture: OpenRouterModel.Architecture(
+                    inputModalities: ["text"],
+                    outputModalities: ["text"]
+                )
+            )
+        ])
+    }
+
+    @Test func openRouterModelSearchPrioritizesPrefixMatches() {
+        let models = [
+            OpenRouterModel(id: "openai/gpt-4o-mini", name: "Z.ai mention only"),
+            OpenRouterModel(id: "z-ai/glm-4.5"),
+            OpenRouterModel(id: "qwen/qwen3-coder:free"),
+            OpenRouterModel(id: "z-ai/glm-4.5-air:free")
+        ]
+
+        let results = OpenRouterModelCatalogService
+            .search(models, matching: "z-ai/")
+            .map(\.id)
+
+        #expect(results == [
+            "z-ai/glm-4.5",
+            "z-ai/glm-4.5-air:free"
+        ])
+    }
+
+    @Test func openRouterModelCompanyIconsMatchKnownProvidersOnly() {
+        #expect(OpenRouterModel(id: "openai/gpt-4o-mini").companyIconAssetName == "AICompanyOpenAI")
+        #expect(OpenRouterModel(id: "z-ai/glm-4.5").companyIconAssetName == "AICompanyZAI")
+        #expect(OpenRouterModel(id: "meta-llama/llama-3.3-70b-instruct").companyIconAssetName == "AICompanyMeta")
+        #expect(OpenRouterModel(id: "x-ai/grok-4").companyIconAssetName == "AICompanyXAI")
+        #expect(OpenRouterModel(id: "cohere/command-a").companyIconAssetName == "AICompanyCohere")
+        #expect(OpenRouterModel(id: "openrouter/auto").companyIconAssetName == "AICompanyOpenRouter")
+        #expect(OpenRouterModel(id: "unknown-provider/custom-model").companyIconAssetName == nil)
+    }
+
+    @Test func openRouterModelVerificationUsesExactOfficialCatalogMatches() {
+        let models = [
+            OpenRouterModel(id: "z-ai/glm-4.5"),
+            OpenRouterModel(id: "z-ai/glm-4.5-air:free")
+        ]
+
+        #expect(OpenRouterModelCatalogService.containsModel(id: "z-ai/glm-4.5-air:free", in: models))
+        #expect(!OpenRouterModelCatalogService.containsModel(id: "z-ai/glm-typo", in: models))
+        #expect(OpenRouterModelCatalogService.requiresOfficialCatalogValidation(baseURL: "http://openrouter.ai/api/v1"))
+        #expect(!OpenRouterModelCatalogService.requiresOfficialCatalogValidation(baseURL: "http://localhost:1234"))
+    }
+
+    @Test func modelCatalogCacheStoresOpenRouterMetadataByNormalizedBaseURL() {
+        let suiteName = "FrontendAITests.openRouterModelCache.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let models = [
+            OpenRouterModel(
+                id: "z-ai/glm-4.5-air:free",
+                description: "Cached metadata",
+                contextLength: 131072,
+                architecture: OpenRouterModel.Architecture(modality: "text->text")
+            )
+        ]
+
+        APIModelCatalogCache.storeOpenRouterModels(
+            models,
+            for: "http://openrouter.ai/api/v1",
+            defaults: defaults
+        )
+
+        #expect(APIModelCatalogCache.cachedOpenRouterModels(
+            for: "https://openrouter.ai",
+            defaults: defaults
+        ) == models)
+    }
+
+    @Test func modelCatalogCacheStoresOpenAIModelsByNormalizedBaseURL() {
+        let suiteName = "FrontendAITests.openAIModelCache.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        APIModelCatalogCache.storeOpenAIModels(
+            ["gpt-4.1-mini", "gpt-4.1"],
+            for: .openai,
+            baseURL: "https://api.openai.com/v1",
+            defaults: defaults
+        )
+
+        #expect(APIModelCatalogCache.cachedOpenAIModels(
+            for: .openai,
+            baseURL: "https://api.openai.com",
+            defaults: defaults
+        ) == ["gpt-4.1-mini", "gpt-4.1"])
+    }
+
     @Test func pingStatusMappingUsesWarningForReachableHTTPFailures() {
         #expect(APIConnectionStatusMapper.status(forHTTPStatusCode: 200) == .online)
         #expect(APIConnectionStatusMapper.status(forHTTPStatusCode: 204) == .online)
