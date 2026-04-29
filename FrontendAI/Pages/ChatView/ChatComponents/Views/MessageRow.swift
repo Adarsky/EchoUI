@@ -178,7 +178,7 @@ struct MessageRow: View {
 
     @ViewBuilder
     private var messageText: some View {
-        MessageContentView(content: msg.content, isStreaming: msg.isStreaming)
+        MessageContentView(content: msg.content, isStreaming: msg.isStreaming, collapsesBlankLines: !msg.isUser)
     }
 
     private var userConfiguredColor: Color {
@@ -254,9 +254,10 @@ struct MessageRow: View {
 private struct MessageContentView: View {
     let content: String
     let isStreaming: Bool
+    let collapsesBlankLines: Bool
 
     var body: some View {
-        let segments = messageContentSegments(from: content)
+        let segments = messageContentSegments(from: content, collapsesBlankLines: collapsesBlankLines)
 
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
@@ -295,7 +296,7 @@ private extension [MessageContentSegment] {
     }
 }
 
-private func messageContentSegments(from text: String) -> [MessageContentSegment] {
+private func messageContentSegments(from text: String, collapsesBlankLines: Bool) -> [MessageContentSegment] {
     let normalizedText = normalizedMessageText(from: text)
     let lines = normalizedText.split(separator: "\n", omittingEmptySubsequences: false)
     var segments: [MessageContentSegment] = []
@@ -304,8 +305,9 @@ private func messageContentSegments(from text: String) -> [MessageContentSegment
     func flushTextLines() {
         guard !textLines.isEmpty else { return }
         let joinedText = textLines.joined(separator: "\n")
-        if !joinedText.isEmpty {
-            segments.append(.text(joinedText))
+        let displayText = collapsesBlankLines ? collapsingBlankLines(in: joinedText) : joinedText
+        if !displayText.isEmpty {
+            segments.append(.text(displayText))
         }
         textLines.removeAll()
     }
@@ -321,6 +323,27 @@ private func messageContentSegments(from text: String) -> [MessageContentSegment
 
     flushTextLines()
     return segments.isEmpty ? [.text("")] : segments
+}
+
+private func collapsingBlankLines(in text: String) -> String {
+    let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+    var result = ""
+    var newlineRun = 0
+
+    for line in lines {
+        if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            newlineRun += 1
+            continue
+        }
+
+        if !result.isEmpty {
+            result += newlineRun >= 2 ? " " : "\n"
+        }
+        result += line
+        newlineRun = 0
+    }
+
+    return result
 }
 
 // MARK: - iOS < 16
@@ -499,6 +522,15 @@ private struct MessageRowPreviewHost: View {
     MessageRowPreviewHost(
         message: ChatMessageModel(
             content: "First section\n---\nSecond section with **Markdown**.",
+            isUser: false
+        )
+    )
+}
+
+#Preview("Assistant Blank Line Collapse") {
+    MessageRowPreviewHost(
+        message: ChatMessageModel(
+            content: "First section\n\nSecond section with **Markdown**.",
             isUser: false
         )
     )

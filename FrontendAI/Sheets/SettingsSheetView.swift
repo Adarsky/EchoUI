@@ -56,6 +56,10 @@ struct SettingsSheetView: View {
                         } */
                     }
                     Section(header: Text("Information")) {
+                        NavigationLink(destination: CacheView()) {
+                            Label("Cache Info", systemImage: "internaldrive")
+                        }
+
                         Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
 
                         if openRouterBalancePingEnabled {
@@ -273,8 +277,14 @@ private struct SettingsSheetViewPreviewHost: View {
 
 @MainActor
 private let settingsPreviewModelContainer: ModelContainer = {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: APIServer.self, configurations: config)
+    let schema = Schema([
+        APIServer.self,
+        BotModel.self,
+        ChatHistory.self,
+        ChatMessageEntity.self
+    ])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [config])
     let context = container.mainContext
 
     context.insert(
