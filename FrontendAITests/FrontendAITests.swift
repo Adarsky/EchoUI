@@ -28,6 +28,15 @@ struct FrontendAITests {
         #expect(!APIType.openai.requiresHTTPAPIKeyConfirmation(baseURL: normalized, apiKey: ""))
     }
 
+    @Test func bearerAuthorizationIsOnlyBuiltForHTTPSEndpoints() {
+        let httpsURL = URL(string: "https://api.example.com/v1/chat/completions")!
+        let httpURL = URL(string: "http://localhost:1234/v1/chat/completions")!
+
+        #expect(APIAuthorization.bearerHeaderValue(apiKey: " sk-test\n", for: httpsURL) == "Bearer sk-test")
+        #expect(APIAuthorization.bearerHeaderValue(apiKey: "sk-test", for: httpURL) == nil)
+        #expect(APIAuthorization.bearerHeaderValue(apiKey: "", for: httpsURL) == nil)
+    }
+
     @Test func officialOpenRouterEndpointForcesHTTPS() {
         let normalized = APIType.openrouter.normalizedBaseURL("http://openrouter.ai/api/v1")
 
@@ -184,6 +193,51 @@ struct FrontendAITests {
 
         #expect(server.connectionStatus == .warning)
         #expect(!server.isOnline)
+    }
+
+    @Test func redirectPolicyAllowsSameOriginAuthorizationRedirect() {
+        var current = URLRequest(url: URL(string: "https://api.example.com/v1/chat/completions")!)
+        current.addValue("Bearer sk-test", forHTTPHeaderField: "Authorization")
+        let proposed = URLRequest(url: URL(string: "https://api.example.com/v1/responses")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) != nil)
+    }
+
+    @Test func redirectPolicyBlocksAuthorizationAcrossHosts() {
+        var current = URLRequest(url: URL(string: "https://api.example.com/v1/chat/completions")!)
+        current.addValue("Bearer sk-test", forHTTPHeaderField: "Authorization")
+        let proposed = URLRequest(url: URL(string: "https://evil.example/v1/chat/completions")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) == nil)
+    }
+
+    @Test func redirectPolicyBlocksAuthorizationAcrossSchemes() {
+        var current = URLRequest(url: URL(string: "http://localhost:1234/v1/chat/completions")!)
+        current.addValue("Bearer sk-test", forHTTPHeaderField: "Authorization")
+        let proposed = URLRequest(url: URL(string: "https://localhost:1234/v1/chat/completions")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) == nil)
+    }
+
+    @Test func redirectPolicyBlocksHTTPSDowngrade() {
+        let current = URLRequest(url: URL(string: "https://api.example.com/v1/models")!)
+        let proposed = URLRequest(url: URL(string: "http://api.example.com/v1/models")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) == nil)
+    }
+
+    @Test func redirectPolicyAllowsUnauthenticatedHTTPToHTTPSUpgradeOnSameHost() {
+        let current = URLRequest(url: URL(string: "http://api.example.com/v1/models")!)
+        let proposed = URLRequest(url: URL(string: "https://api.example.com/v1/models")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) != nil)
+    }
+
+    @Test func redirectPolicyBlocksCrossHostRedirectWithoutAuthorization() {
+        let current = URLRequest(url: URL(string: "https://api.example.com/v1/models")!)
+        let proposed = URLRequest(url: URL(string: "https://metadata.google.internal/v1/models")!)
+
+        #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) == nil)
     }
 
     @Test func storeBackupMovesStoreFilesWithoutDeletingThem() throws {

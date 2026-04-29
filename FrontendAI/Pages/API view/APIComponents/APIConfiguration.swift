@@ -183,6 +183,25 @@ struct TLSPolicy: Sendable {
     static let strict = TLSPolicy(allowInsecureTLS: false, customCACertificateData: nil)
 }
 
+enum APIAuthorization {
+    static func bearerHeaderValue(apiKey: String?, for url: URL) -> String? {
+        guard url.scheme?.lowercased() == "https" else {
+            return nil
+        }
+
+        let normalizedKey = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !normalizedKey.isEmpty else {
+            return nil
+        }
+
+        return "Bearer \(normalizedKey)"
+    }
+
+    static func canSendBearerToken(to url: URL) -> Bool {
+        url.scheme?.lowercased() == "https"
+    }
+}
+
 private enum APIKeychainStore {
     private static let service = (Bundle.main.bundleIdentifier ?? "com.frontendai.app") + ".api-keys"
 
@@ -265,6 +284,100 @@ enum TLSSessionFactory {
     }
 }
 
+enum APIRedirectPolicy {
+    static func redirectedRequest(
+        from currentRequest: URLRequest?,
+        to proposedRequest: URLRequest
+    ) -> URLRequest? {
+        guard
+            let sourceURL = currentRequest?.url,
+            let destinationURL = proposedRequest.url,
+            isHTTPFamilyURL(sourceURL),
+            isHTTPFamilyURL(destinationURL)
+        else {
+            return nil
+        }
+
+        guard !isHTTPSDowngrade(from: sourceURL, to: destinationURL) else {
+            return nil
+        }
+
+        guard sameHost(sourceURL, destinationURL) else {
+            return nil
+        }
+
+        let carriesAuthorization = hasAuthorizationHeader(currentRequest)
+            || hasAuthorizationHeader(proposedRequest)
+
+        if carriesAuthorization {
+            return sameOrigin(sourceURL, destinationURL) ? proposedRequest : nil
+        }
+
+        if sameOrigin(sourceURL, destinationURL) {
+            return proposedRequest
+        }
+
+        return isHTTPToHTTPSUpgradeOnSameHost(sourceURL, destinationURL) ? proposedRequest : nil
+    }
+
+    private static func hasAuthorizationHeader(_ request: URLRequest?) -> Bool {
+        guard let value = request?.value(forHTTPHeaderField: "Authorization") else {
+            return false
+        }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private static func isHTTPFamilyURL(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased()
+        return scheme == "http" || scheme == "https"
+    }
+
+    private static func isHTTPSDowngrade(from sourceURL: URL, to destinationURL: URL) -> Bool {
+        sourceURL.scheme?.lowercased() == "https"
+            && destinationURL.scheme?.lowercased() != "https"
+    }
+
+    private static func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        sameHost(lhs, rhs)
+            && lhs.scheme?.lowercased() == rhs.scheme?.lowercased()
+            && normalizedPort(lhs) == normalizedPort(rhs)
+    }
+
+    private static func sameHost(_ lhs: URL, _ rhs: URL) -> Bool {
+        guard
+            let lhsHost = lhs.host?.lowercased(),
+            let rhsHost = rhs.host?.lowercased(),
+            !lhsHost.isEmpty,
+            !rhsHost.isEmpty
+        else {
+            return false
+        }
+
+        return lhsHost == rhsHost
+    }
+
+    private static func isHTTPToHTTPSUpgradeOnSameHost(_ sourceURL: URL, _ destinationURL: URL) -> Bool {
+        sourceURL.scheme?.lowercased() == "http"
+            && destinationURL.scheme?.lowercased() == "https"
+            && sameHost(sourceURL, destinationURL)
+    }
+
+    private static func normalizedPort(_ url: URL) -> Int? {
+        if let port = url.port {
+            return port
+        }
+
+        switch url.scheme?.lowercased() {
+        case "http":
+            return 80
+        case "https":
+            return 443
+        default:
+            return nil
+        }
+    }
+}
+
 enum TLSCertificateDecoder {
     static func decodeCertificates(from rawData: Data) -> [SecCertificate] {
         if let certificate = SecCertificateCreateWithData(nil, rawData as CFData) {
@@ -342,6 +455,21 @@ private final class TLSSessionDelegate: NSObject, URLSessionDelegate, URLSession
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(
+            APIRedirectPolicy.redirectedRequest(
+                from: task.currentRequest ?? task.originalRequest,
+                to: request
+            )
+        )
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
@@ -383,7 +511,7 @@ private final class TLSSessionDelegate: NSObject, URLSessionDelegate, URLSession
         SecTrustSetPolicies(trust, sslPolicy)
 
         SecTrustSetAnchorCertificates(trust, customAnchorCertificates as CFArray)
-        SecTrustSetAnchorCertificatesOnly(trust, false)
+        SecTrustSetAnchorCertificatesOnly(trust, true)
 
         var trustError: CFError?
         return SecTrustEvaluateWithError(trust, &trustError)

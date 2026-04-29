@@ -375,10 +375,14 @@ private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> C
         return ChatPreviewData(subtitle: "No messages yet", dateText: formattedMainPageDate(from: bot.date))
     }
 
-    let latest: (message: ChatMessageEntity, date: Date)? = histories.compactMap { history in
-        guard let message = history.messages.sorted(by: { $0.index < $1.index }).last else { return nil }
-        let messageDate = message.timestamp ?? history.date
-        return (message: message, date: messageDate)
+    let latest: (message: ChatMessageEntity, date: Date, content: String)? = histories.compactMap { history in
+        history.messages
+            .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .map { message in
+                let messageDate = message.timestamp ?? history.date
+                return (message: message, date: messageDate, content: message.text)
+            }
+            .max(by: { $0.message.index < $1.message.index })
     }
     .max(by: { $0.date < $1.date })
 
@@ -387,11 +391,17 @@ private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> C
     }
 
     let prefix = latest.message.isUser ? "You: " : "\(bot.name): "
-    let content = latest.message.text
+    let content = normalizedMainPagePreviewText(from: latest.content)
     let full = prefix + content
     let subtitle = full.count > 40 ? String(full.prefix(40)) + "…" : full
     let dateText = formattedMainPageDate(latest.date)
     return ChatPreviewData(subtitle: subtitle, dateText: dateText)
+}
+
+private func normalizedMainPagePreviewText(from text: String) -> String {
+    text
+        .split(whereSeparator: \.isWhitespace)
+        .joined(separator: " ")
 }
 
 private func formattedMainPageDate(from storedDate: String) -> String {

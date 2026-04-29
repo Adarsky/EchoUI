@@ -95,7 +95,7 @@ struct CreateAPIServerView: View {
         .alert("API Key Over HTTP", isPresented: $showHTTPAPIKeyWarning) {
             httpAPIKeyWarningButtons
         } message: {
-            Text("This endpoint uses plain HTTP. Your API key and chat traffic may be visible on the network. Continue only for local or fully trusted endpoints.")
+            Text("This endpoint uses plain HTTP. API keys are not sent over HTTP, but chat traffic may still be visible on the network. Continue only for local or fully trusted endpoints.")
         }
         .alert("OpenRouter Model", isPresented: $showOpenRouterModelAlert) {
             Button("OK", role: .cancel) {}
@@ -503,8 +503,8 @@ struct CreateAPIServerView: View {
 
         var request = URLRequest(url: url)
 
-        if !apiKey.isEmpty {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: apiKey, for: url) {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
 
         do {

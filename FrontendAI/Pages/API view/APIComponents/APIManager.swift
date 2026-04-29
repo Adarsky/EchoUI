@@ -42,8 +42,8 @@ class APIManager: ObservableObject {
         
         var request = URLRequest(url: url)
         
-        if let apiKey = server.apiKey, !apiKey.isEmpty {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: server.apiKey, for: url) {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
         
         do {

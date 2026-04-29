@@ -19,15 +19,30 @@ struct AppIconSettingsView: View {
                         changeIcon(to: icon)
                     } label: {
                         HStack {
-                            Label(icon.title, systemImage: icon.systemImage)
+                            AppIconPreview(assetName: icon.previewAssetName)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(icon.title)
+                                    .foregroundStyle(.primary)
+
+                                Text(icon.subtitle)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+
                             Spacer()
+
                             if selectedIconName == icon.alternateIconName {
-                                Image(systemName: "checkmark")
+                                Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.tint)
+                                    .imageScale(.large)
                             }
                         }
+                        .padding(.vertical, 4)
                     }
-                    .disabled(isChangingIcon || selectedIconName == icon.alternateIconName)
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .disabled(isChangingIcon)
                 }
             }
 
@@ -68,6 +83,10 @@ struct AppIconSettingsView: View {
     }
 
     private func changeIcon(to icon: AppIconChoice) {
+        guard selectedIconName != icon.alternateIconName else {
+            return
+        }
+
         guard UIApplication.shared.supportsAlternateIcons else {
             iconChangeError = "Alternate app icons are not available on this device."
             return
@@ -91,10 +110,30 @@ struct AppIconSettingsView: View {
     }
 }
 
+private struct AppIconPreview: View {
+    let assetName: String
+
+    var body: some View {
+        Image(assetName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(.quaternary, lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+            .accessibilityHidden(true)
+    }
+}
+
 private enum AppIconChoice: CaseIterable, Identifiable {
     case primary
     case appIcon1
     case appIcon2
+    case appIcon3
+    case appIcon4
 
     var id: String {
         alternateIconName ?? "primary"
@@ -108,17 +147,40 @@ private enum AppIconChoice: CaseIterable, Identifiable {
             return "AppIcon 1"
         case .appIcon2:
             return "AppIcon 2"
+        case .appIcon3:
+            return "AppIcon 3"
+        case .appIcon4:
+            return "AppIcon 4"
         }
     }
 
-    var systemImage: String {
+    var subtitle: String {
         switch self {
         case .primary:
-            return "app"
+            return "Current default icon"
         case .appIcon1:
-            return "app.fill"
+            return "Alternate icon"
         case .appIcon2:
-            return "app.badge"
+            return "Alternate icon"
+        case .appIcon3:
+            return "Alternate icon"
+        case .appIcon4:
+            return "Alternate icon"
+        }
+    }
+
+    var previewAssetName: String {
+        switch self {
+        case .primary:
+            return "AppIconPreview"
+        case .appIcon1:
+            return "AppIcon1Preview"
+        case .appIcon2:
+            return "AppIcon2Preview"
+        case .appIcon3:
+            return "AppIcon3Preview"
+        case .appIcon4:
+            return "AppIcon4Preview"
         }
     }
 
@@ -130,6 +192,10 @@ private enum AppIconChoice: CaseIterable, Identifiable {
             return "AppIcon1"
         case .appIcon2:
             return "AppIcon2"
+        case .appIcon3:
+            return "AppIcon3"
+        case .appIcon4:
+            return "AppIcon4"
         }
     }
 }

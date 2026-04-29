@@ -88,8 +88,8 @@ actor APIService {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
 
-        if let apiKey = config.apiKey, !apiKey.isEmpty {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: config.apiKey, for: url) {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -161,8 +161,8 @@ actor APIService {
         request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        if let apiKey = config.apiKey, !apiKey.isEmpty {
-            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: config.apiKey, for: url) {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
 
         try Task.checkCancellation()

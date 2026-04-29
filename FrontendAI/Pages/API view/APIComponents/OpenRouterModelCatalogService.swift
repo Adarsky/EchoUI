@@ -330,9 +330,8 @@ enum OpenRouterModelCatalogService {
         request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
         request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
 
-        let normalizedKey = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !normalizedKey.isEmpty {
-            request.addValue("Bearer \(normalizedKey)", forHTTPHeaderField: "Authorization")
+        if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: apiKey, for: url) {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
 
         let session = TLSSessionFactory.makeSession(policy: tlsPolicy)

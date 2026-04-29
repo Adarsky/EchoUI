@@ -55,38 +55,46 @@ struct SettingsSheetView: View {
                             }
                         } */
                     }
-                    Section(header: Text("Information")) {
+                    Section(header: Text("Data and storage")) {
                         NavigationLink(destination: CacheView()) {
-                            Label("Cache Info", systemImage: "internaldrive")
+                            Label("Storage usage", systemImage: "chart.pie")
                         }
-
+                        NavigationLink(destination: DataNetworkManagerView()) {
+                            Label("Data usage", systemImage: "chart.bar")
+                        }
+                        NavigationLink(destination: TokenUsageView()) {
+                            Label("Token usage", systemImage: "t.square")
+                        }
+                        NavigationLink(destination: StatsView()) {
+                            Label("Characters statistics", systemImage: "crown")
+                        }
+                    }
+                    Section(header: Text("Balance information")) {
                         Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
 
                         if openRouterBalancePingEnabled {
-                            HStack(spacing: 10) {
-                                Image(systemName: "creditcard")
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("OpenRouter balance")
-                                    Text(openRouterBalanceSubtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                                Spacer()
-                                if isLoadingBalance {
-                                    ProgressView()
-                                }
-                                Text(openRouterBalanceValue)
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(balanceValueColor)
-                            }
-
                             Button {
                                 Task {
                                     await refreshOpenRouterBalance()
                                 }
                             } label: {
-                                Label("Refresh", systemImage: "arrow.clockwise")
+                                HStack(spacing: 10) {
+                                    Image(systemName: "creditcard")
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("OpenRouter balance")
+                                        Text(openRouterBalanceSubtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                    Spacer()
+                                    if isLoadingBalance {
+                                        ProgressView()
+                                    }
+                                    Text(openRouterBalanceValue)
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(balanceValueColor)
+                                }
                             }
                             .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
                         }

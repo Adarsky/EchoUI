@@ -17,6 +17,7 @@ enum OpenRouterBalanceServiceError: LocalizedError {
     case missingAPIKey
     case invalidURL(String)
     case insecureTransportRequired
+    case insecureAPIKeyTransport
     case invalidResponse
     case invalidPayload
     case server(statusCode: Int, message: String?)
@@ -29,6 +30,8 @@ enum OpenRouterBalanceServiceError: LocalizedError {
             return "Invalid OpenRouter URL."
         case .insecureTransportRequired:
             return "Official OpenRouter endpoints must use HTTPS."
+        case .insecureAPIKeyTransport:
+            return "OpenRouter balance requires HTTPS because it uses an API key."
         case .invalidResponse:
             return "Invalid response from OpenRouter."
         case .invalidPayload:
@@ -60,10 +63,13 @@ enum OpenRouterBalanceService {
         guard APIType.openrouter.isSecureTransportURL(url, baseURL: baseURL) else {
             throw OpenRouterBalanceServiceError.insecureTransportRequired
         }
+        guard let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: normalizedKey, for: url) else {
+            throw OpenRouterBalanceServiceError.insecureAPIKeyTransport
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.addValue("Bearer \(normalizedKey)", forHTTPHeaderField: "Authorization")
+        request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
         request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
