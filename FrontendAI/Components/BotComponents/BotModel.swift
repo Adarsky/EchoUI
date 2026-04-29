@@ -22,6 +22,7 @@ class BotModel {
     var avatarSystemName: String
     var iconColorName: String
     var isPinned: Bool
+    var pinnedSortIndex: Int = 0
     var avatarData: Data?
     var greeting: String
     
@@ -43,6 +44,7 @@ class BotModel {
         avatarSystemName: String,
         iconColorName: String,
         isPinned: Bool,
+        pinnedSortIndex: Int = 0,
         avatarData: Data? = nil,
         greeting: String
     ) {
@@ -53,6 +55,7 @@ class BotModel {
         self.avatarSystemName = avatarSystemName
         self.iconColorName = iconColorName
         self.isPinned = isPinned
+        self.pinnedSortIndex = pinnedSortIndex
         self.avatarData = avatarData
         self.greeting = greeting
     }

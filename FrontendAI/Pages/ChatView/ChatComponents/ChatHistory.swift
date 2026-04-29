@@ -36,6 +36,13 @@ class ChatHistory {
         self.bot = bot
         self.botID = bot.id
     }
+
+    var selectionIdentifier: String? {
+        messages
+            .min(by: { $0.index < $1.index })?
+            .id
+            .uuidString
+    }
 }
 
 @Model
@@ -66,4 +73,3 @@ class ChatMessageEntity: Identifiable {
         self.currentVariantIndex = currentVariantIndex
     }
 }
-

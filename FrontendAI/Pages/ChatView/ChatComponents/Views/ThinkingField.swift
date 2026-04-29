@@ -28,7 +28,7 @@ struct ThinkingField: View {
                 isStreaming: msg.isThinkingInProgress,
                 thinkingDurationText: msg.thinkingDurationText
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
     }
@@ -66,6 +66,7 @@ private struct ThinkingReasoningSheet: View {
                 }
             }
         }
+        .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .padding()
     }

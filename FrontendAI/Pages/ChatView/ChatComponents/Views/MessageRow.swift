@@ -178,11 +178,7 @@ struct MessageRow: View {
 
     @ViewBuilder
     private var messageText: some View {
-        if msg.isStreaming {
-            Text(verbatim: msg.content)
-        } else {
-            Text(renderedMarkdown(from: msg.content))
-        }
+        MessageContentView(content: msg.content, isStreaming: msg.isStreaming)
     }
 
     private var userConfiguredColor: Color {
@@ -255,6 +251,78 @@ struct MessageRow: View {
     }
 }
 
+private struct MessageContentView: View {
+    let content: String
+    let isStreaming: Bool
+
+    var body: some View {
+        let segments = messageContentSegments(from: content)
+
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                switch segment {
+                case .text(let text):
+                    if isStreaming {
+                        Text(verbatim: text)
+                    } else {
+                        Text(renderedMarkdown(from: text))
+                    }
+                case .divider:
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.24))
+                        .frame(height: 1)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .frame(maxWidth: segments.containsDivider ? .infinity : nil, alignment: .leading)
+    }
+}
+
+private enum MessageContentSegment {
+    case text(String)
+    case divider
+}
+
+private extension [MessageContentSegment] {
+    var containsDivider: Bool {
+        contains {
+            if case .divider = $0 { return true }
+            return false
+        }
+    }
+}
+
+private func messageContentSegments(from text: String) -> [MessageContentSegment] {
+    let normalizedText = normalizedMessageText(from: text)
+    let lines = normalizedText.split(separator: "\n", omittingEmptySubsequences: false)
+    var segments: [MessageContentSegment] = []
+    var textLines: [Substring] = []
+
+    func flushTextLines() {
+        guard !textLines.isEmpty else { return }
+        let joinedText = textLines.joined(separator: "\n")
+        if !joinedText.isEmpty {
+            segments.append(.text(joinedText))
+        }
+        textLines.removeAll()
+    }
+
+    for line in lines {
+        if line.trimmingCharacters(in: .whitespacesAndNewlines) == "---" {
+            flushTextLines()
+            segments.append(.divider)
+        } else {
+            textLines.append(line)
+        }
+    }
+
+    flushTextLines()
+    return segments.isEmpty ? [.text("")] : segments
+}
+
 // MARK: - iOS < 16
 struct LegacyEditMessageSheet: View {
     var text: String
@@ -308,13 +376,7 @@ private func renderedMarkdown(from text: String) -> AttributedString {
 }
 
 private func markdownReadyText(from text: String) -> String {
-    let normalizedText = text
-        .replacingOccurrences(of: "\u{00AD}", with: "")
-        .replacingOccurrences(of: "/n/n", with: "\n\n")
-        .replacingOccurrences(of: "/n", with: "\n")
-        .replacingOccurrences(of: "\\n", with: "\n")
-        .replacingOccurrences(of: "\r\n", with: "\n")
-        .replacingOccurrences(of: "\r", with: "\n")
+    let normalizedText = normalizedMessageText(from: text)
 
     var result = ""
     var newlineRun = 0
@@ -341,6 +403,16 @@ private func markdownReadyText(from text: String) -> String {
     }
 
     return result
+}
+
+private func normalizedMessageText(from text: String) -> String {
+    text
+        .replacingOccurrences(of: "\u{00AD}", with: "")
+        .replacingOccurrences(of: "/n/n", with: "\n\n")
+        .replacingOccurrences(of: "/n", with: "\n")
+        .replacingOccurrences(of: "\\n", with: "\n")
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
 }
 
 private func applyingNoHyphenation(to attributed: AttributedString) -> AttributedString {
@@ -420,5 +492,14 @@ private struct MessageRowPreviewHost: View {
             isUser: false
         ),
         useGradientBackground: true
+    )
+}
+
+#Preview("Assistant Divider") {
+    MessageRowPreviewHost(
+        message: ChatMessageModel(
+            content: "First section\n---\nSecond section with **Markdown**.",
+            isUser: false
+        )
     )
 }

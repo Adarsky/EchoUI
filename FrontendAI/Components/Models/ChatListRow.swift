@@ -19,23 +19,94 @@ struct ChatListRow: View {
                 HStack {
                     Text(title)
                         .font(.headline)
-                    if isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption)
-                            .foregroundColor(.yellow)
-                    }
                 }
-                Text(subtitle)
+                subtitleText
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                    .lineLimit(2)
             }
 
             Spacer()
-
-            Text(date)
-                .font(.caption)
-                .foregroundColor(.gray)
+            
+            VStack {
+                Text(date)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption.bold())
+                        .foregroundColor(.gray)
+                }
+            }
         }
         .padding(.vertical, 8)
     }
+
+    private var subtitleText: Text {
+        guard
+            let separatorIndex = subtitle.firstIndex(of: ":"),
+            separatorIndex != subtitle.startIndex
+        else {
+            return Text(subtitle)
+        }
+
+        let name = String(subtitle[..<separatorIndex])
+        let textStartIndex = subtitle.index(after: separatorIndex)
+        let text = String(subtitle[textStartIndex...])
+
+        var attributedSubtitle = AttributedString(name)
+        attributedSubtitle.inlinePresentationIntent = .stronglyEmphasized
+        attributedSubtitle.append(AttributedString(":"))
+        attributedSubtitle.append(AttributedString(text))
+
+        return Text(attributedSubtitle)
+    }
+}
+
+#Preview("Chat Row") {
+    List {
+        ChatListRow(
+            title: "Travel Planner",
+            subtitle: "You: Find a quiet hotel near the old town...",
+            date: "Apr 28",
+            isPinned: false,
+            avatarImage: Image(systemName: "airplane.departure")
+        )
+    }
+    .listStyle(.plain)
+}
+
+#Preview("Pinned Chat Row") {
+    List {
+        ChatListRow(
+            title: "Swift Mentor",
+            subtitle: "Swift Mentor: Use a small persisted sort index.",
+            date: "Apr 27",
+            isPinned: true,
+            avatarImage: Image(systemName: "swift")
+        )
+    }
+    .listStyle(.plain)
+}
+
+#Preview("Chat Rows") {
+    List {
+        ChatListRow(
+            title: "Design Lead",
+            subtitle: "Design Lead: Keep the pinned section scannable.",
+            date: "Apr 28",
+            isPinned: true,
+            avatarImage: Image(systemName: "paintpalette.fill")
+        )
+
+        ChatListRow(
+            title: "API Helper",
+            subtitle: "You: Check why the streaming endpoint retries.",
+            date: "Apr 24",
+            isPinned: false,
+            avatarImage: Image(systemName: "network")
+        )
+    }
+    .listStyle(.plain)
 }

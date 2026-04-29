@@ -5,6 +5,10 @@ import Foundation
 import SwiftData
 
 extension ChatView {
+        private var lastOpenedHistoryDefaultsKey: String {
+            "lastOpenedChatHistory.\(botID.uuidString.lowercased())"
+        }
+
         // MARK: – History (load/save)
         func loadHistory() {
             Task { @MainActor in
@@ -16,16 +20,17 @@ extension ChatView {
                         sortBy: [SortDescriptor(\.date, order: .reverse)]
                     )
                     let histories = try modelContext.fetch(descriptor)
-                    if let last = histories.first {
-                        currentHistory = last
-                        messages = last.messages
+                    if let history = historyToOpen(from: histories) {
+                        currentHistory = history
+                        rememberOpenedHistory(history)
+                        messages = history.messages
                             .sorted { $0.index < $1.index }
                             .map { entity in
                                 ChatMessageModel(
                                     id: entity.id,
                                     content: entity.text,
                                     isUser: entity.isUser,
-                                    timestamp: entity.timestamp ?? last.date,
+                                    timestamp: entity.timestamp ?? history.date,
                                     variants: entity.variants,
                                     currentIndex: entity.currentVariantIndex ?? 0
                                 )
@@ -74,10 +79,12 @@ extension ChatView {
             if let history = currentHistory {
                 history.messages = entities
                 history.date = .now
+                rememberOpenedHistory(history)
             } else if let realBotModel = savedBotModel {
                 let new = ChatHistory(messages: entities, bot: realBotModel)
                 modelContext.insert(new)
                 currentHistory = new
+                rememberOpenedHistory(new)
             }
             try? modelContext.save()
         }
@@ -86,6 +93,7 @@ extension ChatView {
         func loadSelectedHistory(_ history: ChatHistory) {
             didApplyInitialScrollPosition = false
             currentHistory = history
+            rememberOpenedHistory(history)
             messages = history.messages
                 .sorted { $0.index < $1.index }
                 .map { entity in
@@ -100,5 +108,18 @@ extension ChatView {
                 }
             isManualHistoryLoad = true
             refreshActiveAppearance()
+        }
+
+        private func historyToOpen(from histories: [ChatHistory]) -> ChatHistory? {
+            guard !histories.isEmpty else { return nil }
+            guard let storedIdentifier = UserDefaults.standard.string(forKey: lastOpenedHistoryDefaultsKey) else {
+                return histories.first
+            }
+            return histories.first { $0.selectionIdentifier == storedIdentifier } ?? histories.first
+        }
+
+        private func rememberOpenedHistory(_ history: ChatHistory) {
+            guard let identifier = history.selectionIdentifier else { return }
+            UserDefaults.standard.set(identifier, forKey: lastOpenedHistoryDefaultsKey)
         }
 }

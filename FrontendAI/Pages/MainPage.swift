@@ -58,13 +58,28 @@ struct MainPage: View {
         }
     }
 
+    private var pinnedBots: [BotModel] {
+        bots
+            .filter { $0.isPinned }
+            .sorted {
+                if $0.pinnedSortIndex == $1.pinnedSortIndex {
+                    return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+                return $0.pinnedSortIndex < $1.pinnedSortIndex
+            }
+    }
+
+    private var regularBots: [BotModel] {
+        bots.filter { !$0.isPinned }
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            VStack() {
                 // Header
                 GlassEffectContainer () {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Echo UI")
                                 .font(.title)
                                 .bold()
@@ -118,33 +133,27 @@ struct MainPage: View {
                 .padding()
 
                 List {
-                    ForEach(bots) { bot in
-                        let preview = latestChatPreview(for: bot, in: modelContext)
-                        ChatListRow(
-                            title: bot.name,
-                            subtitle: preview.subtitle,
-                            date: preview.dateText,
-                            isPinned: bot.isPinned,
-                            avatarImage: bot.avatarImage
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedBot = bot
-                            navigateToChat = true
+                    if bots.isEmpty {
+                        Text("It's empty here for now...")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .listRowSeparator(.hidden)
+                    } else if pinnedBots.isEmpty {
+                        ForEach(regularBots) { bot in
+                            chatRow(for: bot)
                         }
-                        .swipeActions(edge: .trailing) {
-                            Button {
-                                selectedBotForEdit = bot
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
+                    } else {
+                        Section() {
+                            ForEach(pinnedBots) { bot in
+                                chatRow(for: bot)
                             }
-                            .tint(.orange)
+                        }
 
-                            Button(role: .destructive) {
-                                botToDelete = bot
-                                showDeleteAlert = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                        if !regularBots.isEmpty {
+                            Section("All chats") {
+                                ForEach(regularBots) { bot in
+                                    chatRow(for: bot)
+                                }
                             }
                         }
                     }
@@ -208,6 +217,144 @@ struct MainPage: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func chatRow(for bot: BotModel) -> some View {
+        let preview = latestChatPreview(for: bot, in: modelContext)
+        ChatListRow(
+            title: bot.name,
+            subtitle: preview.subtitle,
+            date: preview.dateText,
+            isPinned: bot.isPinned,
+            avatarImage: bot.avatarImage
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedBot = bot
+            navigateToChat = true
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            pinButton(for: bot)
+
+            if bot.isPinned {
+                Button {
+                    movePinnedBot(bot, direction: .up)
+                } label: {
+                    Label("Up", systemImage: "arrow.up")
+                }
+                .tint(.blue)
+                .disabled(!canMovePinnedBot(bot, direction: .up))
+
+                Button {
+                    movePinnedBot(bot, direction: .down)
+                } label: {
+                    Label("Down", systemImage: "arrow.down")
+                }
+                .tint(.blue)
+                .disabled(!canMovePinnedBot(bot, direction: .down))
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button {
+                selectedBotForEdit = bot
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(.orange)
+
+            Button(role: .destructive) {
+                botToDelete = bot
+                showDeleteAlert = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .contextMenu {
+            pinButton(for: bot)
+
+            if bot.isPinned {
+                Button {
+                    movePinnedBot(bot, direction: .up)
+                } label: {
+                    Label("Move Up", systemImage: "arrow.up")
+                }
+                .disabled(!canMovePinnedBot(bot, direction: .up))
+
+                Button {
+                    movePinnedBot(bot, direction: .down)
+                } label: {
+                    Label("Move Down", systemImage: "arrow.down")
+                }
+                .disabled(!canMovePinnedBot(bot, direction: .down))
+            }
+        }
+    }
+
+    private func pinButton(for bot: BotModel) -> some View {
+        Button {
+            togglePinned(bot)
+        } label: {
+            Label(bot.isPinned ? "Unpin" : "Pin", systemImage: bot.isPinned ? "pin.slash" : "pin")
+        }
+        .tint(bot.isPinned ? .gray : .gray)
+    }
+
+    private enum PinnedMoveDirection {
+        case up
+        case down
+    }
+
+    private func togglePinned(_ bot: BotModel) {
+        if bot.isPinned {
+            bot.isPinned = false
+            bot.pinnedSortIndex = 0
+        } else {
+            bot.isPinned = true
+            bot.pinnedSortIndex = (pinnedBots.map(\.pinnedSortIndex).max() ?? -1) + 1
+        }
+
+        normalizePinnedOrder()
+        try? modelContext.save()
+    }
+
+    private func canMovePinnedBot(_ bot: BotModel, direction: PinnedMoveDirection) -> Bool {
+        guard let index = pinnedBots.firstIndex(where: { $0.id == bot.id }) else { return false }
+
+        switch direction {
+        case .up:
+            return index > 0
+        case .down:
+            return index < pinnedBots.count - 1
+        }
+    }
+
+    private func movePinnedBot(_ bot: BotModel, direction: PinnedMoveDirection) {
+        var orderedPinnedBots = pinnedBots
+        guard let index = orderedPinnedBots.firstIndex(where: { $0.id == bot.id }) else { return }
+
+        let targetIndex: Int
+        switch direction {
+        case .up:
+            targetIndex = index - 1
+        case .down:
+            targetIndex = index + 1
+        }
+
+        guard orderedPinnedBots.indices.contains(targetIndex) else { return }
+        orderedPinnedBots.swapAt(index, targetIndex)
+        applyPinnedOrder(orderedPinnedBots)
+        try? modelContext.save()
+    }
+
+    private func normalizePinnedOrder() {
+        applyPinnedOrder(pinnedBots)
+    }
+
+    private func applyPinnedOrder(_ orderedPinnedBots: [BotModel]) {
+        for (index, bot) in orderedPinnedBots.enumerated() {
+            bot.pinnedSortIndex = index
+        }
+    }
 }
 
 private struct ChatPreviewData {
@@ -225,7 +372,7 @@ private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> C
         let histories = try? context.fetch(descriptor),
         !histories.isEmpty
     else {
-        return ChatPreviewData(subtitle: "No messages yet", dateText: bot.date)
+        return ChatPreviewData(subtitle: "No messages yet", dateText: formattedMainPageDate(from: bot.date))
     }
 
     let latest: (message: ChatMessageEntity, date: Date)? = histories.compactMap { history in
@@ -236,33 +383,219 @@ private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> C
     .max(by: { $0.date < $1.date })
 
     guard let latest else {
-        return ChatPreviewData(subtitle: "No messages yet", dateText: bot.date)
+        return ChatPreviewData(subtitle: "No messages yet", dateText: formattedMainPageDate(from: bot.date))
     }
 
     let prefix = latest.message.isUser ? "You: " : "\(bot.name): "
     let content = latest.message.text
     let full = prefix + content
     let subtitle = full.count > 40 ? String(full.prefix(40)) + "…" : full
-    let dateText = latest.date.formatted(date: .abbreviated, time: .omitted)
+    let dateText = formattedMainPageDate(latest.date)
     return ChatPreviewData(subtitle: subtitle, dateText: dateText)
+}
+
+private func formattedMainPageDate(from storedDate: String) -> String {
+    guard let date = parsedStoredBotDate(storedDate) else {
+        return storedDate
+    }
+
+    return formattedMainPageDate(date)
+}
+
+private func parsedStoredBotDate(_ storedDate: String) -> Date? {
+    let formats = [
+        DateFormatter.Style.medium,
+        DateFormatter.Style.short
+    ]
+
+    for dateStyle in formats {
+        let formatter = DateFormatter()
+        formatter.dateStyle = dateStyle
+        formatter.timeStyle = .none
+
+        if let date = formatter.date(from: storedDate) {
+            return date
+        }
+    }
+
+    return nil
+}
+
+private func formattedMainPageDate(_ date: Date, relativeTo now: Date = Date()) -> String {
+    let calendar = Calendar.current
+
+    if date >= now.addingTimeInterval(-24 * 60 * 60) {
+        return mainPageDateFormatter("HH:mm").string(from: date)
+    }
+
+    if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now), date >= weekAgo {
+        return mainPageDateFormatter("EEE").string(from: date)
+    }
+
+    if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
+        return mainPageDateFormatter("d/M").string(from: date)
+    }
+
+    return mainPageDateFormatter("d/M/yy").string(from: date)
+}
+
+private func mainPageDateFormatter(_ dateFormat: String) -> DateFormatter {
+    let formatter = DateFormatter()
+    formatter.dateFormat = dateFormat
+    return formatter
 }
 
 
 
 //MARK: -- END OF BASE CODE
 
-#Preview {
+#Preview("Empty Chats") {
     MainPage()
-        .modelContainer(
-            for: [
-                BotModel.self,
-                APIServer.self,
-                ChatHistory.self,
-                ChatMessageEntity.self,
-                PersonaModel.self
-            ],
-            inMemory: true
-        )
+        .modelContainer(mainPagePreviewContainer())
         .environmentObject(APIManager())
         .environment(PersonaManager())
+}
+
+#Preview("All Chats") {
+    MainPage()
+        .modelContainer(mainPagePreviewContainer(seed: .regularOnly))
+        .environmentObject(APIManager())
+        .environment(PersonaManager())
+}
+
+#Preview("Pinned And All Chats") {
+    MainPage()
+        .modelContainer(mainPagePreviewContainer(seed: .pinnedAndRegular))
+        .environmentObject(APIManager())
+        .environment(PersonaManager())
+}
+
+private enum MainPagePreviewSeed {
+    case empty
+    case regularOnly
+    case pinnedAndRegular
+}
+
+@MainActor
+private func mainPagePreviewContainer(seed: MainPagePreviewSeed = .empty) -> ModelContainer {
+    let schema = Schema([
+        BotModel.self,
+        APIServer.self,
+        ChatHistory.self,
+        ChatMessageEntity.self,
+        PersonaModel.self
+    ])
+    let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [configuration])
+    let context = container.mainContext
+
+    switch seed {
+    case .empty:
+        break
+    case .regularOnly:
+        insertMainPagePreviewBots(
+            regularBots: mainPageRegularPreviewBots(),
+            pinnedBots: [],
+            in: context
+        )
+    case .pinnedAndRegular:
+        insertMainPagePreviewBots(
+            regularBots: mainPageRegularPreviewBots(),
+            pinnedBots: mainPagePinnedPreviewBots(),
+            in: context
+        )
+    }
+
+    try? context.save()
+    return container
+}
+
+@MainActor
+private func insertMainPagePreviewBots(
+    regularBots: [BotModel],
+    pinnedBots: [BotModel],
+    in context: ModelContext
+) {
+    let allBots = pinnedBots + regularBots
+    for bot in allBots {
+        context.insert(bot)
+        context.insert(mainPagePreviewHistory(for: bot))
+    }
+}
+
+private func mainPagePinnedPreviewBots() -> [BotModel] {
+    [
+        BotModel(
+            name: "Design Lead",
+            subtitle: "Product UI review",
+            date: "Apr 28, 2026",
+            avatarSystemName: "paintpalette.fill",
+            iconColorName: "purple",
+            isPinned: true,
+            pinnedSortIndex: 0,
+            greeting: "Send screens or flows for review."
+        ),
+        BotModel(
+            name: "Swift Mentor",
+            subtitle: "iOS implementation notes",
+            date: "Apr 27, 2026",
+            avatarSystemName: "swift",
+            iconColorName: "orange",
+            isPinned: true,
+            pinnedSortIndex: 1,
+            greeting: "Ask about SwiftUI, SwiftData, and app structure."
+        )
+    ]
+}
+
+private func mainPageRegularPreviewBots() -> [BotModel] {
+    [
+        BotModel(
+            name: "Travel Planner",
+            subtitle: "Trip research",
+            date: "Apr 26, 2026",
+            avatarSystemName: "airplane.departure",
+            iconColorName: "blue",
+            isPinned: false,
+            greeting: "Where are we going next?"
+        ),
+        BotModel(
+            name: "Study Coach",
+            subtitle: "Learning schedule",
+            date: "Apr 25, 2026",
+            avatarSystemName: "book.fill",
+            iconColorName: "green",
+            isPinned: false,
+            greeting: "What topic are we covering today?"
+        ),
+        BotModel(
+            name: "API Helper",
+            subtitle: "Endpoint debugging",
+            date: "Apr 24, 2026",
+            avatarSystemName: "network",
+            iconColorName: "cyan",
+            isPinned: false,
+            greeting: "Paste an API response or request."
+        )
+    ]
+}
+
+private func mainPagePreviewHistory(for bot: BotModel) -> ChatHistory {
+    let now = Date()
+    let messages = [
+        ChatMessageEntity(
+            text: "Can you help me continue this thread?",
+            isUser: true,
+            index: 0,
+            timestamp: now.addingTimeInterval(-600)
+        ),
+        ChatMessageEntity(
+            text: "Yes, I have the context and can pick up from the latest changes.",
+            isUser: false,
+            index: 1,
+            timestamp: now
+        )
+    ]
+
+    return ChatHistory(messages: messages, date: now, bot: bot)
 }
