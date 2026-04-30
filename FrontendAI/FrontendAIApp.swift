@@ -99,7 +99,10 @@ private enum StoreBootstrap {
         let storeURL = modelConfiguration.url
 
         do {
+            try StoreFileProtectionManager.protectStoreDirectory(for: storeURL)
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            try StoreFileProtectionManager.protectStoreFiles(for: storeURL)
+            try? StoreFileProtectionManager.protectExistingStoreBackups(near: storeURL)
             return .ready(container, recoveryNotice: nil)
         } catch {
             print("SwiftData store open failed. Creating backup before recovery: \(error)")
@@ -117,7 +120,10 @@ private enum StoreBootstrap {
             }
 
             do {
+                try StoreFileProtectionManager.protectStoreDirectory(for: storeURL)
                 let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+                try StoreFileProtectionManager.protectStoreFiles(for: storeURL)
+                try? StoreFileProtectionManager.protectExistingStoreBackups(near: storeURL)
                 let notice = StoreRecoveryNotice(
                     backupDirectory: backupDirectory,
                     originalErrorDescription: error.localizedDescription
@@ -164,23 +170,28 @@ enum StoreBackupManager {
         ]
     }
 
-    static func backupStoreFiles(at storeURL: URL, date: Date = Date()) throws -> URL {
-        let fileManager = FileManager.default
-        let backupsRoot = storeURL
+    static func backupsRootURL(for storeURL: URL) -> URL {
+        storeURL
             .deletingLastPathComponent()
             .appendingPathComponent("StoreBackups", isDirectory: true)
+    }
 
-        try fileManager.createDirectory(at: backupsRoot, withIntermediateDirectories: true)
+    static func backupStoreFiles(at storeURL: URL, date: Date = Date()) throws -> URL {
+        let fileManager = FileManager.default
+        let backupsRoot = backupsRootURL(for: storeURL)
+
+        try StoreFileProtectionManager.protectDirectory(backupsRoot, excludeFromDeviceBackup: true)
 
         let backupDirectory = backupsRoot.appendingPathComponent(
             "FrontendAI-\(backupTimestamp(for: date))-\(String(UUID().uuidString.prefix(8)))",
             isDirectory: true
         )
-        try fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+        try StoreFileProtectionManager.protectDirectory(backupDirectory, excludeFromDeviceBackup: true)
 
         for sourceURL in storeFileURLs(for: storeURL) where fileManager.fileExists(atPath: sourceURL.path) {
             let destinationURL = backupDirectory.appendingPathComponent(sourceURL.lastPathComponent)
             try fileManager.moveItem(at: sourceURL, to: destinationURL)
+            try StoreFileProtectionManager.protectItem(destinationURL)
         }
 
         return backupDirectory
@@ -192,6 +203,117 @@ enum StoreBackupManager {
         return formatter
             .string(from: date)
             .replacingOccurrences(of: ":", with: "-")
+    }
+}
+
+enum StoreFileProtectionManager {
+    private static let protectionType = FileProtectionType.complete
+
+    static func protectStoreDirectory(for storeURL: URL) throws {
+        try protectDirectory(storeURL.deletingLastPathComponent(), excludeFromDeviceBackup: false)
+    }
+
+    static func protectStoreFiles(for storeURL: URL) throws {
+        try protectStoreDirectory(for: storeURL)
+
+        let fileManager = FileManager.default
+        for fileURL in StoreBackupManager.storeFileURLs(for: storeURL)
+        where fileManager.fileExists(atPath: fileURL.path) {
+            try protectItem(fileURL)
+        }
+    }
+
+    static func protectExistingStoreBackups(near storeURL: URL) throws {
+        let backupsRoot = StoreBackupManager.backupsRootURL(for: storeURL)
+        guard FileManager.default.fileExists(atPath: backupsRoot.path) else {
+            return
+        }
+
+        try protectDirectory(backupsRoot, excludeFromDeviceBackup: true)
+        try protectContentsRecursively(at: backupsRoot)
+    }
+
+    static func protectDirectory(_ directoryURL: URL, excludeFromDeviceBackup: Bool) throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true,
+            attributes: [.protectionKey: protectionType]
+        )
+        try protectItem(directoryURL)
+
+        if excludeFromDeviceBackup {
+            var mutableURL = directoryURL
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            try mutableURL.setResourceValues(resourceValues)
+        }
+    }
+
+    static func protectContentsRecursively(at rootURL: URL) throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: rootURL.path) else {
+            return
+        }
+
+        try protectItem(rootURL)
+
+        guard let enumerator = fileManager.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [],
+            errorHandler: { _, _ in true }
+        ) else {
+            return
+        }
+
+        for case let itemURL as URL in enumerator {
+            try protectItem(itemURL)
+        }
+    }
+
+    static func protectItem(_ itemURL: URL) throws {
+        try FileManager.default.setAttributes(
+            [.protectionKey: protectionType],
+            ofItemAtPath: itemURL.path
+        )
+    }
+
+    static func isProtected(_ itemURL: URL) -> Bool {
+        if let resourceValues = try? itemURL.resourceValues(forKeys: [.fileProtectionKey]),
+           let protection = resourceValues.fileProtection {
+            return protection == .complete
+        }
+
+        if let attributes = try? FileManager.default.attributesOfItem(atPath: itemURL.path),
+           let value = attributes[.protectionKey] {
+            if let protection = value as? FileProtectionType {
+                return protection == protectionType
+            }
+
+            if let rawValue = value as? String {
+                return rawValue == protectionType.rawValue
+            }
+        }
+
+        return false
+    }
+
+    static func volumeSupportsFileProtection(at itemURL: URL) -> Bool {
+        let resourceURL: URL
+        if FileManager.default.fileExists(atPath: itemURL.path) {
+            resourceURL = itemURL
+        } else {
+            resourceURL = itemURL.deletingLastPathComponent()
+        }
+
+        guard let resourceValues = try? resourceURL.resourceValues(
+            forKeys: [.volumeSupportsFileProtectionKey]
+        ) else {
+            return true
+        }
+
+        return (resourceValues.allValues[.volumeSupportsFileProtectionKey] as? Bool) ?? true
     }
 }
 

@@ -240,6 +240,29 @@ struct FrontendAITests {
         #expect(APIRedirectPolicy.redirectedRequest(from: current, to: proposed) == nil)
     }
 
+    @Test func storeProtectionAppliesCompleteProtectionToDirectoryAndFiles() throws {
+        let fileManager = FileManager.default
+        let rootURL = fileManager.temporaryDirectory
+            .appendingPathComponent("FrontendAITests-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? fileManager.removeItem(at: rootURL)
+        }
+
+        let storeURL = rootURL.appendingPathComponent("FrontendAI.store")
+        let sourceURLs = StoreBackupManager.storeFileURLs(for: storeURL)
+        try fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        for sourceURL in sourceURLs {
+            try Data("test".utf8).write(to: sourceURL)
+        }
+
+        try StoreFileProtectionManager.protectStoreFiles(for: storeURL)
+
+        expectProtectedWhenSupported(rootURL)
+        for sourceURL in sourceURLs {
+            expectProtectedWhenSupported(sourceURL)
+        }
+    }
+
     @Test func storeBackupMovesStoreFilesWithoutDeletingThem() throws {
         let fileManager = FileManager.default
         let rootURL = fileManager.temporaryDirectory
@@ -261,11 +284,30 @@ struct FrontendAITests {
         )
 
         #expect(fileManager.fileExists(atPath: backupURL.path))
+        expectProtectedWhenSupported(StoreBackupManager.backupsRootURL(for: storeURL))
+        expectProtectedWhenSupported(backupURL)
+        #expect(try StoreBackupManager.backupsRootURL(for: storeURL)
+            .resourceValues(forKeys: [.isExcludedFromBackupKey])
+            .isExcludedFromBackup == true)
+        #expect(try backupURL
+            .resourceValues(forKeys: [.isExcludedFromBackupKey])
+            .isExcludedFromBackup == true)
         for sourceURL in sourceURLs {
             #expect(!fileManager.fileExists(atPath: sourceURL.path))
             let movedURL = backupURL.appendingPathComponent(sourceURL.lastPathComponent)
             #expect(fileManager.fileExists(atPath: movedURL.path))
+            expectProtectedWhenSupported(movedURL)
         }
+    }
+
+    private func expectProtectedWhenSupported(_ url: URL) {
+        #if targetEnvironment(simulator)
+        _ = url
+        #else
+        if StoreFileProtectionManager.volumeSupportsFileProtection(at: url) {
+            #expect(StoreFileProtectionManager.isProtected(url))
+        }
+        #endif
     }
 
 }

@@ -31,7 +31,7 @@ struct ChatHeaderBar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button { showChatBotSheet = true } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         if let data = bot.avatarData,
                            let uiImage = UIImage(data: data) {
                             Image(uiImage: uiImage)
@@ -39,12 +39,14 @@ struct ChatHeaderBar: View {
                                 .scaledToFill()
                                 .frame(width: 32, height: 32)
                                 .clipShape(Circle())
+                                .offset(x: -5)
                         } else {
                             Image(systemName: bot.avatarSystemName)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
                                 .foregroundColor(bot.iconColor)
+                                .offset(x: -5)
                         }
                         Text(bot.name)
                             .font(.headline)

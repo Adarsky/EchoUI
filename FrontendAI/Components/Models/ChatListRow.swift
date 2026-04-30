@@ -19,11 +19,11 @@ struct ChatListRow: View {
                 HStack {
                     Text(title)
                         .font(.headline)
+                        .lineLimit(1)
                 }
-                subtitleText
+                Text(singleLineSubtitle)
                     .font(.subheadline)
                     .foregroundColor(.gray)
-                    .lineLimit(2)
             }
 
             Spacer()
@@ -41,26 +41,13 @@ struct ChatListRow: View {
             }
         }
         .padding(.vertical, 8)
+        .frame(height: 40)
     }
 
-    private var subtitleText: Text {
-        guard
-            let separatorIndex = subtitle.firstIndex(of: ":"),
-            separatorIndex != subtitle.startIndex
-        else {
-            return Text(subtitle)
-        }
-
-        let name = String(subtitle[..<separatorIndex])
-        let textStartIndex = subtitle.index(after: separatorIndex)
-        let text = String(subtitle[textStartIndex...])
-
-        var attributedSubtitle = AttributedString(name)
-        attributedSubtitle.inlinePresentationIntent = .stronglyEmphasized
-        attributedSubtitle.append(AttributedString(":"))
-        attributedSubtitle.append(AttributedString(text))
-
-        return Text(attributedSubtitle)
+    private var singleLineSubtitle: String {
+        subtitle
+            .components(separatedBy: .newlines)
+            .joined(separator: " ")
     }
 }
 
@@ -68,7 +55,7 @@ struct ChatListRow: View {
     List {
         ChatListRow(
             title: "Travel Planner",
-            subtitle: "You: Find a quiet hotel near the old town...",
+            subtitle: "You: Find a quiet hotel near the old town. Find a quiet hotel near the old town",
             date: "Apr 28",
             isPinned: false,
             avatarImage: Image(systemName: "airplane.departure")
@@ -81,7 +68,7 @@ struct ChatListRow: View {
     List {
         ChatListRow(
             title: "Swift Mentor",
-            subtitle: "Swift Mentor: Use a small persisted sort index.",
+            subtitle: "Swift Mentor: Use a small persisted sort index. Use a small persisted sort index.",
             date: "Apr 27",
             isPinned: true,
             avatarImage: Image(systemName: "swift")

@@ -55,6 +55,26 @@ struct CreateAPIServerView: View {
         isOpenRouter && OpenRouterModelCatalogService.requiresOfficialCatalogValidation(baseURL: baseURL)
     }
 
+    private var usesOfficialOpenRouterEndpoint: Bool {
+        isOpenRouter && APIType.openrouter.requiresHTTPSForOfficialOpenRouter(baseURL: baseURL)
+    }
+
+    private var shouldShowTLSSection: Bool {
+        !usesOfficialOpenRouterEndpoint
+    }
+
+    private var effectiveAllowInsecureTLS: Bool {
+        shouldShowTLSSection && allowInsecureTLS
+    }
+
+    private var effectiveCustomCACertificateData: Data? {
+        shouldShowTLSSection ? customCACertificateData : nil
+    }
+
+    private var effectiveCustomCACertificateName: String {
+        shouldShowTLSSection ? customCACertificateName : ""
+    }
+
     var body: some View {
         NavigationStack {
             formContent
@@ -65,7 +85,9 @@ struct CreateAPIServerView: View {
         Form {
             serverDetailsSection
             modelSelectionSection
-            tlsSection
+            if shouldShowTLSSection {
+                tlsSection
+            }
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -149,7 +171,7 @@ struct CreateAPIServerView: View {
     }
 
     private var serverDetailsSection: some View {
-        Section(header: Text("Server Details")) {
+        Section(header: Text("Server Details"), footer: Text("Pure HTTP is no longer supported because it is insecure. Please use a secure connection instead, for example via Caddy.")) {
             TextField("Name", text: $name)
                 .autocorrectionDisabled()
                 .onChange(of: name) { _, newValue in
@@ -329,7 +351,7 @@ struct CreateAPIServerView: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        (!allowInsecureTLS || customCACertificateData != nil)
+        (!effectiveAllowInsecureTLS || effectiveCustomCACertificateData != nil)
     }
 
     private func loadExistingServerData() {
@@ -360,6 +382,7 @@ struct CreateAPIServerView: View {
             loadedOpenRouterModelsBaseURL = nil
         }
 
+        resetTLSConfigurationIfHidden()
         loadCachedModelsForCurrentConfiguration()
     }
 
@@ -367,8 +390,16 @@ struct CreateAPIServerView: View {
         if editingServer != nil && oldValue.isEmpty {
             return
         }
+        resetTLSConfigurationIfHidden()
         resetLoadedModelsForBaseURLChange()
         loadCachedModelsForCurrentConfiguration()
+    }
+
+    private func resetTLSConfigurationIfHidden() {
+        guard !shouldShowTLSSection else { return }
+        allowInsecureTLS = false
+        customCACertificateData = nil
+        customCACertificateName = ""
     }
 
     private func openOpenRouterModelSearch() {
@@ -398,7 +429,7 @@ struct CreateAPIServerView: View {
         let normalizedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if allowInsecureTLS && customCACertificateData == nil {
+        if effectiveAllowInsecureTLS && effectiveCustomCACertificateData == nil {
             showTLSConfigurationAlert = true
             return
         }
@@ -430,9 +461,9 @@ struct CreateAPIServerView: View {
             server.availableModels = modelsToPersist
             server.type = selectedType
             server.apiKey = normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
-            server.allowInsecureTLS = allowInsecureTLS
-            server.customCACertificateData = customCACertificateData
-            server.customCACertificateName = customCACertificateName.isEmpty ? nil : customCACertificateName
+            server.allowInsecureTLS = effectiveAllowInsecureTLS
+            server.customCACertificateData = effectiveCustomCACertificateData
+            server.customCACertificateName = effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName
         } else {
             let newServer = APIServer(
                 name: normalizedName,
@@ -441,9 +472,9 @@ struct CreateAPIServerView: View {
                 availableModels: modelsToPersist,
                 type: selectedType,
                 apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey,
-                allowInsecureTLS: allowInsecureTLS,
-                customCACertificateData: customCACertificateData,
-                customCACertificateName: customCACertificateName.isEmpty ? nil : customCACertificateName
+                allowInsecureTLS: effectiveAllowInsecureTLS,
+                customCACertificateData: effectiveCustomCACertificateData,
+                customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName
             )
             modelContext.insert(newServer)
         }
@@ -509,8 +540,8 @@ struct CreateAPIServerView: View {
 
         do {
             let tlsPolicy = TLSPolicy(
-                allowInsecureTLS: allowInsecureTLS,
-                customCACertificateData: customCACertificateData
+                allowInsecureTLS: effectiveAllowInsecureTLS,
+                customCACertificateData: effectiveCustomCACertificateData
             )
             let session = TLSSessionFactory.makeSession(policy: tlsPolicy)
             let (data, _) = try await session.data(for: request)
@@ -538,8 +569,8 @@ struct CreateAPIServerView: View {
             baseURL: baseURL,
             apiKey: apiKey,
             tlsPolicy: TLSPolicy(
-                allowInsecureTLS: allowInsecureTLS,
-                customCACertificateData: customCACertificateData
+                allowInsecureTLS: effectiveAllowInsecureTLS,
+                customCACertificateData: effectiveCustomCACertificateData
             )
         )
 
