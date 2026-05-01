@@ -393,9 +393,8 @@ private func latestChatPreview(for bot: BotModel, in context: ModelContext) -> C
     let prefix = latest.message.isUser ? "You: " : "\(bot.name): "
     let content = normalizedMainPagePreviewText(from: latest.content)
     let full = prefix + content
-    let subtitle = full.count > 40 ? String(full.prefix(40)) + "…" : full
     let dateText = formattedMainPageDate(latest.date)
-    return ChatPreviewData(subtitle: subtitle, dateText: dateText)
+    return ChatPreviewData(subtitle: full, dateText: dateText)
 }
 
 private func normalizedMainPagePreviewText(from text: String) -> String {

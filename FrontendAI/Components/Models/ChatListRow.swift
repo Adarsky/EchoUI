@@ -12,7 +12,7 @@ struct ChatListRow: View {
             avatarImage
                 .resizable()
                 .scaledToFill()
-                .frame(width: 44, height: 44)
+                .frame(width: 55, height: 55)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 4) {
@@ -24,10 +24,10 @@ struct ChatListRow: View {
                 Text(singleLineSubtitle)
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                    .lineLimit(2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-            
             VStack {
                 Text(date)
                     .font(.caption)
@@ -40,13 +40,12 @@ struct ChatListRow: View {
                 }
             }
         }
-        .padding(.vertical, 8)
-        .frame(height: 40)
+        .frame(height: 70)
     }
 
     private var singleLineSubtitle: String {
         subtitle
-            .components(separatedBy: .newlines)
+            .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }
 }

@@ -27,6 +27,7 @@ enum ChatAppearanceStorageKeys {
     static let wallpaperBase64 = "chatWallpaperBase64" // legacy key for migration
     static let wallpaperBlurEnabled = "chatWallpaperBlurEnabled"
     static let wallpaperBlurRadius = "chatWallpaperBlurRadius"
+    static let messageTextFadeInEnabled = "chatMessageTextFadeInEnabled"
     static let appearanceRevision = "chatAppearanceRevision"
     static let appearancePresets = "chatAppearancePresets"
     static let botAppearancePrefix = "chatBotAppearance."
@@ -52,6 +53,7 @@ enum ChatAppearanceDefaults {
     static let wallpaperBlurRadius: Double = 8.0
     static let minWallpaperBlurRadius: Double = 0.0
     static let maxWallpaperBlurRadius: Double = 24.0
+    static let messageTextFadeInEnabled: Bool = true
 
     static func clampedWallpaperBlurRadius(_ value: Double) -> Double {
         min(max(value, minWallpaperBlurRadius), maxWallpaperBlurRadius)
@@ -121,6 +123,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
     var wallpaperPath: String
     var wallpaperBlurEnabled: Bool
     var wallpaperBlurRadius: Double
+    var messageTextFadeInEnabled: Bool
 
     static var defaultValue: ChatAppearanceSnapshot {
         ChatAppearanceSnapshot(
@@ -138,7 +141,85 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             botMessageBubbleWidthRatio: ChatAppearanceDefaults.botMessageBubbleWidthRatio,
             wallpaperPath: "",
             wallpaperBlurEnabled: ChatAppearanceDefaults.wallpaperBlurEnabled,
-            wallpaperBlurRadius: ChatAppearanceDefaults.wallpaperBlurRadius
+            wallpaperBlurRadius: ChatAppearanceDefaults.wallpaperBlurRadius,
+            messageTextFadeInEnabled: ChatAppearanceDefaults.messageTextFadeInEnabled
+        )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case userBubbleRed
+        case userBubbleGreen
+        case userBubbleBlue
+        case userBubbleOpacity
+        case userBubbleTransparent
+        case botBubbleRed
+        case botBubbleGreen
+        case botBubbleBlue
+        case botBubbleOpacity
+        case botBubbleTransparent
+        case userMessageBubbleWidthRatio
+        case botMessageBubbleWidthRatio
+        case wallpaperPath
+        case wallpaperBlurEnabled
+        case wallpaperBlurRadius
+        case messageTextFadeInEnabled
+    }
+
+    init(
+        userBubbleRed: Double,
+        userBubbleGreen: Double,
+        userBubbleBlue: Double,
+        userBubbleOpacity: Double,
+        userBubbleTransparent: Bool,
+        botBubbleRed: Double,
+        botBubbleGreen: Double,
+        botBubbleBlue: Double,
+        botBubbleOpacity: Double,
+        botBubbleTransparent: Bool,
+        userMessageBubbleWidthRatio: Double,
+        botMessageBubbleWidthRatio: Double,
+        wallpaperPath: String,
+        wallpaperBlurEnabled: Bool,
+        wallpaperBlurRadius: Double,
+        messageTextFadeInEnabled: Bool
+    ) {
+        self.userBubbleRed = userBubbleRed
+        self.userBubbleGreen = userBubbleGreen
+        self.userBubbleBlue = userBubbleBlue
+        self.userBubbleOpacity = userBubbleOpacity
+        self.userBubbleTransparent = userBubbleTransparent
+        self.botBubbleRed = botBubbleRed
+        self.botBubbleGreen = botBubbleGreen
+        self.botBubbleBlue = botBubbleBlue
+        self.botBubbleOpacity = botBubbleOpacity
+        self.botBubbleTransparent = botBubbleTransparent
+        self.userMessageBubbleWidthRatio = userMessageBubbleWidthRatio
+        self.botMessageBubbleWidthRatio = botMessageBubbleWidthRatio
+        self.wallpaperPath = wallpaperPath
+        self.wallpaperBlurEnabled = wallpaperBlurEnabled
+        self.wallpaperBlurRadius = wallpaperBlurRadius
+        self.messageTextFadeInEnabled = messageTextFadeInEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            userBubbleRed: try container.decode(Double.self, forKey: .userBubbleRed),
+            userBubbleGreen: try container.decode(Double.self, forKey: .userBubbleGreen),
+            userBubbleBlue: try container.decode(Double.self, forKey: .userBubbleBlue),
+            userBubbleOpacity: try container.decode(Double.self, forKey: .userBubbleOpacity),
+            userBubbleTransparent: try container.decode(Bool.self, forKey: .userBubbleTransparent),
+            botBubbleRed: try container.decode(Double.self, forKey: .botBubbleRed),
+            botBubbleGreen: try container.decode(Double.self, forKey: .botBubbleGreen),
+            botBubbleBlue: try container.decode(Double.self, forKey: .botBubbleBlue),
+            botBubbleOpacity: try container.decode(Double.self, forKey: .botBubbleOpacity),
+            botBubbleTransparent: try container.decode(Bool.self, forKey: .botBubbleTransparent),
+            userMessageBubbleWidthRatio: try container.decode(Double.self, forKey: .userMessageBubbleWidthRatio),
+            botMessageBubbleWidthRatio: try container.decode(Double.self, forKey: .botMessageBubbleWidthRatio),
+            wallpaperPath: try container.decode(String.self, forKey: .wallpaperPath),
+            wallpaperBlurEnabled: try container.decode(Bool.self, forKey: .wallpaperBlurEnabled),
+            wallpaperBlurRadius: try container.decode(Double.self, forKey: .wallpaperBlurRadius),
+            messageTextFadeInEnabled: try container.decodeIfPresent(Bool.self, forKey: .messageTextFadeInEnabled) ?? ChatAppearanceDefaults.messageTextFadeInEnabled
         )
     }
 
@@ -158,7 +239,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             botMessageBubbleWidthRatio: double(defaults, key: ChatAppearanceStorageKeys.botMessageBubbleWidthRatio, fallback: ChatAppearanceDefaults.botMessageBubbleWidthRatio),
             wallpaperPath: defaults.string(forKey: ChatAppearanceStorageKeys.wallpaperPath) ?? "",
             wallpaperBlurEnabled: bool(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurEnabled, fallback: ChatAppearanceDefaults.wallpaperBlurEnabled),
-            wallpaperBlurRadius: double(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurRadius, fallback: ChatAppearanceDefaults.wallpaperBlurRadius)
+            wallpaperBlurRadius: double(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurRadius, fallback: ChatAppearanceDefaults.wallpaperBlurRadius),
+            messageTextFadeInEnabled: bool(defaults, key: ChatAppearanceStorageKeys.messageTextFadeInEnabled, fallback: ChatAppearanceDefaults.messageTextFadeInEnabled)
         )
     }
 
@@ -180,6 +262,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         defaults.set(wallpaperPath, forKey: ChatAppearanceStorageKeys.wallpaperPath)
         defaults.set(wallpaperBlurEnabled, forKey: ChatAppearanceStorageKeys.wallpaperBlurEnabled)
         defaults.set(clampedWallpaperBlurRadius, forKey: ChatAppearanceStorageKeys.wallpaperBlurRadius)
+        defaults.set(messageTextFadeInEnabled, forKey: ChatAppearanceStorageKeys.messageTextFadeInEnabled)
     }
 
     var clampedUserMessageBubbleWidthRatio: Double {

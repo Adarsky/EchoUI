@@ -95,6 +95,10 @@ struct ChatAppearanceSettingsView: View {
                 )
             }
 
+            Section("Text Animation") {
+                Toggle("Fade In Message Text", isOn: boolBinding(\.messageTextFadeInEnabled))
+            }
+
             Section("Wallpaper") {
                 PhotosPicker(selection: $selectedWallpaperItem, matching: .images, photoLibrary: .shared()) {
                     Label("Choose Wallpaper", systemImage: "photo.on.rectangle")

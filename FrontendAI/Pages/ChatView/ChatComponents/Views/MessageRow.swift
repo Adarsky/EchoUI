@@ -178,7 +178,12 @@ struct MessageRow: View {
 
     @ViewBuilder
     private var messageText: some View {
-        MessageContentView(content: msg.content, isStreaming: msg.isStreaming)
+        MessageContentView(
+            content: msg.content,
+            isStreaming: msg.isStreaming,
+            fadeInEnabled: chatAppearance.messageTextFadeInEnabled,
+            textColor: bubbleTextColor(for: msg.isUser)
+        )
     }
 
     private var userConfiguredColor: Color {
@@ -254,15 +259,22 @@ struct MessageRow: View {
 private struct MessageContentView: View {
     let content: String
     let isStreaming: Bool
+    let fadeInEnabled: Bool
+    let textColor: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let segments = messageContentSegments(from: content)
+        let shouldFadeStreamingText = isStreaming && fadeInEnabled && !reduceMotion
 
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
                 switch segment {
                 case .text(let text):
-                    if isStreaming {
+                    if shouldFadeStreamingText {
+                        StreamingFadeText(text: text, textColor: textColor)
+                    } else if isStreaming {
                         Text(verbatim: text)
                     } else {
                         Text(renderedMarkdown(from: text))
@@ -278,6 +290,88 @@ private struct MessageContentView: View {
             }
         }
         .frame(maxWidth: segments.containsDivider ? .infinity : nil, alignment: .leading)
+    }
+}
+
+private struct StreamingFadeText: View {
+    let text: String
+    let textColor: Color
+
+    @State private var stableText = ""
+    @State private var fadingText = ""
+    @State private var fadeOpacity = 1.0
+    @State private var lastText = ""
+    @State private var animationGeneration = 0
+
+    private let fadeDuration: TimeInterval = 0.18
+
+    var body: some View {
+        displayText
+            .onAppear {
+                applyText(text)
+            }
+            .onChange(of: text) { _, newValue in
+                applyText(newValue)
+            }
+    }
+
+    private var displayText: Text {
+        if lastText.isEmpty && stableText.isEmpty && fadingText.isEmpty {
+            return Text(verbatim: text).foregroundColor(textColor)
+        }
+
+        return Text(verbatim: stableText).foregroundColor(textColor)
+            + Text(verbatim: fadingText).foregroundColor(textColor.opacity(fadeOpacity))
+    }
+
+    private func applyText(_ newText: String) {
+        guard newText != lastText else { return }
+
+        animationGeneration += 1
+        let generation = animationGeneration
+        let previousText = lastText
+        lastText = newText
+
+        guard !newText.isEmpty else {
+            stableText = ""
+            fadingText = ""
+            fadeOpacity = 1
+            return
+        }
+
+        let nextStableText: String
+        let nextFadingText: String
+
+        if !previousText.isEmpty, newText.hasPrefix(previousText) {
+            nextStableText = previousText
+            nextFadingText = String(newText.dropFirst(previousText.count))
+        } else {
+            nextStableText = ""
+            nextFadingText = newText
+        }
+
+        guard !nextFadingText.isEmpty else {
+            stableText = newText
+            fadingText = ""
+            fadeOpacity = 1
+            return
+        }
+
+        stableText = nextStableText
+        fadingText = nextFadingText
+        fadeOpacity = 0
+
+        withAnimation(.easeOut(duration: fadeDuration)) {
+            fadeOpacity = 1
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(fadeDuration * 1_000_000_000))
+            guard generation == animationGeneration else { return }
+            stableText = newText
+            fadingText = ""
+            fadeOpacity = 1
+        }
     }
 }
 
