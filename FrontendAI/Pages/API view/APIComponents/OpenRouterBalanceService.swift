@@ -71,8 +71,7 @@ enum OpenRouterBalanceService {
         request.httpMethod = "GET"
         request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
-        request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
-        request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
+        request.applyOpenRouterAttributionHeaders()
 
         let session = TLSSessionFactory.makeSession(policy: tlsPolicy)
         let (data, response) = try await session.data(for: request)

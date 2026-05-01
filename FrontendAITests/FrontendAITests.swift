@@ -44,6 +44,56 @@ struct FrontendAITests {
         #expect(APIType.openrouter.endpoint(baseURL: normalized, path: "credits") == "https://openrouter.ai/api/v1/credits")
     }
 
+    @Test func openRouterAttributionHeadersUseDefaultsAndPresets() {
+        let suiteName = "FrontendAITests.openRouterAttribution.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var defaultRequest = URLRequest(url: URL(string: "https://openrouter.ai/api/v1/chat/completions")!)
+        defaultRequest.applyOpenRouterAttributionHeaders(defaults: defaults)
+
+        #expect(defaultRequest.value(forHTTPHeaderField: "HTTP-Referer") == "https://echo-ui.app")
+        #expect(defaultRequest.value(forHTTPHeaderField: "X-Title") == "Echo UI")
+        #expect(defaultRequest.value(forHTTPHeaderField: "User-Agent") == "EchoUI/1.0")
+
+        let janitorPreset = OpenRouterAttributionHeaders.presets.first { $0.id == "janitor-ai" }!
+        defaults.set(janitorPreset.httpReferer, forKey: OpenRouterAttributionStorageKeys.httpReferer)
+        defaults.set(janitorPreset.xTitle, forKey: OpenRouterAttributionStorageKeys.xTitle)
+        defaults.set(janitorPreset.userAgent, forKey: OpenRouterAttributionStorageKeys.userAgent)
+
+        var presetRequest = URLRequest(url: URL(string: "https://openrouter.ai/api/v1/models")!)
+        presetRequest.applyOpenRouterAttributionHeaders(defaults: defaults)
+
+        #expect(presetRequest.value(forHTTPHeaderField: "HTTP-Referer") == "https://janitorai.com")
+        #expect(presetRequest.value(forHTTPHeaderField: "X-Title") == "Janitor AI")
+        #expect(presetRequest.value(forHTTPHeaderField: "User-Agent") == "JanitorAI/1.0")
+    }
+
+    @Test func openRouterAttributionHeadersSupportCustomValues() {
+        let suiteName = "FrontendAITests.openRouterCustomAttribution.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        defaults.set(" https://example.app\n", forKey: OpenRouterAttributionStorageKeys.httpReferer)
+        defaults.set(" My App\r\n", forKey: OpenRouterAttributionStorageKeys.xTitle)
+        defaults.set(" MyApp/2.0\n", forKey: OpenRouterAttributionStorageKeys.userAgent)
+
+        let headers = OpenRouterAttributionHeaders.current(defaults: defaults)
+
+        #expect(headers.httpReferer == "https://example.app")
+        #expect(headers.xTitle == "My App")
+        #expect(headers.userAgent == "MyApp/2.0")
+        #expect(OpenRouterAttributionHeaders.matchingPreset(
+            httpReferer: headers.httpReferer,
+            xTitle: headers.xTitle,
+            userAgent: headers.userAgent
+        ) == nil)
+    }
+
     @Test func openRouterModelListDecodesPayloadWithMetadata() throws {
         let data = Data("""
         {

@@ -41,6 +41,10 @@ class APIManager: ObservableObject {
         guard let url = URL(string: endpoint) else { return .offline }
         
         var request = URLRequest(url: url)
+
+        if server.type == .openrouter {
+            request.applyOpenRouterAttributionHeaders()
+        }
         
         if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: server.apiKey, for: url) {
             request.addValue(bearerToken, forHTTPHeaderField: "Authorization")

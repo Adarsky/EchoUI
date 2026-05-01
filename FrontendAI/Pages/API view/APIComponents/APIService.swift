@@ -157,8 +157,7 @@ actor APIService {
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
-        request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
-        request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
+        request.applyOpenRouterAttributionHeaders()
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: config.apiKey, for: url) {

@@ -327,8 +327,7 @@ enum OpenRouterModelCatalogService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.addValue("application/json", forHTTPHeaderField: "Accept")
-        request.addValue("https://echo-ui.app", forHTTPHeaderField: "HTTP-Referer")
-        request.addValue("Echo UI", forHTTPHeaderField: "X-Title")
+        request.applyOpenRouterAttributionHeaders()
 
         if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: apiKey, for: url) {
             request.addValue(bearerToken, forHTTPHeaderField: "Authorization")

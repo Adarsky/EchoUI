@@ -18,6 +18,9 @@ struct SettingsSheetView: View {
 
     @AppStorage("selectedServerUUID") private var selectedServerUUID: String = ""
     @AppStorage("openRouterBalancePingEnabled") private var openRouterBalancePingEnabled = true
+    @AppStorage(OpenRouterAttributionStorageKeys.httpReferer) private var openRouterHTTPReferer = OpenRouterAttributionHeaders.defaultReferer
+    @AppStorage(OpenRouterAttributionStorageKeys.xTitle) private var openRouterXTitle = OpenRouterAttributionHeaders.defaultTitle
+    @AppStorage(OpenRouterAttributionStorageKeys.userAgent) private var openRouterUserAgent = OpenRouterAttributionHeaders.defaultUserAgent
     @Query private var servers: [APIServer]
 
     @State private var openRouterBalanceState: OpenRouterBalanceState = .disabled
@@ -44,6 +47,9 @@ struct SettingsSheetView: View {
                     Section(header: Text("Connection configuration")) {
                         NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
                             Label("Manage API Servers", systemImage: "server.rack")
+                        }
+                        NavigationLink(destination: DeveloperSettingsView()) {
+                            Label("Developer Settings", systemImage: "hammer")
                         }
                         /*                         NavigationLink(destination: VLESSProxiesManagerView()) {
                             Label("VLESS proxy", systemImage: "hat.widebrim")
@@ -99,8 +105,21 @@ struct SettingsSheetView: View {
                             .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
                         }
                 }
-                .listStyle(.insetGrouped)
-                .frame(maxWidth: 460, alignment: .leading)
+                    /*Section(header: Text("About")) {
+                        Button {} label: {
+                            HStack {
+                                Image(systemName: "text.word.spacing")
+                                Text("Github code")
+                            }
+                        }
+                        Button {} label: {
+                            HStack {
+                                Image(systemName: "bitcoinsign.ring")
+                                Text("Donate")
+                            }
+                        }
+                        
+                    }*/
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .navigationTitle(navName)
@@ -140,7 +159,10 @@ struct SettingsSheetView: View {
         return [
             server.uuid.uuidString,
             server.baseURL,
-            server.apiKey ?? ""
+            server.apiKey ?? "",
+            openRouterHTTPReferer,
+            openRouterXTitle,
+            openRouterUserAgent
         ].joined(separator: "|")
     }
 
