@@ -1,0 +1,309 @@
+import SwiftUI
+import SwiftData
+import UIKit
+
+// MARK: - Chat Message Model
+final class ChatMessageModel: ObservableObject, Identifiable {
+    private struct ThinkingParserState {
+        enum Mode {
+            case undecided
+            case normal
+            case inThinking
+            case afterThinking
+        }
+
+        struct ParsedChunk {
+            var displayContent = ""
+            var thinkingContent = ""
+        }
+
+        private static let openTag = "<think>"
+        private static let closeTag = "</think>"
+
+        var mode: Mode = .undecided
+        var pending: String = ""
+        var hasLeadingThink: Bool = false
+
+        mutating func consume(_ chunk: String) -> ParsedChunk {
+            guard !chunk.isEmpty else { return ParsedChunk() }
+
+            var parsed = ParsedChunk()
+            switch mode {
+            case .undecided:
+                pending.append(chunk)
+                resolveUndecidedMode(into: &parsed)
+            case .normal, .afterThinking:
+                parsed.displayContent.append(chunk)
+            case .inThinking:
+                consumeThinkingChunk(chunk, into: &parsed)
+            }
+            return parsed
+        }
+
+        mutating func resolveUndecidedMode(into parsed: inout ParsedChunk) {
+            guard !pending.isEmpty else { return }
+
+            if Self.openTag.hasPrefix(pending), pending.count < Self.openTag.count {
+                return
+            }
+
+            if pending.hasPrefix(Self.openTag) {
+                hasLeadingThink = true
+                mode = .inThinking
+
+                let remainder = String(pending.dropFirst(Self.openTag.count))
+                pending.removeAll(keepingCapacity: true)
+
+                if !remainder.isEmpty {
+                    consumeThinkingChunk(remainder, into: &parsed)
+                }
+                return
+            }
+
+            mode = .normal
+            parsed.displayContent.append(pending)
+            pending.removeAll(keepingCapacity: true)
+        }
+
+        mutating func consumeThinkingChunk(_ chunk: String, into parsed: inout ParsedChunk) {
+            let incoming = pending + chunk
+            pending.removeAll(keepingCapacity: true)
+
+            if let closeRange = incoming.range(of: Self.closeTag) {
+                parsed.thinkingContent.append(contentsOf: incoming[..<closeRange.lowerBound])
+                mode = .afterThinking
+
+                let remainder = incoming[closeRange.upperBound...]
+                if !remainder.isEmpty {
+                    parsed.displayContent.append(contentsOf: remainder)
+                }
+                return
+            }
+
+            let overlap = Self.longestClosingTagOverlap(incoming)
+            if overlap > 0 {
+                let safeEnd = incoming.index(incoming.endIndex, offsetBy: -overlap)
+                parsed.thinkingContent.append(contentsOf: incoming[..<safeEnd])
+                pending = String(incoming[safeEnd...])
+            } else {
+                parsed.thinkingContent.append(incoming)
+            }
+        }
+
+        static func parsed(from raw: String) -> (state: ThinkingParserState, chunk: ParsedChunk) {
+            var state = ThinkingParserState()
+            let parsed = state.consume(raw)
+            return (state, parsed)
+        }
+
+        private static func longestClosingTagOverlap(_ text: String) -> Int {
+            let maxLength = min(closeTag.count - 1, text.count)
+            guard maxLength > 0 else { return 0 }
+
+            for length in stride(from: maxLength, through: 1, by: -1) {
+                let suffix = text.suffix(length)
+                if closeTag.hasPrefix(String(suffix)) {
+                    return length
+                }
+            }
+            return 0
+        }
+    }
+
+    private struct VariantStorage {
+        var rawContent: String
+        var displayContent: String
+        var thinkingContent: String
+        var hasLeadingThink: Bool
+        var parserState: ThinkingParserState
+        var thinkingStartedAt: Date?
+        var thinkingClosedAt: Date?
+
+        init(rawContent: String) {
+            let parsed = ThinkingParserState.parsed(from: rawContent)
+            self.rawContent = rawContent
+            self.displayContent = parsed.chunk.displayContent
+            self.thinkingContent = parsed.chunk.thinkingContent
+            self.hasLeadingThink = parsed.state.hasLeadingThink
+            self.parserState = parsed.state
+            self.thinkingStartedAt = nil
+            self.thinkingClosedAt = nil
+        }
+
+        mutating func appendChunk(_ chunk: String) {
+            let now = Date()
+
+            rawContent.append(chunk)
+            let parsed = parserState.consume(chunk)
+
+            if parserState.hasLeadingThink && thinkingStartedAt == nil {
+                thinkingStartedAt = now
+            }
+            if parserState.mode == .afterThinking && thinkingClosedAt == nil {
+                thinkingClosedAt = now
+            }
+
+            displayContent.append(parsed.displayContent)
+            thinkingContent.append(parsed.thinkingContent)
+            hasLeadingThink = parserState.hasLeadingThink
+        }
+
+        var thinkingStatusText: String {
+            guard let duration = thinkingDurationText else { return "thinking" }
+            return "thought for \(duration)"
+        }
+
+        var thinkingDurationText: String? {
+            guard hasLeadingThink else { return nil }
+            guard let started = thinkingStartedAt, let ended = thinkingClosedAt else { return nil }
+
+            let totalSeconds = max(0, Int(ended.timeIntervalSince(started).rounded(.down)))
+            if totalSeconds < 60 {
+                return "\(totalSeconds) \(pluralized(totalSeconds, singular: "second"))"
+            }
+
+            let minutes = totalSeconds / 60
+            let seconds = totalSeconds % 60
+            if seconds > 0 {
+                return "\(minutes) \(pluralized(minutes, singular: "minute")) and \(seconds) \(pluralized(seconds, singular: "second"))"
+            }
+
+            return "\(minutes) \(pluralized(minutes, singular: "minute"))"
+        }
+
+        private func pluralized(_ value: Int, singular: String) -> String {
+            value == 1 ? singular : "\(singular)s"
+        }
+
+        mutating func finalizeThinkingIfNeeded(at date: Date) {
+            guard hasLeadingThink else { return }
+            guard thinkingClosedAt == nil else { return }
+            if thinkingStartedAt == nil {
+                thinkingStartedAt = date
+            }
+            thinkingClosedAt = date
+        }
+
+        var isThinkingInProgress: Bool {
+            hasLeadingThink && thinkingClosedAt == nil
+        }
+    }
+
+    let id: UUID
+    let isUser: Bool
+    var timestamp: Date
+
+    @Published private var variants: [VariantStorage]
+    @Published var currentIndex: Int = 0
+    @Published var isStreaming: Bool = false
+
+    var content: String {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.displayContent ?? "" }
+        return variants[currentIndex].displayContent
+    }
+
+    var thinkingContent: String {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingContent ?? "" }
+        return variants[currentIndex].thinkingContent
+    }
+
+    var hasThinkingContent: Bool {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.hasLeadingThink ?? false }
+        return variants[currentIndex].hasLeadingThink
+    }
+
+    var thinkingStatusText: String {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingStatusText ?? "thinking" }
+        return variants[currentIndex].thinkingStatusText
+    }
+
+    var thinkingDurationText: String? {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.thinkingDurationText }
+        return variants[currentIndex].thinkingDurationText
+    }
+
+    var isThinkingInProgress: Bool {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.isThinkingInProgress ?? false }
+        return variants[currentIndex].isThinkingInProgress
+    }
+
+    var allVariants: [String] { variants.map(\.displayContent) }
+    var hasMultipleVariants: Bool { variants.count > 1 }
+
+    init(
+        id: UUID = UUID(),
+        content: String,
+        isUser: Bool,
+        timestamp: Date = Date(),
+        variants: [String]? = nil,
+        currentIndex: Int = 0
+    ) {
+        let initialVariantTexts = (variants?.isEmpty == false ? variants : [content]) ?? [content]
+        let clampedIndex = max(0, min(currentIndex, initialVariantTexts.count - 1))
+
+        self.id = id
+        self.isUser = isUser
+        self.timestamp = timestamp
+        self.variants = initialVariantTexts.map { VariantStorage(rawContent: $0) }
+        self.currentIndex = clampedIndex
+    }
+
+    @MainActor
+    func appendChunk(_ chunk: String, to variant: Int) {
+        guard variants.indices.contains(variant) else { return }
+        variants[variant].appendChunk(chunk)
+    }
+
+    @MainActor
+    func addNewVariant() {
+        variants.append(VariantStorage(rawContent: ""))
+        currentIndex = variants.count - 1
+    }
+
+    @MainActor
+    func switchVariant(offset: Int) {
+        guard !variants.isEmpty else { return }
+        currentIndex = (currentIndex + offset + variants.count) % variants.count
+    }
+    
+    @MainActor
+    func replaceCurrentVariant(with text: String) {
+        guard variants.indices.contains(currentIndex) else { return }
+        variants[currentIndex] = VariantStorage(rawContent: text)
+    }
+
+    @MainActor
+    func finalizeThinkingNow() {
+        guard variants.indices.contains(currentIndex) else { return }
+        variants[currentIndex].finalizeThinkingIfNeeded(at: Date())
+    }
+
+    @MainActor
+    func setStreaming(_ value: Bool) {
+        guard isStreaming != value else { return }
+        isStreaming = value
+    }
+
+    @MainActor
+    func touchTimestamp(_ value: Date = Date()) {
+        timestamp = value
+    }
+
+    @MainActor
+    func persistableVariantsForLastMessage() -> ([String], Int)? {
+        guard hasMultipleVariants else { return nil }
+        let safeIndex = max(0, min(currentIndex, variants.count - 1))
+        return (variants.map(\.displayContent), safeIndex)
+    }
+
+    @MainActor
+    func keepOnlyCurrentVariant() {
+        guard !variants.isEmpty else { return }
+
+        let safeIndex = max(0, min(currentIndex, variants.count - 1))
+        let currentVariant = variants[safeIndex]
+        variants = [currentVariant]
+        currentIndex = 0
+    }
+
+}

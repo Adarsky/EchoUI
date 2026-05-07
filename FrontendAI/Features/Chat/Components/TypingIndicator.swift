@@ -1,0 +1,19 @@
+import SwiftUI
+
+struct TypingIndicator: View {
+    @State private var scale: CGFloat = 0.5
+
+    var body: some View {
+        Circle()
+            .fill(Color.gray.opacity(0.6))
+            .frame(width: 12, height: 12)
+            .scaleEffect(scale)
+            .opacity(Double(scale))
+            .animation(
+                .easeInOut(duration: 0.6)
+                    .repeatForever(autoreverses: true),
+                value: scale
+            )
+            .onAppear { scale = 1.0 }
+    }
+}

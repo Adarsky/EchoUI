@@ -33,7 +33,7 @@
 		FA5E5CD62D97932200E73D8C /* Exceptions for "FrontendAI" folder in "FrontendAI" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				App/Info.plist,
 			);
 			target = FA23B2F32D92ED2000831D63 /* FrontendAI */;
 		};
@@ -420,11 +420,11 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"FrontendAI/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = FrontendAI/PreviewContent;
 				DEVELOPMENT_TEAM = 4JMQYQ3APH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FrontendAI/Info.plist;
+				INFOPLIST_FILE = FrontendAI/App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,11 +454,11 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"FrontendAI/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = FrontendAI/PreviewContent;
 				DEVELOPMENT_TEAM = 4JMQYQ3APH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = FrontendAI/Info.plist;
+				INFOPLIST_FILE = FrontendAI/App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

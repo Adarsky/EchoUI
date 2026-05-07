@@ -1,10 +1,3 @@
-//
-//  FrontendAITests.swift
-//  FrontendAITests
-//
-//  Created by macbook on 25.03.2025.
-//
-
 import Testing
 import Foundation
 @testable import FrontendAI

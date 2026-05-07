@@ -19,11 +19,23 @@ This application was written in order to transfer the character of AI and so on 
 - Almost everything that Character AI/Janitor AI have
 
 <p float="left">
-  <img src="Screenshots/scr1-17p.png" width="200" />
-  <img src="Screenshots/scr2-17p.png" width="200" />
-  <img src="Screenshots/scr4-17p.png" width="200" />
-  <img src="Screenshots/scr5.png" width="200" />
+  <img src="Documentation/Screenshots/scr1-17p.png" width="200" />
+  <img src="Documentation/Screenshots/scr2-17p.png" width="200" />
+  <img src="Documentation/Screenshots/scr4-17p.png" width="200" />
+  <img src="Documentation/Screenshots/scr5.png" width="200" />
 </p>
+
+## Project structure
+
+Source files are grouped by role:
+
+- `FrontendAI/App` contains app entry points and app configuration.
+- `FrontendAI/Core` contains shared models, managers, and environment keys.
+- `FrontendAI/Features` contains user-facing app areas, each with its own views, services, or models.
+- `FrontendAI/SharedUI` contains reusable views and sheets.
+- `FrontendAI/Resources` contains the app asset catalog.
+- `FrontendAI/PreviewContent` contains SwiftUI preview assets.
+- `Documentation/Screenshots` contains README screenshots.
 
 ## Usage:
 
