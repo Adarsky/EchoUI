@@ -35,6 +35,11 @@ struct PersonasPageView: View {
         .navigationDestination(item: $selectedPersonaForEdit) { persona in
             EditPersonaView(persona: persona)
         }
+        .overlay(alignment: .bottomTrailing) {
+            createPersonaButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
+        }
         .alert("Delete Persona", isPresented: $showDeleteAlert, presenting: personaToDelete) { persona in
             Button("Delete", role: .destructive) {
                 modelContext.delete(persona)
@@ -112,19 +117,19 @@ struct PersonasPageView: View {
         }
     }
 
- /*   private var createPersonaButton: some View {
+    private var createPersonaButton: some View {
         Button {
             showCreatePersona = true
         } label: {
             Image(systemName: "plus")
-                .foregroundColor(.black)
+                .foregroundStyle(Color(.black))
                 .font(.title2)
                 .fontWeight(.semibold)
                 .frame(width: 56, height: 56)
         }
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
         .buttonBorderShape(.circle)
-    }*/
+    }
 }
 
 private struct PersonaSheetPreviewHost: View {

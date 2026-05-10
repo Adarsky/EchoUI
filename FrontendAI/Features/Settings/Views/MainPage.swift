@@ -3,13 +3,13 @@ import Foundation
 import SwiftData
 
 struct MainPage: View {
+    @State private var showSheetSettings = false
+    @State private var showSheetPersona = false
     @State private var selectedBot: BotModel? = nil
     @State private var selectedBotForEdit: BotModel? = nil
     @State private var navigateToChat = false
     @State private var showCreatePage = false
     @State private var showAPIpage = false
-    @State private var selectedTab = 0
-    @State private var sourceTabForCreate = 0
 
 
     @State private var botToDelete: BotModel? = nil
@@ -44,11 +44,6 @@ struct MainPage: View {
         apiConnectionStatus.displayName
     }
 
-    private var apiNavigationSubtitle: String {
-        guard showMainHubAPIStatus else { return "" }
-        return "\(activeServerName) • \(apiStatusText)"
-    }
-
     private var apiStatusColor: Color {
         switch apiConnectionStatus {
         case .online:
@@ -76,38 +71,24 @@ struct MainPage: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab.init("Home", systemImage: "house", value: 0) {
-                NavigationStack {
-                    homePage
+        NavigationStack {
+            homePage
+                .overlay(alignment: .bottomTrailing) {
+                    AddButton()
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
                 }
-            }
-
-            Tab.init("Personas", systemImage: "person.fill", value: 1) {
-                NavigationStack {
-                    PersonasPageView()
-                }
-            }
-
-            Tab.init("Settings", systemImage: "gear", value: 2) {
-                NavigationStack {
-                    SettingsPageView(
-                        messageLength: $MessageLength,
-                        endpoint: $Endpoint,
-                        showAPIStatus: $showMainHubAPIStatus
-                    )
-                }
-            }
-
-            Tab.init("Create", systemImage: "plus", value: 3, role: .search) {
-                NavigationStack {
-                    createPage
-                }
-            }
         }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            guard newValue != 3 else { return }
-            sourceTabForCreate = newValue
+        .sheet(isPresented: $showSheetPersona) {
+            PersonaSheetView(isPresented: $showSheetPersona)
+        }
+        .sheet(isPresented: $showSheetSettings) {
+            SettingsSheetView(
+                isPresented: $showSheetSettings,
+                messageLength: $MessageLength,
+                endpoint: $Endpoint,
+                showAPIStatus: $showMainHubAPIStatus
+            )
         }
         .sheet(isPresented: $showAPIpage) {
             APIManagerView(selectedServer: $apiManager.selectedServer)
@@ -133,21 +114,85 @@ struct MainPage: View {
         }
     }
 
-    @ViewBuilder
-    private var createPage: some View {
-        switch sourceTabForCreate {
-        case 1:
-            CreatePersonaView {
-                selectedTab = 1
-            }
-        default:
-            CreateBotView {
-                selectedTab = 0
-            }
+    private func AddButton() -> some View {
+        Button {
+            showCreatePage = true
+        } label: {
+            Image(systemName: "plus")
+                .foregroundStyle(Color(.black))
+                .font(.title2)
+                .padding()
         }
+        .buttonBorderShape(.circle)
+        .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
     }
 
     private var homePage: some View {
+        VStack(spacing: 0) {
+            mainHeader
+            chatList
+        }
+        .navigationDestination(isPresented: $navigateToChat) {
+            if let bot = selectedBot {
+                ChatView(bot: bot.asBot())
+            }
+        }
+        .navigationDestination(item: $selectedBotForEdit) { bot in
+            EditBotView(bot: bot)
+        }
+        .navigationDestination(isPresented: $showCreatePage) {
+            CreateBotView()
+        }
+    }
+
+    private var mainHeader: some View {
+        GlassEffectContainer {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Echo UI")
+                        .font(.title)
+                        .bold()
+                    if showMainHubAPIStatus {
+                        Button {
+                            showAPIpage = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(apiStatusColor)
+                                    .frame(width: 8, height: 8)
+                                Text("\(displayedServerName) • \(apiStatusText)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    showSheetPersona = true
+                } label: {
+                    Image(systemName: "person.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.glass)
+                .glassEffectUnion(id: 1, namespace: MainPageGlassEffect)
+
+                Button {
+                    showSheetSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.glass)
+                .glassEffectUnion(id: 2, namespace: MainPageGlassEffect)
+            }
+        }
+        .padding()
+    }
+
+    private var chatList: some View {
         List {
             if bots.isEmpty {
                 Text("Tap the plus button to create a new character")
@@ -184,36 +229,6 @@ struct MainPage: View {
         } message: { bot in
             Text("Bot \(bot.name) will be destroyed.")
         }
-        .navigationTitle("Echo UI")
-        .navigationSubtitle(apiNavigationSubtitle)
- /*       .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    selectedTab = 1
-                } label: {
-                    Image(systemName: "person.fill")
-                }
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    selectedTab = 2
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                }
-            }
-        }
-        .navigationDestination(isPresented: $navigateToChat) {
-            if let bot = selectedBot {
-                ChatView(bot: bot.asBot())
-            }
-        }
-        .navigationDestination(item: $selectedBotForEdit) { bot in
-            EditBotView(bot: bot)
-        }
-        .navigationDestination(isPresented: $showCreatePage) {
-            CreateBotView()
-        }*/
     }
     
     @ViewBuilder
