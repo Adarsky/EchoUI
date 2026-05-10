@@ -9,6 +9,7 @@ struct ChatInputBar: View {
     let onSend: () -> Void
     let onStop: () -> Void
 
+    @AppStorage(ChatInputBarStorageKeys.sendButtonStyle) private var sendButtonStyleRawValue = ChatInputBarSendButtonStyle.defaultValue.rawValue
     @State private var buttonVisualState: ButtonVisualState = .idle
 
     private enum ButtonVisualState: Equatable {
@@ -79,12 +80,14 @@ struct ChatInputBar: View {
     }
 
     private var sendButton: some View {
-        Button(action: performPrimaryAction) {
+        let sendButtonStyle = ChatInputBarSendButtonStyle.value(from: sendButtonStyleRawValue)
+
+        return Button(action: performPrimaryAction) {
             Image(systemName: buttonVisualState.symbolName)
                 .font(.system(size: 27, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
                 .foregroundColor(Color(.black))
-                .frame(width: 50, height: 40)
+                .frame(width: sendButtonStyle.iconFrameWidth, height: 40)
                 .symbolEffect(
                     .breathe.pulse.byLayer,
                     options: .repeat(.continuous),
@@ -93,7 +96,7 @@ struct ChatInputBar: View {
         }
         .buttonBorderShape(.capsule)
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
-        .frame(width: 40, height: 40)
+        .frame(width: sendButtonStyle.buttonFrameWidth, height: 40)
         .padding(.trailing, 12)
     }
 

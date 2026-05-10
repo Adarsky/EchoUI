@@ -22,6 +22,7 @@ struct ServerConfig: Sendable {
     let apiKey: String?
     let allowInsecureTLS: Bool
     let customCACertificateData: Data?
+    let thinkingEffort: APIThinkingEffort
 }
 
 extension ServerConfig {
@@ -128,12 +129,15 @@ actor APIService {
             return ["role": msg.role, "content": msg.content]
         }
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": config.selectedModel,
             "messages": openRouterMessages,
             "stream": true,
             "include_reasoning": true,
             "temperature": 0.9
+        ]
+        body["reasoning"] = [
+            "effort": config.thinkingEffort.rawValue
         ]
 
         let endpoint = APIType.openrouter.endpoint(baseURL: config.baseURL, path: "chat/completions")

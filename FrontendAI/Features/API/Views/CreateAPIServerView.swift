@@ -21,6 +21,7 @@ struct CreateAPIServerView: View {
     @State private var loadedOpenRouterModelsBaseURL: String? = nil
     @State private var openRouterModelLoadMessage: String = ""
     @State private var selectedType: APIType = .openai
+    @State private var selectedThinkingEffort: APIThinkingEffort = .defaultValue
     @State private var apiKey: String = ""
     @State private var isLoadingModels: Bool = false
     @State private var isSavingServer: Bool = false
@@ -78,6 +79,9 @@ struct CreateAPIServerView: View {
         Form {
             serverDetailsSection
             modelSelectionSection
+            if isOpenRouter {
+                thinkingEffortSection
+            }
             if shouldShowTLSSection {
                 tlsSection
             }
@@ -220,6 +224,17 @@ struct CreateAPIServerView: View {
         }
     }
 
+    private var thinkingEffortSection: some View {
+        Section(header: Text("Thinking Effort"), footer: Text(thinkingEffortFooterText)) {
+            Picker("Effort", selection: $selectedThinkingEffort) {
+                ForEach(APIThinkingEffort.allCases) { effort in
+                    Text(effort.displayName).tag(effort)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
     @ViewBuilder
     private var modelSelectionFooterContent: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -336,6 +351,22 @@ struct CreateAPIServerView: View {
         OpenRouterModelCatalogService.search(openRouterModels, matching: selectedModel)
     }
 
+    private var selectedOpenRouterModel: OpenRouterModel? {
+        let normalizedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedModel.isEmpty else { return nil }
+        return openRouterModels.first { $0.id.caseInsensitiveCompare(normalizedModel) == .orderedSame }
+    }
+
+    private var thinkingEffortFooterText: String {
+        if let selectedOpenRouterModel {
+            if selectedOpenRouterModel.supportsReasoningEffort {
+                return "This OpenRouter model advertises reasoning support. Effort is sent as reasoning.effort."
+            }
+            return "OpenRouter will apply or map reasoning.effort when the selected provider supports it."
+        }
+        return "OpenRouter accepts none, low, medium, high and xhigh effort values."
+    }
+
     private var hasOpenRouterModelQuery: Bool {
         !selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -355,6 +386,7 @@ struct CreateAPIServerView: View {
         selectedModel = server.selectedModel
         availableModels = server.availableModels
         selectedType = server.type
+        selectedThinkingEffort = server.thinkingEffort
         if server.type == .openrouter {
             openRouterModels = server.availableModels.map { OpenRouterModel(id: $0) }
             loadedOpenRouterModelsBaseURL = server.availableModels.isEmpty ? nil : APIType.openrouter.normalizedBaseURL(server.baseURL)
@@ -373,6 +405,7 @@ struct CreateAPIServerView: View {
         } else {
             openRouterModels.removeAll()
             loadedOpenRouterModelsBaseURL = nil
+            selectedThinkingEffort = .defaultValue
         }
 
         resetTLSConfigurationIfHidden()
@@ -457,6 +490,7 @@ struct CreateAPIServerView: View {
             server.allowInsecureTLS = effectiveAllowInsecureTLS
             server.customCACertificateData = effectiveCustomCACertificateData
             server.customCACertificateName = effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName
+            server.thinkingEffort = selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
         } else {
             let newServer = APIServer(
                 name: normalizedName,
@@ -467,7 +501,8 @@ struct CreateAPIServerView: View {
                 apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey,
                 allowInsecureTLS: effectiveAllowInsecureTLS,
                 customCACertificateData: effectiveCustomCACertificateData,
-                customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName
+                customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName,
+                thinkingEffort: selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
             )
             modelContext.insert(newServer)
         }

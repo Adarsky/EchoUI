@@ -6,6 +6,26 @@ struct SettingsSheetView: View {
     @Binding var messageLength: Int
     @Binding var endpoint: String
     @Binding var showAPIStatus: Bool
+    var navName: String = "Settings"
+
+    var body: some View {
+        NavigationStack {
+            SettingsPageView(
+                messageLength: $messageLength,
+                endpoint: $endpoint,
+                showAPIStatus: $showAPIStatus,
+                navName: navName
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+struct SettingsPageView: View {
+    @Binding var messageLength: Int
+    @Binding var endpoint: String
+    @Binding var showAPIStatus: Bool
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var apiManager: APIManager
 
@@ -19,96 +39,90 @@ struct SettingsSheetView: View {
     @State private var openRouterBalanceState: OpenRouterBalanceState = .disabled
     var navName: String = "Settings"
 
-    @Namespace private var settingsNavNamespace
-
     var body: some View {
-        NavigationStack {
-                List {
-                    Section(header: Text("Customization")) {
-                        NavigationLink(destination: ChatAppearanceSettingsView()) {
-                            Label("Chat Appearance", systemImage: "paintpalette")
-                        }
-                        NavigationLink(destination: TokenSpeedChangeView()) {
-                            Label("Token Speed", systemImage: "hare")
-                        }
-                        NavigationLink(destination: AppIconSettingsView()) {
-                            Label("App Icon", systemImage: "app.dashed")
-                        }
-                        Toggle("Show API Status", systemImage:"network", isOn: $showAPIStatus)
-                    }
+        List {
+            Section(header: Text("Customization")) {
+                NavigationLink(destination: ChatAppearanceSettingsView()) {
+                    Label("Chat Appearance", systemImage: "paintpalette")
+                }
+                NavigationLink(destination: TokenSpeedChangeView()) {
+                    Label("Token Speed", systemImage: "hare")
+                }
+                NavigationLink(destination: AppIconSettingsView()) {
+                    Label("App Icon", systemImage: "app.dashed")
+                }
+                Toggle("Show API Status", systemImage:"network", isOn: $showAPIStatus)
+            }
 
-                    Section(header: Text("Connection configuration")) {
-                        NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
-                            Label("Manage API Servers", systemImage: "server.rack")
-                        }
-                        NavigationLink(destination: DeveloperSettingsView()) {
-                            Label("Developer Settings", systemImage: "hammer")
-                        }
-                    }
-                    Section(header: Text("Data and storage")) {
-                        NavigationLink(destination: CacheView()) {
-                            Label("Storage usage", systemImage: "chart.pie")
-                        }
-                        NavigationLink(destination: DataNetworkManagerView()) {
-                            Label("Data usage", systemImage: "chart.bar")
-                        }
-                        NavigationLink(destination: TokenUsageView()) {
-                            Label("Token usage", systemImage: "t.square")
-                        }
-                        NavigationLink(destination: StatsView()) {
-                            Label("Characters statistics", systemImage: "crown")
-                        }
-                    }
-                    Section(header: Text("Balance information")) {
-                        Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
+            Section(header: Text("Connection configuration")) {
+                NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
+                    Label("Manage API Servers", systemImage: "server.rack")
+                }
+                NavigationLink(destination: DeveloperSettingsView()) {
+                    Label("Developer Settings", systemImage: "hammer")
+                }
+            }
+            Section(header: Text("Data and storage")) {
+                NavigationLink(destination: CacheView()) {
+                    Label("Storage usage", systemImage: "chart.pie")
+                }
+                NavigationLink(destination: DataNetworkManagerView()) {
+                    Label("Data usage", systemImage: "chart.bar")
+                }
+                NavigationLink(destination: TokenUsageView()) {
+                    Label("Token usage", systemImage: "t.square")
+                }
+                NavigationLink(destination: StatsView()) {
+                    Label("Characters statistics", systemImage: "crown")
+                }
+            }
+            Section(header: Text("Balance information")) {
+                Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
 
-                        if openRouterBalancePingEnabled {
-                            Button {
-                                Task {
-                                    await refreshOpenRouterBalance()
-                                }
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "creditcard")
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("OpenRouter balance")
-                                        Text(openRouterBalanceSubtitle)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(2)
-                                    }
-                                    Spacer()
-                                    if isLoadingBalance {
-                                        ProgressView()
-                                    }
-                                    Text(openRouterBalanceValue)
-                                        .font(.subheadline.monospacedDigit())
-                                        .foregroundStyle(balanceValueColor)
-                                }
+                if openRouterBalancePingEnabled {
+                    Button {
+                        Task {
+                            await refreshOpenRouterBalance()
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "creditcard")
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("OpenRouter balance")
+                                Text(openRouterBalanceSubtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
                             }
-                            .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
+                            Spacer()
+                            if isLoadingBalance {
+                                ProgressView()
+                            }
+                            Text(openRouterBalanceValue)
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(balanceValueColor)
                         }
+                    }
+                    .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .navigationTitle(navName)
-            .navigationBarTitleDisplayMode(.inline)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .onAppear {
-                Task {
-                    await refreshOpenRouterBalance()
-                }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .navigationTitle(navName)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            Task {
+                await refreshOpenRouterBalance()
             }
-            .onChange(of: openRouterBalancePingEnabled) { _, _ in
-                Task {
-                    await refreshOpenRouterBalance()
-                }
+        }
+        .onChange(of: openRouterBalancePingEnabled) { _, _ in
+            Task {
+                await refreshOpenRouterBalance()
             }
-            .onChange(of: openRouterServerSignature) { _, _ in
-                Task {
-                    await refreshOpenRouterBalance()
-                }
+        }
+        .onChange(of: openRouterServerSignature) { _, _ in
+            Task {
+                await refreshOpenRouterBalance()
             }
         }
     }

@@ -3,6 +3,17 @@ import SwiftData
 
 struct PersonaSheetView: View {
     @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationStack {
+            PersonasPageView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+struct PersonasPageView: View {
     @Query private var personas: [PersonaModel]
 
     @Environment(\.modelContext) private var modelContext
@@ -14,49 +25,46 @@ struct PersonaSheetView: View {
     @State private var showCreatePersona = false
 
     var body: some View {
-        
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                personaList
-                HStack {
-                    Spacer()
-                    createPersonaButton
+        VStack {
+            personaList
+        }
+        .navigationTitle("Your personas")
+        .navigationDestination(isPresented: $showCreatePersona) {
+            CreatePersonaView()
+        }
+        .navigationDestination(item: $selectedPersonaForEdit) { persona in
+            EditPersonaView(persona: persona)
+        }
+        .alert("Delete Persona", isPresented: $showDeleteAlert, presenting: personaToDelete) { persona in
+            Button("Delete", role: .destructive) {
+                modelContext.delete(persona)
+                if personaManager.activePersona?.id == persona.id {
+                    personaManager.activePersona = nil
                 }
-                .padding(.horizontal, 30)
+                try? modelContext.save()
             }
-            .navigationTitle("Your personas")
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            .navigationDestination(isPresented: $showCreatePersona) {
-                CreatePersonaView()
-            }
-            .navigationDestination(item: $selectedPersonaForEdit) { persona in
-                EditPersonaView(persona: persona)
-            }
-            .alert("Delete Persona", isPresented: $showDeleteAlert, presenting: personaToDelete) { persona in
-                Button("Delete", role: .destructive) {
-                    modelContext.delete(persona)
-                    if personaManager.activePersona?.id == persona.id {
-                        personaManager.activePersona = nil
-                    }
-                    try? modelContext.save()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: { persona in
-                Text("Are you sure you want to delete \(persona.name)?")
-            }
+            Button("Cancel", role: .cancel) { }
+        } message: { persona in
+            Text("Are you sure you want to delete \(persona.name)?")
         }
     }
 
+    @ViewBuilder
     private var personaList: some View {
-        List {
-            Section() {
-                ForEach(personas) { persona in
-                    personaRow(for: persona)
+        if personas.isEmpty {
+            Text("Tap the plus button to create a new character")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        } else {
+            List {
+                Section() {
+                    ForEach(personas) { persona in
+                        personaRow(for: persona)
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
         }
-        .listStyle(.insetGrouped)
     }
 
     private func personaRow(for persona: PersonaModel) -> some View {
@@ -104,7 +112,7 @@ struct PersonaSheetView: View {
         }
     }
 
-    private var createPersonaButton: some View {
+ /*   private var createPersonaButton: some View {
         Button {
             showCreatePersona = true
         } label: {
@@ -116,7 +124,7 @@ struct PersonaSheetView: View {
         }
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
         .buttonBorderShape(.circle)
-    }
+    }*/
 }
 
 private struct PersonaSheetPreviewHost: View {

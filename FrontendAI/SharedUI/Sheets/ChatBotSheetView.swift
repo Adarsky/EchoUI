@@ -117,7 +117,7 @@ struct ChatBotSheetView: View {
         }
         .sheet(isPresented: $isShowingChatViewSettings) {
             NavigationStack {
-                ChatAppearanceSettingsView(
+                SettingsChatView(
                     botID: botID,
                     botName: bot.name,
                     chatID: chatAppearanceID
@@ -237,4 +237,5 @@ struct ChatBotSheetView: View {
         onNewChat: {},
         onViewHistory: {}
     )
+    .environmentObject(APIManager())
 }

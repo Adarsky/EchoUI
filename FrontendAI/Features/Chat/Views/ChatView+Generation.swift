@@ -28,7 +28,8 @@ extension ChatView {
                 selectedModel: server.selectedModel,
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
-                customCACertificateData: server.customCACertificateData
+                customCACertificateData: server.customCACertificateData,
+                thinkingEffort: server.thinkingEffort
             )
 
             // User picked a branch; previous alternative variants are no longer needed.
@@ -67,7 +68,8 @@ extension ChatView {
                 selectedModel: server.selectedModel,
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
-                customCACertificateData: server.customCACertificateData
+                customCACertificateData: server.customCACertificateData,
+                thinkingEffort: server.thinkingEffort
             )
             guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 

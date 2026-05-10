@@ -71,6 +71,50 @@ enum ChatStreamingDefaults {
     }
 }
 
+enum ChatInputBarStorageKeys {
+    static let sendButtonStyle = "chatInputBarSendButtonStyle"
+}
+
+enum ChatInputBarSendButtonStyle: String, CaseIterable, Identifiable {
+    case capsule
+    case circle
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .capsule:
+            return "Capsule"
+        case .circle:
+            return "Circle"
+        }
+    }
+
+    var iconFrameWidth: CGFloat {
+        switch self {
+        case .capsule:
+            return 50
+        case .circle:
+            return 40
+        }
+    }
+
+    var buttonFrameWidth: CGFloat {
+        switch self {
+        case .capsule:
+            return 40
+        case .circle:
+            return 30
+        }
+    }
+
+    static let defaultValue: ChatInputBarSendButtonStyle = .capsule
+
+    static func value(from rawValue: String) -> ChatInputBarSendButtonStyle {
+        ChatInputBarSendButtonStyle(rawValue: rawValue) ?? defaultValue
+    }
+}
+
 enum ChatAppearanceColor {
     static func makeColor(red: Double, green: Double, blue: Double, opacity: Double) -> Color {
         Color(red: clamp(red), green: clamp(green), blue: clamp(blue), opacity: clamp(opacity))

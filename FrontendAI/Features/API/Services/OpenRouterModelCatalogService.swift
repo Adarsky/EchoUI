@@ -28,19 +28,22 @@ struct OpenRouterModel: Codable, Equatable, Identifiable, Sendable {
     let description: String?
     let contextLength: Int?
     let architecture: Architecture?
+    let supportedParameters: [String]?
 
     init(
         id: String,
         name: String? = nil,
         description: String? = nil,
         contextLength: Int? = nil,
-        architecture: Architecture? = nil
+        architecture: Architecture? = nil,
+        supportedParameters: [String]? = nil
     ) {
         self.id = id
         self.name = name
         self.description = description
         self.contextLength = contextLength
         self.architecture = architecture
+        self.supportedParameters = supportedParameters
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -49,6 +52,7 @@ struct OpenRouterModel: Codable, Equatable, Identifiable, Sendable {
         case description
         case contextLength = "context_length"
         case architecture
+        case supportedParameters = "supported_parameters"
     }
 
     var normalizedDescription: String? {
@@ -80,6 +84,12 @@ struct OpenRouterModel: Codable, Equatable, Identifiable, Sendable {
 
     var companyIconAssetName: String? {
         OpenRouterModelCompanyIcon.assetName(forModelID: id, modelName: name)
+    }
+
+    var supportsReasoningEffort: Bool {
+        supportedParameters?.contains { parameter in
+            parameter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "reasoning"
+        } ?? false
     }
 }
 

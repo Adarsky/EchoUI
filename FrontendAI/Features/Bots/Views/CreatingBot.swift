@@ -4,6 +4,7 @@ import PhotosUI
 struct CreateCharacterView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
+    var onCreate: (() -> Void)?
 
     @State private var avatarImage: UIImage? = nil
     @State private var selectedItem: PhotosPickerItem? = nil
@@ -256,6 +257,7 @@ struct CreateCharacterView: View {
         modelContext.insert(newBot)
         try? modelContext.save()
         dismiss()
+        onCreate?()
     }
 
     private func formattedToday() -> String {

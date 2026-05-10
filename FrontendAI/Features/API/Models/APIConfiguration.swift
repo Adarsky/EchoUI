@@ -24,6 +24,37 @@ enum APIConnectionStatus: String, Codable, CaseIterable {
     }
 }
 
+enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
+    case none
+    case low
+    case medium
+    case high
+    case xhigh
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .none:
+            return "None"
+        case .low:
+            return "Low"
+        case .medium:
+            return "Medium"
+        case .high:
+            return "High"
+        case .xhigh:
+            return "XHigh"
+        }
+    }
+
+    static let defaultValue: APIThinkingEffort = .none
+
+    static func value(from rawValue: String) -> APIThinkingEffort {
+        APIThinkingEffort(rawValue: rawValue) ?? defaultValue
+    }
+}
+
 enum APIConnectionStatusMapper {
     static func status(forHTTPStatusCode statusCode: Int) -> APIConnectionStatus {
         (200..<300).contains(statusCode) ? .online : .warning
@@ -525,6 +556,7 @@ final class APIServer {
     var allowInsecureTLS: Bool = false
     var customCACertificateData: Data? = nil
     var customCACertificateName: String? = nil
+    var thinkingEffortRawValue: String = APIThinkingEffort.defaultValue.rawValue
     
     init(
         uuid: UUID = UUID(),
@@ -538,7 +570,8 @@ final class APIServer {
         apiKey: String? = nil,
         allowInsecureTLS: Bool = false,
         customCACertificateData: Data? = nil,
-        customCACertificateName: String? = nil
+        customCACertificateName: String? = nil,
+        thinkingEffort: APIThinkingEffort = .defaultValue
     ) {
         self.uuid = uuid
         self.name = name
@@ -554,6 +587,7 @@ final class APIServer {
         self.allowInsecureTLS = allowInsecureTLS
         self.customCACertificateData = customCACertificateData
         self.customCACertificateName = customCACertificateName
+        self.thinkingEffort = thinkingEffort
     }
 }
 
@@ -579,6 +613,15 @@ extension APIServer {
                 APIKeychainStore.deleteAPIKey(for: uuid)
             }
             legacyAPIKeyStorage = nil
+        }
+    }
+
+    var thinkingEffort: APIThinkingEffort {
+        get {
+            APIThinkingEffort.value(from: thinkingEffortRawValue)
+        }
+        set {
+            thinkingEffortRawValue = newValue.rawValue
         }
     }
 

@@ -5,6 +5,7 @@ import SwiftData
 struct CreatePersonaView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    var onCreate: (() -> Void)?
 
     @State private var name: String = ""
     @State private var prompt: String = ""
@@ -214,5 +215,6 @@ struct CreatePersonaView: View {
         modelContext.insert(persona)
         try? modelContext.save()
         dismiss()
+        onCreate?()
     }
 }

@@ -144,6 +144,12 @@ struct ServerRowView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
 
+            if server.type == .openrouter {
+                Text("Thinking: \(server.thinkingEffort.displayName)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
             if let apiKey = server.apiKey, !apiKey.isEmpty {
                 Text("API Key: ••••••••")
                     .font(.caption)

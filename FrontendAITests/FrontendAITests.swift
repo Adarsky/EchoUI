@@ -119,7 +119,8 @@ struct FrontendAITests {
                 architecture: OpenRouterModel.Architecture(
                     inputModalities: ["text"],
                     outputModalities: ["text"]
-                )
+                ),
+                supportedParameters: ["max_tokens", "temperature"]
             )
         ])
     }
