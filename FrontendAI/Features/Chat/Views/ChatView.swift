@@ -10,7 +10,7 @@ struct ChatView: View {
     let isPreviewSeeded: Bool
 
     let maxVisibleMessages = 300
-    let topMessagesInset: CGFloat = 100
+    let topMessagesInset: CGFloat = 12
     let BottomMessagesInset: CGFloat = 70
 
     @State var messages: [ChatMessageModel] = []
@@ -119,34 +119,6 @@ struct ChatView: View {
             .environment(\.chatAppearance, activeChatAppearance)
             bottomInputMaterialFade
             VStack {
-                ZStack {
-                    ChatHeaderBar(
-                        bot: bot,
-                        botID: botID,
-                        chatAppearanceID: currentChatAppearanceID,
-                        showChatBotSheet: $showChatBotSheet,
-                        isViewingHistory: $isViewingHistory,
-                        onNewChat: startNewChatTapped
-                    )
-                    .background(alignment: .top) {
-                        GeometryReader { geo in
-                            Rectangle()
-                                .fill(chatTopChromeFadeColor)
-                                .frame(height: geo.safeAreaInsets.top + 70)
-                                .mask(
-                                    LinearGradient(
-                                        gradient: Gradient(stops: [
-                                            .init(color: .black, location: 0),
-                                            .init(color: .clear, location: 1)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                                .ignoresSafeArea(edges: .top)
-                        }
-                    }
-                }
                 Spacer()
                 ChatInputBar(
                     inputText: $inputText,
@@ -163,8 +135,19 @@ struct ChatView: View {
         .environment(\.personaManager, personaManager)
         .environment(\.isGenerating, isGenerating)
         .environment(\.showCursor, true)
-        .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ChatHeaderBar(
+                    bot: bot,
+                    botID: botID,
+                    chatAppearanceID: currentChatAppearanceID,
+                    showChatBotSheet: $showChatBotSheet,
+                    isViewingHistory: $isViewingHistory,
+                    onNewChat: startNewChatTapped
+                )
+            }
+        }
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
             refreshActiveAppearance()

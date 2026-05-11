@@ -10,19 +10,9 @@ struct ChatHeaderBar: View {
     @Namespace var chatBotSheetNamespace
     let onNewChat: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
         GlassEffectContainer {
-            ZStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .frame(width: 32, height: 26)
-                }
-                .buttonStyle(.glass)
-                .glassEffectUnion(id: 1, namespace: chatBotSheetNamespace)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+            HStack {
                 Button { showChatBotSheet = true } label: {
                     HStack(spacing: 6) {
                         if let data = bot.avatarData,
@@ -48,9 +38,9 @@ struct ChatHeaderBar: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .frame(maxWidth: 400)
+                .frame(maxWidth: 280)
                 .buttonStyle(.glass)
-                .glassEffectUnion(id: 2, namespace: chatBotSheetNamespace)
+                .glassEffectUnion(id: 1, namespace: chatBotSheetNamespace)
                 .sheet(isPresented: $showChatBotSheet) {
                     ChatBotSheetView(
                         bot: bot,
@@ -67,7 +57,6 @@ struct ChatHeaderBar: View {
                     )
                 }
             }
-            .padding()
         }
     }
 }

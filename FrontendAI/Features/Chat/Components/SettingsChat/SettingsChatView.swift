@@ -61,10 +61,14 @@ struct SettingsChatView: View {
                 } label: {
                     Label("Thinking Effort", systemImage: "brain")
                 }
+                .presentationDetents([.large])
             }
         }
         .navigationTitle("Chat Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color(.systemBackground))
     }
 }
 

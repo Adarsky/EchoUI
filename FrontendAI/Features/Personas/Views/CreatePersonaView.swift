@@ -39,6 +39,7 @@ struct CreatePersonaView: View {
         .navigationTitle("New Persona")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
+        .presentationBackground(Color(.systemBackground))
         .onChange(of: selectedImageItem) { _, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),

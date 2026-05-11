@@ -55,6 +55,14 @@ struct MainPage: View {
         }
     }
 
+    private var apiNavigationSubtitle: Text {
+        var subtitle = AttributedString("● \(displayedServerName) • \(apiStatusText)")
+        if let dotRange = subtitle.range(of: "●") {
+            subtitle[dotRange].foregroundColor = apiStatusColor
+        }
+        return Text(subtitle)
+    }
+
     private var pinnedBots: [BotModel] {
         bots
             .filter { $0.isPinned }
@@ -77,6 +85,29 @@ struct MainPage: View {
                     AddButton()
                         .padding(.trailing, 20)
                         .padding(.bottom, 24)
+                }
+                .navigationTitle("Echo UI")
+                .modifier(MainPageAPISubtitleModifier(
+                    isVisible: showMainHubAPIStatus,
+                    subtitle: apiNavigationSubtitle
+                ))
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 16) {
+                            Button {
+                                showSheetPersona = true
+                            } label: {
+                                Image(systemName: "person.fill")
+                            }
+                            
+                            Button {
+                                showSheetSettings = true
+                            } label: {
+                                Image(systemName: "gearshape.fill")
+                            }
+                        }
+                        .padding(5)
+                    }
                 }
         }
         .sheet(isPresented: $showSheetPersona) {
@@ -113,7 +144,6 @@ struct MainPage: View {
             }
         }
     }
-
     private func AddButton() -> some View {
         Button {
             showCreatePage = true
@@ -129,7 +159,6 @@ struct MainPage: View {
 
     private var homePage: some View {
         VStack(spacing: 0) {
-            mainHeader
             chatList
         }
         .navigationDestination(isPresented: $navigateToChat) {
@@ -366,6 +395,20 @@ struct MainPage: View {
     private func applyPinnedOrder(_ orderedPinnedBots: [BotModel]) {
         for (index, bot) in orderedPinnedBots.enumerated() {
             bot.pinnedSortIndex = index
+        }
+    }
+}
+
+private struct MainPageAPISubtitleModifier: ViewModifier {
+    let isVisible: Bool
+    let subtitle: Text
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isVisible {
+            content.navigationSubtitle(subtitle)
+        } else {
+            content
         }
     }
 }
