@@ -1,13 +1,15 @@
 import SwiftUI
 import SwiftData
+#if os(iOS)
+import UIKit
+#endif
 
 @main
 struct FrontendAIApp: App {
 
     @StateObject private var apiManager = APIManager()
     @State private var personaManager = PersonaManager()
-
-    private let storeBootstrap = StoreBootstrap.bootstrap()
+    @State private var storeBootstrap = StoreBootstrap.bootstrap()
 
     var body: some Scene {
         WindowGroup {
@@ -22,8 +24,21 @@ struct FrontendAIApp: App {
                 .environment(personaManager)
             case let .failed(failure):
                 StoreStartupFailureView(failure: failure)
+            case .protectedDataUnavailable:
+                StoreProtectedDataUnavailableView(retry: retryStoreBootstrap)
+                    .onAppear(perform: retryStoreBootstrapIfProtectedDataIsAvailable)
+                    .retryingWhenProtectedDataBecomesAvailable(retryStoreBootstrap)
             }
         }
+    }
+
+    private func retryStoreBootstrapIfProtectedDataIsAvailable() {
+        guard StoreBootstrap.isProtectedDataAvailable else { return }
+        retryStoreBootstrap()
+    }
+
+    private func retryStoreBootstrap() {
+        storeBootstrap = StoreBootstrap.bootstrap()
     }
 }
 
@@ -91,61 +106,66 @@ private enum StoreBootstrap {
         )
         let storeURL = modelConfiguration.url
 
+        guard isProtectedDataAvailable else {
+            return .protectedDataUnavailable
+        }
+
+        let restoreNotice: StoreRecoveryNotice?
+        do {
+            restoreNotice = try StoreRecoveryManager.performPendingRestoreIfNeeded(storeURL: storeURL)
+        } catch {
+            return .failed(
+                StoreStartupFailure(
+                    title: "Could Not Restore Local Data",
+                    message: "The app could not restore the selected local data backup. No fresh store was created.\n\n\(error.localizedDescription)"
+                )
+            )
+        }
+
         do {
             try StoreFileProtectionManager.protectStoreDirectory(for: storeURL)
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             try StoreFileProtectionManager.protectStoreFiles(for: storeURL)
             try? StoreFileProtectionManager.protectExistingStoreBackups(near: storeURL)
-            return .ready(container, recoveryNotice: nil)
+            return .ready(container, recoveryNotice: restoreNotice)
         } catch {
-            print("SwiftData store open failed. Creating backup before recovery: \(error)")
-
-            let backupDirectory: URL
-            do {
-                backupDirectory = try StoreBackupManager.backupStoreFiles(at: storeURL)
-            } catch {
-                return .failed(
-                    StoreStartupFailure(
-                        title: "Could Not Back Up Local Data",
-                        message: "The app could not open the local data store and could not create a backup. No reset was performed.\n\n\(error.localizedDescription)"
-                    )
+            print("SwiftData store open failed. No automatic recovery was performed: \(error)")
+            return .failed(
+                StoreStartupFailure(
+                    title: "Could Not Open Local Data",
+                    message: "The app could not open the local data store. No reset was performed, and no store files were moved.\n\n\(error.localizedDescription)"
                 )
-            }
-
-            do {
-                try StoreFileProtectionManager.protectStoreDirectory(for: storeURL)
-                let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-                try StoreFileProtectionManager.protectStoreFiles(for: storeURL)
-                try? StoreFileProtectionManager.protectExistingStoreBackups(near: storeURL)
-                let notice = StoreRecoveryNotice(
-                    backupDirectory: backupDirectory,
-                    originalErrorDescription: error.localizedDescription
-                )
-                return .ready(container, recoveryNotice: notice)
-            } catch {
-                return .failed(
-                    StoreStartupFailure(
-                        title: "Could Not Create Local Data Store",
-                        message: "The previous store was backed up at:\n\(backupDirectory.path)\n\nA fresh store could not be created.\n\n\(error.localizedDescription)"
-                    )
-                )
-            }
+            )
         }
+    }
+
+    static var isProtectedDataAvailable: Bool {
+        #if os(iOS)
+        UIApplication.shared.isProtectedDataAvailable
+        #else
+        true
+        #endif
     }
 }
 
 private enum StoreBootstrapResult {
     case ready(ModelContainer, recoveryNotice: StoreRecoveryNotice?)
     case failed(StoreStartupFailure)
+    case protectedDataUnavailable
 }
 
 struct StoreRecoveryNotice: Identifiable {
     let id = UUID()
     let backupDirectory: URL
     let originalErrorDescription: String
+    var didRestoreBackup = false
 
     var message: String {
-        "The previous local data store could not be opened, so it was moved to a backup and a fresh store was created.\n\nBackup:\n\(backupDirectory.path)"
+        if didRestoreBackup {
+            return "The selected local data backup was restored.\n\nBackup:\n\(backupDirectory.path)"
+        }
+
+        return "The previous local data store could not be opened, so it was moved to a backup and a fresh store was created.\n\nBackup:\n\(backupDirectory.path)"
     }
 }
 
@@ -196,6 +216,187 @@ enum StoreBackupManager {
         return formatter
             .string(from: date)
             .replacingOccurrences(of: ":", with: "-")
+    }
+}
+
+enum StoreRecoveryManager {
+    private static let pendingRestoreBackupNameKey = "pendingStoreBackupRestoreName"
+
+    static func defaultStoreURL() -> URL {
+        let schema = Schema([
+            BotModel.self,
+            APIServer.self,
+            ChatHistory.self,
+            ChatMessageEntity.self,
+            PersonaModel.self
+        ])
+        return ModelConfiguration(
+            "FrontendAI",
+            schema: schema,
+            isStoredInMemoryOnly: false
+        ).url
+    }
+
+    static func recoverySnapshot() -> StoreRecoverySnapshot {
+        let storeURL = defaultStoreURL()
+        let fileManager = FileManager.default
+
+        let activeFiles = StoreBackupManager.storeFileURLs(for: storeURL)
+            .map { StoreRecoveryFileSnapshot(url: $0) }
+            .filter(\.exists)
+
+        let backupsRootURL = StoreBackupManager.backupsRootURL(for: storeURL)
+        let backupDirectories = backupDirectories(in: backupsRootURL, fileManager: fileManager)
+            .map { directoryURL in
+                StoreBackupSnapshot(
+                    url: directoryURL,
+                    files: StoreBackupManager.storeFileURLs(for: storeURL)
+                        .map { directoryURL.appendingPathComponent($0.lastPathComponent) }
+                        .map { StoreRecoveryFileSnapshot(url: $0) }
+                        .filter(\.exists)
+                )
+            }
+            .filter { !$0.files.isEmpty }
+
+        return StoreRecoverySnapshot(
+            activeFiles: activeFiles,
+            backupDirectories: backupDirectories.sorted { lhs, rhs in
+                lhs.modifiedAt > rhs.modifiedAt
+            },
+            pendingRestoreBackupName: UserDefaults.standard.string(forKey: pendingRestoreBackupNameKey)
+        )
+    }
+
+    static func scheduleRestore(_ backup: StoreBackupSnapshot) {
+        UserDefaults.standard.set(backup.url.lastPathComponent, forKey: pendingRestoreBackupNameKey)
+    }
+
+    @discardableResult
+    static func performPendingRestoreIfNeeded(storeURL: URL) throws -> StoreRecoveryNotice? {
+        guard let backupName = UserDefaults.standard.string(forKey: pendingRestoreBackupNameKey) else {
+            return nil
+        }
+
+        let fileManager = FileManager.default
+        let backupsRootURL = StoreBackupManager.backupsRootURL(for: storeURL)
+        let backupURL = backupsRootURL.appendingPathComponent(backupName, isDirectory: true)
+        guard fileManager.fileExists(atPath: backupURL.path) else {
+            UserDefaults.standard.removeObject(forKey: pendingRestoreBackupNameKey)
+            throw StoreRecoveryError.backupNotFound(backupName)
+        }
+
+        let currentBackupURL = try StoreBackupManager.backupStoreFiles(at: storeURL)
+        for storeFileURL in StoreBackupManager.storeFileURLs(for: storeURL) {
+            let sourceURL = backupURL.appendingPathComponent(storeFileURL.lastPathComponent)
+            guard fileManager.fileExists(atPath: sourceURL.path) else {
+                continue
+            }
+
+            try fileManager.copyItem(at: sourceURL, to: storeFileURL)
+            try StoreFileProtectionManager.protectItem(storeFileURL)
+        }
+
+        UserDefaults.standard.removeObject(forKey: pendingRestoreBackupNameKey)
+        return StoreRecoveryNotice(
+            backupDirectory: backupURL,
+            originalErrorDescription: "Previous active store was backed up at \(currentBackupURL.path)",
+            didRestoreBackup: true
+        )
+    }
+
+    private static func backupDirectories(in backupsRootURL: URL, fileManager: FileManager) -> [URL] {
+        guard
+            let urls = try? fileManager.contentsOfDirectory(
+                at: backupsRootURL,
+                includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            )
+        else {
+            return []
+        }
+
+        return urls.filter { url in
+            (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        }
+    }
+}
+
+struct StoreRecoverySnapshot {
+    let activeFiles: [StoreRecoveryFileSnapshot]
+    let backupDirectories: [StoreBackupSnapshot]
+    let pendingRestoreBackupName: String?
+
+    var latestBackup: StoreBackupSnapshot? {
+        backupDirectories.first
+    }
+}
+
+struct StoreBackupSnapshot: Identifiable {
+    let url: URL
+    let files: [StoreRecoveryFileSnapshot]
+
+    var id: String {
+        url.path
+    }
+
+    var name: String {
+        url.lastPathComponent
+    }
+
+    var totalByteCount: Int64 {
+        files.reduce(0) { $0 + $1.byteCount }
+    }
+
+    var modifiedAt: Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+            ?? .distantPast
+    }
+}
+
+struct StoreRecoveryFileSnapshot: Identifiable {
+    let url: URL
+
+    var id: String {
+        url.path
+    }
+
+    var name: String {
+        url.lastPathComponent
+    }
+
+    var exists: Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+
+    var byteCount: Int64 {
+        guard
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let size = attributes[.size] as? NSNumber
+        else {
+            return 0
+        }
+        return size.int64Value
+    }
+
+    var modifiedAt: Date {
+        guard
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let date = attributes[.modificationDate] as? Date
+        else {
+            return .distantPast
+        }
+        return date
+    }
+}
+
+enum StoreRecoveryError: LocalizedError {
+    case backupNotFound(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .backupNotFound(name):
+            return "The selected backup folder could not be found: \(name)"
+        }
     }
 }
 
@@ -312,6 +513,7 @@ enum StoreFileProtectionManager {
 
 private struct StoreStartupFailureView: View {
     let failure: StoreStartupFailure
+    @State private var isShowingRecovery = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -326,8 +528,61 @@ private struct StoreStartupFailureView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
+
+            Button {
+                isShowingRecovery = true
+            } label: {
+                Label("Open Recovery", systemImage: "externaldrive.badge.clock")
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .sheet(isPresented: $isShowingRecovery) {
+            NavigationStack {
+                LocalDataRecoveryView()
+            }
+        }
+    }
+}
+
+private struct StoreProtectedDataUnavailableView: View {
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 42))
+                .foregroundStyle(.orange)
+
+            Text("Unlock Required")
+                .font(.title2.weight(.semibold))
+
+            Text("Your local data is protected by iOS and is not available yet. Unlock the device, then try again.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Button("Try Again", action: retry)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func retryingWhenProtectedDataBecomesAvailable(_ retry: @escaping () -> Void) -> some View {
+        #if os(iOS)
+        self.onReceive(
+            NotificationCenter.default.publisher(
+                for: UIApplication.protectedDataDidBecomeAvailableNotification
+            )
+        ) { _ in
+            retry()
+        }
+        #else
+        self
+        #endif
     }
 }

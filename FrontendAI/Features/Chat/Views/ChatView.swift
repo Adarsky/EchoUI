@@ -11,7 +11,6 @@ struct ChatView: View {
 
     let maxVisibleMessages = 300
     let topMessagesInset: CGFloat = 12
-    let BottomMessagesInset: CGFloat = 70
 
     @State var messages: [ChatMessageModel] = []
     @State var showChatBotSheet = false
@@ -29,7 +28,8 @@ struct ChatView: View {
     @State var showMissingAPIAlert = false
     @State var openSettings = false
     @State var showPersonaPickerForNewChat = false
-    @State var didApplyInitialScrollPosition = false
+    @State var chatPersonaID: UUID?
+    @State var hasChatPersonaOverride = false
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -59,8 +59,17 @@ struct ChatView: View {
     }
 
     var currentSystemPrompt: String {
-        let personaPrompt = personaManager.activePersona?.systemPrompt ?? ""
+        let personaPrompt = currentPersona?.systemPrompt ?? ""
         return [personaPrompt, bot.subtitle].filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    var currentPersona: PersonaModel? {
+        if hasChatPersonaOverride {
+            guard let chatPersonaID else { return nil }
+            return personas.first { $0.id == chatPersonaID }
+        }
+
+        return personaManager.activePersona
     }
 
     var body: some View {
@@ -83,53 +92,9 @@ struct ChatView: View {
                 .animation(.easeInOut, value: showAlertBanner)
             }
             VStack(spacing: 0) {
-                ScrollViewReader { scrollProxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(messages) { msg in
-                                MessageRow(
-                                    msg: msg,
-                                    regenerate: regenerateMessage,
-                                    switchVariant: switchVariant,
-                                    onDelete: { id in
-                                        if let i = messages.firstIndex(where: { $0.id == id }) {
-                                            messages.remove(at: i)
-                                            saveChatHistory()
-                                        }
-                                    }
-                                )
-                                .id(msg.id)
-                            }
-                        }
-                        .padding(.top, topMessagesInset)
-                        .padding(.bottom, BottomMessagesInset)
-                        .padding(.horizontal, 15)
-                        .padding(.bottom, 15)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onAppear {
-                        scrollToLatestMessageIfNeeded(using: scrollProxy)
-                    }
-                    .onChange(of: messages.count) { _, _ in
-                        scrollToLatestMessageIfNeeded(using: scrollProxy)
-                    }
-                }
-
+                messagesScrollView
             }
             .environment(\.chatAppearance, activeChatAppearance)
-            bottomInputMaterialFade
-            VStack {
-                Spacer()
-                ChatInputBar(
-                    inputText: $inputText,
-                    isGenerating: $isGenerating,
-                    isThinking: $isThinking,
-                    placeholder: "Message \(bot.name)",
-                    onSend: sendMessage,
-                    onStop: stopGeneration
-                )
-            }
-            
         }
         .environment(\.bot, bot)
         .environment(\.personaManager, personaManager)
@@ -142,9 +107,15 @@ struct ChatView: View {
                     bot: bot,
                     botID: botID,
                     chatAppearanceID: currentChatAppearanceID,
+                    personas: personas,
+                    currentPersona: currentPersona,
+                    globalPersona: personaManager.activePersona,
+                    hasPersonaOverride: hasChatPersonaOverride,
                     showChatBotSheet: $showChatBotSheet,
                     isViewingHistory: $isViewingHistory,
-                    onNewChat: startNewChatTapped
+                    onNewChat: startNewChatTapped,
+                    onSelectPersona: setActiveChatPersona,
+                    onUseGlobalPersona: clearChatPersonaOverride
                 )
             }
         }
@@ -172,9 +143,8 @@ struct ChatView: View {
                     Section("Choose persona for new chat") {
                         ForEach(personas) { persona in
                             Button {
-                                personaManager.activePersona = persona
                                 showPersonaPickerForNewChat = false
-                                performStartNewChat()
+                                performStartNewChat(persona: persona, hasPersonaOverride: true)
                             } label: {
                                 HStack(spacing: 12) {
                                     persona.avatarImage
@@ -193,7 +163,7 @@ struct ChatView: View {
 
                                     Spacer()
 
-                                    if personaManager.activePersona?.id == persona.id {
+                                    if currentPersona?.id == persona.id {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundStyle(.blue)
                                     }

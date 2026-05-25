@@ -11,6 +11,7 @@ private struct WallpaperEditorResult {
     let image: UIImage
     let blurEnabled: Bool
     let blurRadius: Double
+    let tintOpacity: Double
 }
 
 struct ChatAppearanceSettingsView: View {
@@ -25,6 +26,7 @@ struct ChatAppearanceSettingsView: View {
     @State private var wallpaperImage: UIImage?
     @State private var isLoadingWallpaper = false
     @State private var showResetConfirmation = false
+    @State private var showPresetSavedConfirmation = false
     @State private var presets: [ChatAppearancePreset] = []
     @State private var presetName = ""
 
@@ -60,132 +62,99 @@ struct ChatAppearanceSettingsView: View {
                 }
 
                 previewCard
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
             }
 
-            Section("Message Bubbles") {
-                bubbleControls(
-                    title: "Your messages",
-                    color: userBubbleColorBinding,
-                    transparent: boolBinding(\.userBubbleTransparent)
-                )
+            Section("Style") {
+                NavigationLink {
+                    BubbleAppearanceEditor(
+                        title: "Your Messages",
+                        sampleText: previewUserMessage,
+                        isUser: true,
+                        color: userBubbleColorBinding,
+                        transparent: boolBinding(\.userBubbleTransparent),
+                        widthRatio: doubleBinding(\.userMessageBubbleWidthRatio)
+                    )
+                } label: {
+                    BubbleAppearanceSummaryRow(
+                        title: "Your messages",
+                        subtitle: bubbleSummary(
+                            transparent: appearance.userBubbleTransparent,
+                            widthRatio: appearance.clampedUserMessageBubbleWidthRatio
+                        ),
+                        color: userBubbleColorBinding.wrappedValue,
+                        isTransparent: appearance.userBubbleTransparent
+                    )
+                }
 
-                bubbleControls(
-                    title: "Bot messages",
-                    color: botBubbleColorBinding,
-                    transparent: boolBinding(\.botBubbleTransparent)
-                )
-            }
-
-            Section("Message Width") {
-                widthSlider(
-                    title: "Your messages",
-                    value: doubleBinding(\.userMessageBubbleWidthRatio),
-                    displayedValue: appearance.clampedUserMessageBubbleWidthRatio
-                )
-
-                widthSlider(
-                    title: "Bot messages",
-                    value: doubleBinding(\.botMessageBubbleWidthRatio),
-                    displayedValue: appearance.clampedBotMessageBubbleWidthRatio
-                )
-            }
-
-            Section("Text Animation") {
-                Toggle("Fade In Message Text", isOn: boolBinding(\.messageTextFadeInEnabled))
+                NavigationLink {
+                    BubbleAppearanceEditor(
+                        title: "Bot Messages",
+                        sampleText: previewBotMessage,
+                        isUser: false,
+                        color: botBubbleColorBinding,
+                        transparent: boolBinding(\.botBubbleTransparent),
+                        widthRatio: doubleBinding(\.botMessageBubbleWidthRatio)
+                    )
+                } label: {
+                    BubbleAppearanceSummaryRow(
+                        title: "Bot messages",
+                        subtitle: bubbleSummary(
+                            transparent: appearance.botBubbleTransparent,
+                            widthRatio: appearance.clampedBotMessageBubbleWidthRatio
+                        ),
+                        color: botBubbleColorBinding.wrappedValue,
+                        isTransparent: appearance.botBubbleTransparent
+                    )
+                }
             }
 
             Section("Wallpaper") {
-                PhotosPicker(selection: $selectedWallpaperItem, matching: .images, photoLibrary: .shared()) {
-                    Label("Choose Wallpaper", systemImage: "photo.on.rectangle")
-                }
-
-                if isLoadingWallpaper {
-                    HStack {
-                        ProgressView()
-                        Text("Loading photo")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if wallpaperImage != nil {
-                    Button {
-                        if let wallpaperImage {
-                            pendingWallpaperImage = WallpaperEditorDraftImage(image: wallpaperImage)
-                        }
-                    } label: {
-                        Label("Edit Wallpaper", systemImage: "slider.horizontal.3")
-                    }
-
-                    Toggle("Blur Wallpaper", isOn: boolBinding(\.wallpaperBlurEnabled))
-
-                    if appearance.wallpaperBlurEnabled {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Blur intensity")
-                                Spacer()
-                                Text("\(Int(appearance.clampedWallpaperBlurRadius))")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(
-                                value: doubleBinding(\.wallpaperBlurRadius),
-                                in: ChatAppearanceDefaults.minWallpaperBlurRadius...ChatAppearanceDefaults.maxWallpaperBlurRadius,
-                                step: 1
-                            )
-                        }
-                    }
-
-                    Button("Remove Wallpaper", role: .destructive) {
-                        removeWallpaper()
-                    }
-                }
+                wallpaperSectionContent
             }
 
-            Section("Presets") {
-                HStack {
-                    TextField("Preset name", text: $presetName)
-                        .textInputAutocapitalization(.words)
-
-                    Button {
-                        savePreset()
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Save preset")
+            Section("More") {
+                Button {
+                    saveCurrentStylePreset()
+                } label: {
+                    AppearanceNavigationSummaryRow(
+                        icon: "square.and.arrow.down",
+                        title: "Save Preset",
+                        subtitle: "Save current chat style",
+                        tint: .indigo
+                    )
                 }
 
-                if presets.isEmpty {
-                    Text("No saved presets")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(presets) { preset in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(preset.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(preset.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            Button {
-                                applyPreset(preset)
-                            } label: {
-                                Image(systemName: "checkmark.circle")
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel("Apply preset")
+                NavigationLink {
+                    ChatAppearancePresetListView(
+                        presets: $presets,
+                        presetName: $presetName,
+                        onSave: savePreset,
+                        onApply: applyPreset,
+                        onDelete: { preset in
+                            presets = ChatAppearancePresetStore.delete(preset)
                         }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                presets = ChatAppearancePresetStore.delete(preset)
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
+                    )
+                } label: {
+                    AppearanceNavigationSummaryRow(
+                        icon: "paintpalette",
+                        title: "Presets",
+                        subtitle: presets.isEmpty ? "None saved" : "\(presets.count) saved",
+                        tint: .purple
+                    )
+                }
+
+                NavigationLink {
+                    ChatAppearanceAdvancedView(
+                        fadeInEnabled: boolBinding(\.messageTextFadeInEnabled)
+                    )
+                } label: {
+                    AppearanceNavigationSummaryRow(
+                        icon: "textformat",
+                        title: "Message Text",
+                        subtitle: appearance.messageTextFadeInEnabled ? "Fade-in enabled" : "Fade-in off",
+                        tint: .blue
+                    )
                 }
             }
         }
@@ -206,11 +175,17 @@ struct ChatAppearanceSettingsView: View {
         } message: {
             Text(resetConfirmationMessage)
         }
+        .alert("Preset Saved", isPresented: $showPresetSavedConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Current chat style was saved to presets.")
+        }
         .sheet(item: $pendingWallpaperImage) { draft in
             WallpaperImageEditorView(
                 image: draft.image,
                 initialBlurEnabled: appearance.wallpaperBlurEnabled,
                 initialBlurRadius: appearance.wallpaperBlurRadius,
+                initialTintOpacity: appearance.wallpaperTintOpacity,
                 onCancel: {
                     pendingWallpaperImage = nil
                 },
@@ -272,7 +247,7 @@ struct ChatAppearanceSettingsView: View {
                     .blur(radius: appearance.wallpaperBlurEnabled ? CGFloat(appearance.clampedWallpaperBlurRadius) : 0)
                     .clipped()
                     .overlay(
-                        Color.black.opacity(0.12)
+                        Color.black.opacity(appearance.clampedWallpaperTintOpacity)
                             .frame(width: geo.size.width, height: geo.size.height)
                     )
             } else {
@@ -296,39 +271,66 @@ struct ChatAppearanceSettingsView: View {
             .background(previewBubbleBackground(isUser: isUser))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.clear, lineWidth: 1)
+                    .stroke(previewBubbleStrokeColor(isUser: isUser), lineWidth: 1)
             )
             .foregroundStyle(previewBubbleTextColor(isUser: isUser))
     }
 
-    private func bubbleControls(
-        title: String,
-        color: Binding<Color>,
-        transparent: Binding<Bool>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.subheadline.weight(.semibold))
-
-            ColorPicker("Bubble color", selection: color, supportsOpacity: true)
-            Toggle("Transparent", isOn: transparent)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func widthSlider(
-        title: String,
-        value: Binding<Double>,
-        displayedValue: Double
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text("\(Int(displayedValue * 100))%")
+    @ViewBuilder
+    private var wallpaperSectionContent: some View {
+        if isLoadingWallpaper {
+            HStack(spacing: 12) {
+                ProgressView()
+                Text("Loading photo")
                     .foregroundStyle(.secondary)
             }
-            Slider(value: value, in: 0.45...1.0, step: 0.05)
         }
+
+        if let wallpaperImage {
+            WallpaperAppearanceSummaryRow(
+                image: wallpaperImage,
+                blurEnabled: appearance.wallpaperBlurEnabled,
+                blurRadius: appearance.clampedWallpaperBlurRadius,
+                tintOpacity: appearance.clampedWallpaperTintOpacity
+            )
+            GlassEffectContainer {
+                HStack() {
+                    Button {
+                        pendingWallpaperImage = WallpaperEditorDraftImage(image: wallpaperImage)
+                    } label: {
+                        Label("Edit", systemImage: "slider.horizontal.3")
+                            .font(.system(size:13))
+                    }
+                    
+                    PhotosPicker(selection: $selectedWallpaperItem, matching: .images, photoLibrary: .shared()) {
+                        Label("Change", systemImage: "photo")
+                            .font(.system(size:13))
+                    }
+                    
+                    Button(role: .destructive) {
+                        removeWallpaper()
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                            .font(.system(size:13))
+                    }
+                }
+            }
+            .buttonStyle(.glass)
+        } else {
+            PhotosPicker(selection: $selectedWallpaperItem, matching: .images, photoLibrary: .shared()) {
+                AppearanceNavigationSummaryRow(
+                    icon: "photo.on.rectangle",
+                    title: "Choose Wallpaper",
+                    subtitle: "Optional chat background",
+                    tint: .green
+                )
+            }
+        }
+    }
+
+    private func bubbleSummary(transparent: Bool, widthRatio: Double) -> String {
+        let widthTitle = "\(Int(widthRatio * 100))% width"
+        return transparent ? "Transparent, \(widthTitle)" : widthTitle
     }
 
     private var userBubbleColorBinding: Binding<Color> {
@@ -413,6 +415,11 @@ struct ChatAppearanceSettingsView: View {
         }
     }
 
+    private func previewBubbleStrokeColor(isUser: Bool) -> Color {
+        let isTransparent = isUser ? appearance.userBubbleTransparent : appearance.botBubbleTransparent
+        return isTransparent ? Color.primary.opacity(0.12) : Color.clear
+    }
+
     private func previewBubbleTextColor(isUser: Bool) -> Color {
         let isTransparent = isUser ? appearance.userBubbleTransparent : appearance.botBubbleTransparent
         if isTransparent { return .primary }
@@ -450,6 +457,7 @@ struct ChatAppearanceSettingsView: View {
         next.userMessageBubbleWidthRatio = min(max(next.userMessageBubbleWidthRatio, 0.45), 1.0)
         next.botMessageBubbleWidthRatio = min(max(next.botMessageBubbleWidthRatio, 0.45), 1.0)
         next.wallpaperBlurRadius = next.clampedWallpaperBlurRadius
+        next.wallpaperTintOpacity = next.clampedWallpaperTintOpacity
         saveAppearance(next)
     }
 
@@ -482,6 +490,7 @@ struct ChatAppearanceSettingsView: View {
             snapshot.wallpaperPath = ""
             snapshot.wallpaperBlurEnabled = ChatAppearanceDefaults.wallpaperBlurEnabled
             snapshot.wallpaperBlurRadius = ChatAppearanceDefaults.wallpaperBlurRadius
+            snapshot.wallpaperTintOpacity = ChatAppearanceDefaults.wallpaperTintOpacity
         }
         ChatWallpaperStore.clearLegacyBase64Storage()
     }
@@ -529,6 +538,7 @@ struct ChatAppearanceSettingsView: View {
                     snapshot.wallpaperPath = savedPath
                     snapshot.wallpaperBlurEnabled = result.blurEnabled
                     snapshot.wallpaperBlurRadius = result.blurRadius
+                    snapshot.wallpaperTintOpacity = result.tintOpacity
                 }
                 wallpaperImage = result.image
             }
@@ -540,12 +550,262 @@ struct ChatAppearanceSettingsView: View {
         presetName = ""
     }
 
+    private func saveCurrentStylePreset() {
+        presets = ChatAppearancePresetStore.savePreset(named: "", appearance: appearance)
+        showPresetSavedConfirmation = true
+    }
+
     private func applyPreset(_ preset: ChatAppearancePreset) {
         var next = preset.appearance
         if let copiedWallpaperPath = ChatWallpaperStore.copyWallpaper(from: preset.appearance.wallpaperPath) {
             next.wallpaperPath = copiedWallpaperPath
         }
         saveAppearance(next)
+    }
+}
+
+private struct BubbleAppearanceSummaryRow: View {
+    let title: String
+    let subtitle: String
+    let color: Color
+    let isTransparent: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(isTransparent ? Color.clear : color)
+                Circle()
+                    .stroke(Color.primary.opacity(isTransparent ? 0.2 : 0.08), lineWidth: 1)
+                if isTransparent {
+                    Image(systemName: "circle.slash")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 32, height: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct WallpaperAppearanceSummaryRow: View {
+    let image: UIImage
+    let blurEnabled: Bool
+    let blurRadius: Double
+    let tintOpacity: Double
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 46, height: 58)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Current Wallpaper")
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var summary: String {
+        let darken = "\(Int(tintOpacity * 100))% darken"
+        if blurEnabled {
+            return "Blur \(Int(blurRadius)), \(darken)"
+        }
+        return darken
+    }
+}
+
+private struct AppearanceNavigationSummaryRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 32, height: 32)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct BubbleAppearanceEditor: View {
+    let title: String
+    let sampleText: String
+    let isUser: Bool
+    @Binding var color: Color
+    @Binding var transparent: Bool
+    @Binding var widthRatio: Double
+
+    var body: some View {
+        Form {
+            Section("Preview") {
+                HStack {
+                    if isUser { Spacer(minLength: 40) }
+                    sampleBubble
+                    if !isUser { Spacer(minLength: 40) }
+                }
+                .padding(.vertical, 8)
+            }
+
+            Section("Bubble") {
+                Toggle("Transparent", isOn: $transparent)
+
+                if !transparent {
+                    ColorPicker("Color", selection: $color, supportsOpacity: true)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Width")
+                        Spacer()
+                        Text("\(Int(widthRatio * 100))%")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
+                    Slider(value: $widthRatio, in: 0.45...1.0, step: 0.01)
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var sampleBubble: some View {
+        Text(sampleText)
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 280 * widthRatio, alignment: isUser ? .trailing : .leading)
+            .background(bubbleBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(transparent ? Color.primary.opacity(0.12) : Color.clear, lineWidth: 1)
+            )
+            .foregroundStyle(textColor)
+    }
+
+    private var bubbleBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return ZStack {
+            shape.fill(transparent ? Color.clear : color)
+            if !transparent {
+                shape.fill(.ultraThinMaterial)
+            }
+        }
+    }
+
+    private var textColor: Color {
+        if transparent { return .primary }
+        return isUser ? .white : .primary
+    }
+}
+
+private struct ChatAppearancePresetListView: View {
+    @Binding var presets: [ChatAppearancePreset]
+    @Binding var presetName: String
+    let onSave: () -> Void
+    let onApply: (ChatAppearancePreset) -> Void
+    let onDelete: (ChatAppearancePreset) -> Void
+
+    var body: some View {
+        Form {
+            Section("Save Current Style") {
+                HStack {
+                    TextField("Preset name", text: $presetName)
+                        .textInputAutocapitalization(.words)
+
+                    Button {
+                        onSave()
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("Save preset")
+                }
+            }
+
+            Section("Saved Presets") {
+                if presets.isEmpty {
+                    Text("No saved presets")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(presets) { preset in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(preset.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(preset.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Button {
+                                onApply(preset)
+                            } label: {
+                                Image(systemName: "checkmark.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Apply preset")
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                onDelete(preset)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Presets")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct ChatAppearanceAdvancedView: View {
+    @Binding var fadeInEnabled: Bool
+
+    var body: some View {
+        Form {
+            Section("Message Text") {
+                Toggle("Fade In While Streaming", isOn: $fadeInEnabled)
+            }
+        }
+        .navigationTitle("Message Text")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -565,17 +825,20 @@ private struct WallpaperImageEditorView: View {
     @State private var canvasSize: CGSize = .zero
     @State private var blurEnabled: Bool
     @State private var blurRadius: Double
+    @State private var tintOpacity: Double
 
     init(
         image: UIImage,
         initialBlurEnabled: Bool,
         initialBlurRadius: Double,
+        initialTintOpacity: Double,
         onCancel: @escaping () -> Void,
         onApply: @escaping (WallpaperEditorResult) -> Void
     ) {
         _workingImage = State(initialValue: image.normalizedForWallpaperEditing())
         _blurEnabled = State(initialValue: initialBlurEnabled)
         _blurRadius = State(initialValue: initialBlurRadius)
+        _tintOpacity = State(initialValue: ChatAppearanceDefaults.clampedWallpaperTintOpacity(initialTintOpacity))
         self.onCancel = onCancel
         self.onApply = onApply
     }
@@ -609,7 +872,8 @@ private struct WallpaperImageEditorView: View {
                             WallpaperEditorResult(
                                 image: renderWallpaper(),
                                 blurEnabled: blurEnabled,
-                                blurRadius: ChatAppearanceDefaults.clampedWallpaperBlurRadius(blurRadius)
+                                blurRadius: ChatAppearanceDefaults.clampedWallpaperBlurRadius(blurRadius),
+                                tintOpacity: ChatAppearanceDefaults.clampedWallpaperTintOpacity(tintOpacity)
                             )
                         )
                     }
@@ -635,6 +899,9 @@ private struct WallpaperImageEditorView: View {
                     .scaleEffect(zoomScale, anchor: .center)
                     .offset(offset)
                     .blur(radius: blurEnabled ? CGFloat(ChatAppearanceDefaults.clampedWallpaperBlurRadius(blurRadius)) : 0)
+
+                Color.black
+                    .opacity(ChatAppearanceDefaults.clampedWallpaperTintOpacity(tintOpacity))
 
                 cropGuidesOverlay(size: size)
                     .frame(width: size.width, height: size.height)
@@ -681,6 +948,18 @@ private struct WallpaperImageEditorView: View {
                     step: 1
                 )
             }
+
+            HStack {
+                Text("Darken wallpaper")
+                Spacer()
+                Text("\(Int(ChatAppearanceDefaults.clampedWallpaperTintOpacity(tintOpacity) * 100))%")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(
+                value: $tintOpacity,
+                in: ChatAppearanceDefaults.minWallpaperTintOpacity...ChatAppearanceDefaults.maxWallpaperTintOpacity,
+                step: 0.01
+            )
         }
         .padding(.horizontal, 6)
     }
@@ -871,6 +1150,7 @@ private struct WallpaperImageEditorView: View {
         committedOffset = .zero
         blurEnabled = false
         blurRadius = ChatAppearanceDefaults.wallpaperBlurRadius
+        tintOpacity = ChatAppearanceDefaults.wallpaperTintOpacity
     }
 
     private func orientedBaseSize(from baseSize: CGSize) -> CGSize {

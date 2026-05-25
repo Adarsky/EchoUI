@@ -12,6 +12,7 @@ struct CreatePersonaView: View {
     @State private var avatarData: Data? = nil
     @State private var selectedImageItem: PhotosPickerItem? = nil
     @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
+    @State private var isPromptEditorExpanded = false
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -116,7 +117,8 @@ struct CreatePersonaView: View {
             icon: "bubble.left.and.exclamationmark.bubble.right",
             placeholder: "Describe tone, behavior and response boundaries...",
             text: $prompt,
-            field: .prompt
+            field: .prompt,
+            isExpanded: $isPromptEditorExpanded
         )
     }
 
@@ -125,11 +127,25 @@ struct CreatePersonaView: View {
         icon: String,
         placeholder: String,
         text: Binding<String>,
-        field: Field
+        field: Field,
+        isExpanded: Binding<Bool>
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Button {
+                    isExpanded.wrappedValue = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                }
+                .accessibilityLabel("Expand \(title)")
+            }
 
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -152,6 +168,13 @@ struct CreatePersonaView: View {
         }
         .padding(16)
         .background(cardBackground)
+        .sheet(isPresented: isExpanded) {
+            ExpandedTextEditorSheet(
+                text: text,
+                title: title,
+                placeholder: placeholder
+            )
+        }
     }
 
     private var createButton: some View {

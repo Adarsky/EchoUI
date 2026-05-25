@@ -9,6 +9,8 @@ struct EditBotView: View {
 
     @State private var selectedImageItem: PhotosPickerItem? = nil
     @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
+    @State private var isGreetingEditorExpanded = false
+    @State private var isDescriptionEditorExpanded = false
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -125,7 +127,8 @@ struct EditBotView: View {
             placeholder: "How does the character start a chat?",
             text: $bot.greeting,
             field: .greeting,
-            nextField: .description
+            nextField: .description,
+            isExpanded: $isGreetingEditorExpanded
         )
     }
 
@@ -136,7 +139,8 @@ struct EditBotView: View {
             placeholder: "Describe personality, style and behavior...",
             text: $bot.subtitle,
             field: .description,
-            nextField: nil
+            nextField: nil,
+            isExpanded: $isDescriptionEditorExpanded
         )
     }
 
@@ -146,11 +150,25 @@ struct EditBotView: View {
         placeholder: String,
         text: Binding<String>,
         field: Field,
-        nextField: Field?
+        nextField: Field?,
+        isExpanded: Binding<Bool>
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Button {
+                    isExpanded.wrappedValue = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                }
+                .accessibilityLabel("Expand \(title)")
+            }
 
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -177,6 +195,13 @@ struct EditBotView: View {
         }
         .padding(16)
         .background(cardBackground)
+        .sheet(isPresented: isExpanded) {
+            ExpandedTextEditorSheet(
+                text: text,
+                title: title,
+                placeholder: placeholder
+            )
+        }
     }
 
     private var saveButton: some View {

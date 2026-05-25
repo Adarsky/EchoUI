@@ -22,6 +22,7 @@ enum ChatAppearanceStorageKeys {
     static let wallpaperBase64 = "chatWallpaperBase64" // legacy key for migration
     static let wallpaperBlurEnabled = "chatWallpaperBlurEnabled"
     static let wallpaperBlurRadius = "chatWallpaperBlurRadius"
+    static let wallpaperTintOpacity = "chatWallpaperTintOpacity"
     static let messageTextFadeInEnabled = "chatMessageTextFadeInEnabled"
     static let appearanceRevision = "chatAppearanceRevision"
     static let appearancePresets = "chatAppearancePresets"
@@ -48,10 +49,17 @@ enum ChatAppearanceDefaults {
     static let wallpaperBlurRadius: Double = 8.0
     static let minWallpaperBlurRadius: Double = 0.0
     static let maxWallpaperBlurRadius: Double = 24.0
+    static let wallpaperTintOpacity: Double = 0.14
+    static let minWallpaperTintOpacity: Double = 0.0
+    static let maxWallpaperTintOpacity: Double = 0.7
     static let messageTextFadeInEnabled: Bool = true
 
     static func clampedWallpaperBlurRadius(_ value: Double) -> Double {
         min(max(value, minWallpaperBlurRadius), maxWallpaperBlurRadius)
+    }
+
+    static func clampedWallpaperTintOpacity(_ value: Double) -> Double {
+        min(max(value, minWallpaperTintOpacity), maxWallpaperTintOpacity)
     }
 }
 
@@ -162,6 +170,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
     var wallpaperPath: String
     var wallpaperBlurEnabled: Bool
     var wallpaperBlurRadius: Double
+    var wallpaperTintOpacity: Double
     var messageTextFadeInEnabled: Bool
 
     static var defaultValue: ChatAppearanceSnapshot {
@@ -181,6 +190,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             wallpaperPath: "",
             wallpaperBlurEnabled: ChatAppearanceDefaults.wallpaperBlurEnabled,
             wallpaperBlurRadius: ChatAppearanceDefaults.wallpaperBlurRadius,
+            wallpaperTintOpacity: ChatAppearanceDefaults.wallpaperTintOpacity,
             messageTextFadeInEnabled: ChatAppearanceDefaults.messageTextFadeInEnabled
         )
     }
@@ -201,6 +211,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         case wallpaperPath
         case wallpaperBlurEnabled
         case wallpaperBlurRadius
+        case wallpaperTintOpacity
         case messageTextFadeInEnabled
     }
 
@@ -220,6 +231,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         wallpaperPath: String,
         wallpaperBlurEnabled: Bool,
         wallpaperBlurRadius: Double,
+        wallpaperTintOpacity: Double,
         messageTextFadeInEnabled: Bool
     ) {
         self.userBubbleRed = userBubbleRed
@@ -237,6 +249,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         self.wallpaperPath = wallpaperPath
         self.wallpaperBlurEnabled = wallpaperBlurEnabled
         self.wallpaperBlurRadius = wallpaperBlurRadius
+        self.wallpaperTintOpacity = wallpaperTintOpacity
         self.messageTextFadeInEnabled = messageTextFadeInEnabled
     }
 
@@ -258,6 +271,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             wallpaperPath: try container.decode(String.self, forKey: .wallpaperPath),
             wallpaperBlurEnabled: try container.decode(Bool.self, forKey: .wallpaperBlurEnabled),
             wallpaperBlurRadius: try container.decode(Double.self, forKey: .wallpaperBlurRadius),
+            wallpaperTintOpacity: try container.decodeIfPresent(Double.self, forKey: .wallpaperTintOpacity) ?? ChatAppearanceDefaults.wallpaperTintOpacity,
             messageTextFadeInEnabled: try container.decodeIfPresent(Bool.self, forKey: .messageTextFadeInEnabled) ?? ChatAppearanceDefaults.messageTextFadeInEnabled
         )
     }
@@ -279,6 +293,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             wallpaperPath: defaults.string(forKey: ChatAppearanceStorageKeys.wallpaperPath) ?? "",
             wallpaperBlurEnabled: bool(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurEnabled, fallback: ChatAppearanceDefaults.wallpaperBlurEnabled),
             wallpaperBlurRadius: double(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurRadius, fallback: ChatAppearanceDefaults.wallpaperBlurRadius),
+            wallpaperTintOpacity: double(defaults, key: ChatAppearanceStorageKeys.wallpaperTintOpacity, fallback: ChatAppearanceDefaults.wallpaperTintOpacity),
             messageTextFadeInEnabled: bool(defaults, key: ChatAppearanceStorageKeys.messageTextFadeInEnabled, fallback: ChatAppearanceDefaults.messageTextFadeInEnabled)
         )
     }
@@ -301,6 +316,7 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         defaults.set(wallpaperPath, forKey: ChatAppearanceStorageKeys.wallpaperPath)
         defaults.set(wallpaperBlurEnabled, forKey: ChatAppearanceStorageKeys.wallpaperBlurEnabled)
         defaults.set(clampedWallpaperBlurRadius, forKey: ChatAppearanceStorageKeys.wallpaperBlurRadius)
+        defaults.set(clampedWallpaperTintOpacity, forKey: ChatAppearanceStorageKeys.wallpaperTintOpacity)
         defaults.set(messageTextFadeInEnabled, forKey: ChatAppearanceStorageKeys.messageTextFadeInEnabled)
     }
 
@@ -314,6 +330,10 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
 
     var clampedWallpaperBlurRadius: Double {
         ChatAppearanceDefaults.clampedWallpaperBlurRadius(wallpaperBlurRadius)
+    }
+
+    var clampedWallpaperTintOpacity: Double {
+        ChatAppearanceDefaults.clampedWallpaperTintOpacity(wallpaperTintOpacity)
     }
 
     private static func double(_ defaults: UserDefaults, key: String, fallback: Double) -> Double {

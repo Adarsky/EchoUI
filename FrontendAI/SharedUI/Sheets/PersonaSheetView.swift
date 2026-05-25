@@ -3,10 +3,11 @@ import SwiftData
 
 struct PersonaSheetView: View {
     @Binding var isPresented: Bool
+    var onCreatePersona: () -> Void = { }
 
     var body: some View {
         NavigationStack {
-            PersonasPageView()
+            PersonasPageView(onCreatePersona: onCreatePersona)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -14,6 +15,8 @@ struct PersonaSheetView: View {
 }
 
 struct PersonasPageView: View {
+    var onCreatePersona: () -> Void = { }
+
     @Query private var personas: [PersonaModel]
 
     @Environment(\.modelContext) private var modelContext
@@ -22,16 +25,12 @@ struct PersonasPageView: View {
     @State private var selectedPersonaForEdit: PersonaModel?
     @State private var personaToDelete: PersonaModel?
     @State private var showDeleteAlert = false
-    @State private var showCreatePersona = false
 
     var body: some View {
         VStack {
             personaList
         }
         .navigationTitle("Your personas")
-        .navigationDestination(isPresented: $showCreatePersona) {
-            CreatePersonaView()
-        }
         .navigationDestination(item: $selectedPersonaForEdit) { persona in
             EditPersonaView(persona: persona)
         }
@@ -119,7 +118,7 @@ struct PersonasPageView: View {
 
     private var createPersonaButton: some View {
         Button {
-            showCreatePersona = true
+            onCreatePersona()
         } label: {
             Image(systemName: "plus")
                 .foregroundStyle(Color(.black))

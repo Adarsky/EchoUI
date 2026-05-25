@@ -29,7 +29,7 @@ extension ChatView {
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
                 customCACertificateData: server.customCACertificateData,
-                thinkingEffort: server.thinkingEffort
+                thinkingEffort: ChatThinkingEffortStore.resolvedEffort(botID: botID, server: server)
             )
 
             // User picked a branch; previous alternative variants are no longer needed.
@@ -69,7 +69,7 @@ extension ChatView {
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
                 customCACertificateData: server.customCACertificateData,
-                thinkingEffort: server.thinkingEffort
+                thinkingEffort: ChatThinkingEffortStore.resolvedEffort(botID: botID, server: server)
             )
             guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 

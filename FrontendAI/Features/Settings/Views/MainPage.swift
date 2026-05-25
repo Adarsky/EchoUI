@@ -1,6 +1,8 @@
 import SwiftUI
 import Foundation
 import SwiftData
+import UIKit
+import Symbols
 
 struct MainPage: View {
     @State private var showSheetSettings = false
@@ -9,11 +11,15 @@ struct MainPage: View {
     @State private var selectedBotForEdit: BotModel? = nil
     @State private var navigateToChat = false
     @State private var showCreatePage = false
+    @State private var showCreatePersonaPage = false
+    @State private var shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
     @State private var showAPIpage = false
 
 
     @State private var botToDelete: BotModel? = nil
     @State private var showDeleteAlert = false
+    @State private var checkingAPIStatusServerUUID: UUID? = nil
+    @State private var checkingAPIStatusRequestUUID: UUID? = nil
     @AppStorage("showMainHubAPIStatus") private var showMainHubAPIStatus = true
 
     @State public var Endpoint: String = ""
@@ -39,12 +45,25 @@ struct MainPage: View {
     private var apiConnectionStatus: APIConnectionStatus {
         apiManager.selectedServer?.connectionStatus ?? .offline
     }
+
+    private var isWaitingForAPIStatusResponse: Bool {
+        guard let selectedServerUUID = apiManager.selectedServer?.uuid else { return false }
+        return checkingAPIStatusServerUUID == selectedServerUUID && checkingAPIStatusRequestUUID != nil
+    }
     
     private var apiStatusText: String {
-        apiConnectionStatus.displayName
+        if isWaitingForAPIStatusResponse {
+            return "Checking"
+        }
+
+        return apiConnectionStatus.displayName
     }
 
     private var apiStatusColor: Color {
+        if isWaitingForAPIStatusResponse {
+            return .secondary
+        }
+
         switch apiConnectionStatus {
         case .online:
             return .green
@@ -55,12 +74,42 @@ struct MainPage: View {
         }
     }
 
-    private var apiNavigationSubtitle: Text {
-        var subtitle = AttributedString("● \(displayedServerName) • \(apiStatusText)")
-        if let dotRange = subtitle.range(of: "●") {
-            subtitle[dotRange].foregroundColor = apiStatusColor
+    private var apiStatusUIColor: UIColor {
+        if isWaitingForAPIStatusResponse {
+            return .secondaryLabel
         }
-        return Text(subtitle)
+
+        switch apiConnectionStatus {
+        case .online:
+            return .systemGreen
+        case .warning:
+            return .systemOrange
+        case .offline:
+            return .systemRed
+        }
+    }
+
+    private var apiStatusSymbolName: String {
+        if isWaitingForAPIStatusResponse {
+            return "arrow.trianglehead.2.clockwise.rotate.90.icloud.fill"
+        }
+
+        switch apiConnectionStatus {
+        case .online:
+            return "circle.fill"
+        case .warning:
+            return "circle.fill"
+        case .offline:
+            return "circle.fill"
+        }
+    }
+
+    private var apiNavigationSubtitleString: String {
+        "\(displayedServerName) • \(apiStatusText)"
+    }
+
+    private var apiNavigationSubtitle: Text {
+        Text(apiNavigationSubtitleString)
     }
 
     private var pinnedBots: [BotModel] {
@@ -89,7 +138,11 @@ struct MainPage: View {
                 .navigationTitle("Echo UI")
                 .modifier(MainPageAPISubtitleModifier(
                     isVisible: showMainHubAPIStatus,
-                    subtitle: apiNavigationSubtitle
+                    subtitle: apiNavigationSubtitle,
+                    subtitleText: apiNavigationSubtitleString,
+                    symbolName: apiStatusSymbolName,
+                    tintColor: apiStatusUIColor,
+                    rotatesSymbol: isWaitingForAPIStatusResponse
                 ))
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -110,8 +163,22 @@ struct MainPage: View {
                     }
                 }
         }
-        .sheet(isPresented: $showSheetPersona) {
-            PersonaSheetView(isPresented: $showSheetPersona)
+        .sheet(
+            isPresented: $showSheetPersona,
+            onDismiss: {
+                if shouldOpenCreatePersonaAfterPersonaSheetDismisses {
+                    shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
+                    showCreatePersonaPage = true
+                }
+            }
+        ) {
+            PersonaSheetView(
+                isPresented: $showSheetPersona,
+                onCreatePersona: {
+                    shouldOpenCreatePersonaAfterPersonaSheetDismisses = true
+                    showSheetPersona = false
+                }
+            )
         }
         .sheet(isPresented: $showSheetSettings) {
             SettingsSheetView(
@@ -139,8 +206,19 @@ struct MainPage: View {
             
             if let server = apiManager.selectedServer {
                 Task {
-                    await apiManager.ping(server: server, modelContext: modelContext)
+                    await refreshAPIStatus(for: server)
                 }
+            }
+        }
+        .onChange(of: apiManager.selectedServer?.uuid) { _, _ in
+            guard let server = apiManager.selectedServer else {
+                checkingAPIStatusServerUUID = nil
+                checkingAPIStatusRequestUUID = nil
+                return
+            }
+
+            Task {
+                await refreshAPIStatus(for: server)
             }
         }
     }
@@ -172,6 +250,9 @@ struct MainPage: View {
         .navigationDestination(isPresented: $showCreatePage) {
             CreateBotView()
         }
+        .navigationDestination(isPresented: $showCreatePersonaPage) {
+            CreatePersonaView()
+        }
     }
 
     private var mainHeader: some View {
@@ -186,9 +267,10 @@ struct MainPage: View {
                             showAPIpage = true
                         } label: {
                             HStack(spacing: 6) {
-                                Circle()
-                                    .fill(apiStatusColor)
-                                    .frame(width: 8, height: 8)
+                                Image(systemName: apiStatusSymbolName)
+                                    .font(.caption)
+                                    .foregroundStyle(apiStatusColor)
+                                    .symbolEffect(.rotate, isActive: isWaitingForAPIStatusResponse)
                                 Text("\(displayedServerName) • \(apiStatusText)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -237,6 +319,9 @@ struct MainPage: View {
                     ForEach(pinnedBots) { bot in
                         chatRow(for: bot)
                     }
+                    .onMove { source, destination in
+                        movePinnedBots(from: source, to: destination)
+                    }
                 }
 
                 if !regularBots.isEmpty {
@@ -277,24 +362,6 @@ struct MainPage: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             pinButton(for: bot)
-
-            if bot.isPinned {
-                Button {
-                    movePinnedBot(bot, direction: .up)
-                } label: {
-                    Label("Up", systemImage: "arrow.up")
-                }
-                .tint(.blue)
-                .disabled(!canMovePinnedBot(bot, direction: .up))
-
-                Button {
-                    movePinnedBot(bot, direction: .down)
-                } label: {
-                    Label("Down", systemImage: "arrow.down")
-                }
-                .tint(.blue)
-                .disabled(!canMovePinnedBot(bot, direction: .down))
-            }
         }
         .swipeActions(edge: .trailing) {
             Button {
@@ -313,22 +380,6 @@ struct MainPage: View {
         }
         .contextMenu {
             pinButton(for: bot)
-
-            if bot.isPinned {
-                Button {
-                    movePinnedBot(bot, direction: .up)
-                } label: {
-                    Label("Move Up", systemImage: "arrow.up")
-                }
-                .disabled(!canMovePinnedBot(bot, direction: .up))
-
-                Button {
-                    movePinnedBot(bot, direction: .down)
-                } label: {
-                    Label("Move Down", systemImage: "arrow.down")
-                }
-                .disabled(!canMovePinnedBot(bot, direction: .down))
-            }
         }
     }
 
@@ -339,11 +390,6 @@ struct MainPage: View {
             Label(bot.isPinned ? "Unpin" : "Pin", systemImage: bot.isPinned ? "pin.slash" : "pin")
         }
         .tint(bot.isPinned ? .gray : .gray)
-    }
-
-    private enum PinnedMoveDirection {
-        case up
-        case down
     }
 
     private func togglePinned(_ bot: BotModel) {
@@ -359,31 +405,9 @@ struct MainPage: View {
         try? modelContext.save()
     }
 
-    private func canMovePinnedBot(_ bot: BotModel, direction: PinnedMoveDirection) -> Bool {
-        guard let index = pinnedBots.firstIndex(where: { $0.id == bot.id }) else { return false }
-
-        switch direction {
-        case .up:
-            return index > 0
-        case .down:
-            return index < pinnedBots.count - 1
-        }
-    }
-
-    private func movePinnedBot(_ bot: BotModel, direction: PinnedMoveDirection) {
+    private func movePinnedBots(from source: IndexSet, to destination: Int) {
         var orderedPinnedBots = pinnedBots
-        guard let index = orderedPinnedBots.firstIndex(where: { $0.id == bot.id }) else { return }
-
-        let targetIndex: Int
-        switch direction {
-        case .up:
-            targetIndex = index - 1
-        case .down:
-            targetIndex = index + 1
-        }
-
-        guard orderedPinnedBots.indices.contains(targetIndex) else { return }
-        orderedPinnedBots.swapAt(index, targetIndex)
+        orderedPinnedBots.move(fromOffsets: source, toOffset: destination)
         applyPinnedOrder(orderedPinnedBots)
         try? modelContext.save()
     }
@@ -397,18 +421,160 @@ struct MainPage: View {
             bot.pinnedSortIndex = index
         }
     }
+
+    @MainActor
+    private func refreshAPIStatus(for server: APIServer) async {
+        let requestUUID = UUID()
+        checkingAPIStatusServerUUID = server.uuid
+        checkingAPIStatusRequestUUID = requestUUID
+
+        await apiManager.ping(server: server, modelContext: modelContext)
+
+        if checkingAPIStatusRequestUUID == requestUUID {
+            checkingAPIStatusServerUUID = nil
+            checkingAPIStatusRequestUUID = nil
+        }
+    }
 }
 
 private struct MainPageAPISubtitleModifier: ViewModifier {
     let isVisible: Bool
     let subtitle: Text
+    let subtitleText: String
+    let symbolName: String
+    let tintColor: UIColor
+    let rotatesSymbol: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if isVisible {
             content.navigationSubtitle(subtitle)
+                .background(MainPageCustomNavigationSubtitle(
+                    symbolName: symbolName,
+                    subtitleText: subtitleText,
+                    tintColor: tintColor,
+                    rotatesSymbol: rotatesSymbol
+                ))
         } else {
             content
+                .background(MainPageCustomNavigationSubtitle(
+                    symbolName: nil,
+                    subtitleText: subtitleText,
+                    tintColor: tintColor,
+                    rotatesSymbol: false
+                ))
+        }
+    }
+}
+
+private struct MainPageCustomNavigationSubtitle: UIViewControllerRepresentable {
+    let symbolName: String?
+    let subtitleText: String
+    let tintColor: UIColor
+    let rotatesSymbol: Bool
+
+    func makeUIViewController(context: Context) -> SubtitleController {
+        SubtitleController()
+    }
+
+    func updateUIViewController(_ controller: SubtitleController, context: Context) {
+        controller.symbolName = symbolName
+        controller.subtitleText = subtitleText
+        controller.tintColor = tintColor
+        controller.rotatesSymbol = rotatesSymbol
+    }
+
+    final class SubtitleController: UIViewController {
+        var symbolName: String? {
+            didSet {
+                applySubtitle()
+            }
+        }
+        var subtitleText: String = "" {
+            didSet {
+                applySubtitle()
+            }
+        }
+        var tintColor: UIColor = .secondaryLabel {
+            didSet {
+                applySubtitle()
+            }
+        }
+        var rotatesSymbol: Bool = false {
+            didSet {
+                applySubtitle()
+            }
+        }
+        private var lastAppliedSubtitleKey: String?
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.isHidden = true
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            applySubtitle()
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            applySubtitle()
+        }
+
+        private func applySubtitle() {
+            DispatchQueue.main.async { [weak self] in
+                self?.applySubtitleNow()
+            }
+        }
+
+        private func applySubtitleNow() {
+            guard let navigationItem = navigationController?.topViewController?.navigationItem else { return }
+
+            guard let symbolName, !subtitleText.isEmpty else {
+                navigationItem.attributedSubtitle = nil
+                navigationItem.subtitleView = nil
+                navigationItem.largeAttributedSubtitle = nil
+                navigationItem.largeSubtitleView = nil
+                lastAppliedSubtitleKey = nil
+                return
+            }
+
+            let subtitleKey = "\(symbolName)|\(subtitleText)|\(tintColor.description)|\(rotatesSymbol)"
+            if lastAppliedSubtitleKey != subtitleKey {
+                navigationItem.attributedSubtitle = nil
+                navigationItem.subtitleView = makeSubtitleView(symbolName: symbolName, rotatesSymbol: rotatesSymbol)
+                navigationItem.largeAttributedSubtitle = nil
+                navigationItem.largeSubtitleView = makeSubtitleView(symbolName: symbolName, rotatesSymbol: rotatesSymbol)
+                lastAppliedSubtitleKey = subtitleKey
+            }
+        }
+
+        private func makeSubtitleView(symbolName: String, rotatesSymbol: Bool) -> UIView {
+            let font = UIFont.preferredFont(forTextStyle: .subheadline)
+            let symbolConfiguration = UIImage.SymbolConfiguration(pointSize: 8, weight: .regular)
+            let imageView = UIImageView(image: UIImage(systemName: symbolName, withConfiguration: symbolConfiguration))
+            imageView.tintColor = tintColor
+            imageView.contentMode = .scaleAspectFit
+            imageView.setContentHuggingPriority(.required, for: .horizontal)
+            imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+            if rotatesSymbol {
+                imageView.addSymbolEffect(.rotate)
+            }
+
+            let label = UILabel()
+            label.text = subtitleText
+            label.font = font
+            label.textColor = .secondaryLabel
+            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+            let stack = UIStackView(arrangedSubviews: [imageView, label])
+            stack.axis = .horizontal
+            stack.alignment = .center
+            stack.spacing = 4
+            stack.isUserInteractionEnabled = false
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            return stack
         }
     }
 }

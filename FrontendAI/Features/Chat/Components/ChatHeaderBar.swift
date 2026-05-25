@@ -4,11 +4,17 @@ struct ChatHeaderBar: View {
     let bot: Bot
     let botID: UUID
     let chatAppearanceID: String?
+    var personas: [PersonaModel] = []
+    var currentPersona: PersonaModel?
+    var globalPersona: PersonaModel?
+    var hasPersonaOverride = false
 
     @Binding var showChatBotSheet: Bool
     @Binding var isViewingHistory: Bool
     @Namespace var chatBotSheetNamespace
     let onNewChat: () -> Void
+    var onSelectPersona: (PersonaModel?) -> Void = { _ in }
+    var onUseGlobalPersona: () -> Void = { }
 
     var body: some View {
         GlassEffectContainer {
@@ -46,6 +52,10 @@ struct ChatHeaderBar: View {
                         bot: bot,
                         botID: botID,
                         chatAppearanceID: chatAppearanceID,
+                        personas: personas,
+                        currentPersona: currentPersona,
+                        globalPersona: globalPersona,
+                        hasPersonaOverride: hasPersonaOverride,
                         onNewChat: {
                             onNewChat()
                             showChatBotSheet = false
@@ -53,7 +63,9 @@ struct ChatHeaderBar: View {
                         onViewHistory: {
                             showChatBotSheet = false
                             isViewingHistory = true
-                        }
+                        },
+                        onSelectPersona: onSelectPersona,
+                        onUseGlobalPersona: onUseGlobalPersona
                     )
                 }
             }

@@ -9,7 +9,6 @@ extension ChatView {
         // MARK: - History (load/save)
         func loadHistory() {
             Task { @MainActor in
-                didApplyInitialScrollPosition = false
                 savedBotModel = allBots.first(where: { $0.id == botID })
                 do {
                     let descriptor = FetchDescriptor<ChatHistory>(
@@ -19,6 +18,7 @@ extension ChatView {
                     let histories = try modelContext.fetch(descriptor)
                     if let history = historyToOpen(from: histories) {
                         currentHistory = history
+                        applyPersonaOverride(from: history)
                         rememberOpenedHistory(history)
                         messages = history.messages
                             .sorted { $0.index < $1.index }
@@ -34,6 +34,8 @@ extension ChatView {
                             }
                         refreshActiveAppearance()
                     } else {
+                        chatPersonaID = nil
+                        hasChatPersonaOverride = false
                         messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
                         refreshActiveAppearance()
                     }
@@ -76,9 +78,16 @@ extension ChatView {
             if let history = currentHistory {
                 history.messages = entities
                 history.date = .now
+                history.personaID = chatPersonaID
+                history.hasPersonaOverride = hasChatPersonaOverride
                 rememberOpenedHistory(history)
             } else if let realBotModel = savedBotModel {
-                let new = ChatHistory(messages: entities, bot: realBotModel)
+                let new = ChatHistory(
+                    messages: entities,
+                    bot: realBotModel,
+                    personaID: chatPersonaID,
+                    hasPersonaOverride: hasChatPersonaOverride
+                )
                 modelContext.insert(new)
                 currentHistory = new
                 rememberOpenedHistory(new)
@@ -88,8 +97,8 @@ extension ChatView {
 
         @MainActor
         func loadSelectedHistory(_ history: ChatHistory) {
-            didApplyInitialScrollPosition = false
             currentHistory = history
+            applyPersonaOverride(from: history)
             rememberOpenedHistory(history)
             messages = history.messages
                 .sorted { $0.index < $1.index }
@@ -118,5 +127,11 @@ extension ChatView {
         private func rememberOpenedHistory(_ history: ChatHistory) {
             guard let identifier = history.selectionIdentifier else { return }
             UserDefaults.standard.set(identifier, forKey: lastOpenedHistoryDefaultsKey)
+        }
+
+        @MainActor
+        private func applyPersonaOverride(from history: ChatHistory) {
+            chatPersonaID = history.personaID
+            hasChatPersonaOverride = history.hasPersonaOverride
         }
 }

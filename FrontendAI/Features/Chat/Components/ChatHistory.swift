@@ -14,12 +14,26 @@ class ChatHistory {
     
     @Attribute
     var botID: UUID
+    
+    @Attribute
+    var personaID: UUID?
+    
+    @Attribute
+    var hasPersonaOverride: Bool = false
 
-    init(messages: [ChatMessageEntity], date: Date = .now, bot: BotModel) {
+    init(
+        messages: [ChatMessageEntity],
+        date: Date = .now,
+        bot: BotModel,
+        personaID: UUID? = nil,
+        hasPersonaOverride: Bool = false
+    ) {
         self.messages = messages
         self.date = date
         self.bot = bot
         self.botID = bot.id
+        self.personaID = personaID
+        self.hasPersonaOverride = hasPersonaOverride
     }
 
     var selectionIdentifier: String? {

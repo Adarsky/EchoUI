@@ -2,6 +2,45 @@ import SwiftUI
 import UIKit
 
 extension ChatView {
+    var messagesScrollView: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(messages) { msg in
+                    MessageRow(
+                        msg: msg,
+                        regenerate: regenerateMessage,
+                        switchVariant: switchVariant,
+                        onDelete: deleteMessage
+                    )
+                }
+            }
+            .padding(.top, topMessagesInset)
+            .padding(.horizontal, 15)
+            .padding(.bottom, 15)
+        }
+        .defaultScrollAnchor(.bottom)
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            chatInputInset
+        }
+    }
+
+    var chatInputInset: some View {
+        ChatInputBar(
+            inputText: $inputText,
+            isGenerating: $isGenerating,
+            isThinking: $isThinking,
+            placeholder: "Message \(bot.name)",
+            onSend: sendMessage,
+            onStop: stopGeneration
+        )
+        .background(alignment: .bottom) {
+            bottomInputMaterialFade
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { }
+    }
+
     @ViewBuilder
     var chatBackground: some View {
         GeometryReader { geo in
@@ -13,7 +52,7 @@ extension ChatView {
                     .blur(radius: clampedChatWallpaperBlurRadius)
                     .clipped()
                     .overlay(
-                        Color.black.opacity(0.14)
+                        Color.black.opacity(activeChatAppearance.clampedWallpaperTintOpacity)
                             .frame(width: geo.size.width, height: geo.size.height)
                     )
                     .overlay {
@@ -39,7 +78,7 @@ extension ChatView {
         GeometryReader { geo in
             Rectangle()
                 .fill(chatBottomChromeFadeColor)
-                .frame(height: geo.safeAreaInsets.bottom + 90)
+                .frame(height: geo.safeAreaInsets.bottom + geo.size.height + 24)
                 .mask(
                     LinearGradient(
                         gradient: Gradient(stops: [
@@ -123,23 +162,35 @@ extension ChatView {
         showPersonaPickerForNewChat = true
     }
 
-    func performStartNewChat() {
+    func performStartNewChat(persona: PersonaModel? = nil, hasPersonaOverride: Bool = false) {
         saveChatHistory()
         messages.removeAll()
         currentHistory = nil
+        chatPersonaID = persona?.id
+        self.hasChatPersonaOverride = hasPersonaOverride
         messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
         refreshActiveAppearance()
     }
 
     @MainActor
-    func scrollToLatestMessageIfNeeded(using proxy: ScrollViewProxy) {
-        guard !didApplyInitialScrollPosition else { return }
-        guard let latestMessageID = messages.last?.id else { return }
+    func setActiveChatPersona(_ persona: PersonaModel?) {
+        chatPersonaID = persona?.id
+        hasChatPersonaOverride = true
+        saveChatHistory()
+    }
 
-        DispatchQueue.main.async {
-            proxy.scrollTo(latestMessageID, anchor: .bottom)
-            didApplyInitialScrollPosition = true
-        }
+    @MainActor
+    func clearChatPersonaOverride() {
+        chatPersonaID = nil
+        hasChatPersonaOverride = false
+        saveChatHistory()
+    }
+
+    func deleteMessage(id: UUID) {
+        guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
+
+        messages.remove(at: index)
+        saveChatHistory()
     }
 }
 

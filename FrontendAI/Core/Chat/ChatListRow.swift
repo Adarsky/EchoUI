@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct ChatListRow: View {
     let title: String
@@ -21,7 +22,7 @@ struct ChatListRow: View {
                         .font(.headline)
                         .lineLimit(1)
                 }
-                Text(singleLineSubtitle)
+                Text(renderedChatListSubtitle(from: singleLineSubtitle))
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .lineLimit(2)
@@ -34,7 +35,7 @@ struct ChatListRow: View {
                     .foregroundColor(.gray)
                 Spacer()
                 if isPinned {
-                    Image(systemName: "pin.fill")
+                    Image(systemName: "heart.fill")
                         .font(.caption.bold())
                         .foregroundColor(.gray)
                 }
@@ -50,11 +51,20 @@ struct ChatListRow: View {
     }
 }
 
+private func renderedChatListSubtitle(from text: String) -> AttributedString {
+    let options = AttributedString.MarkdownParsingOptions(
+        interpretedSyntax: .inlineOnlyPreservingWhitespace,
+        failurePolicy: .returnPartiallyParsedIfPossible
+    )
+
+    return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+}
+
 #Preview("Chat Row") {
     List {
         ChatListRow(
             title: "Travel Planner",
-            subtitle: "You: Find a quiet hotel near the old town. Find a quiet hotel near the old town",
+            subtitle: "You: Find a **quiet** hotel near the *old town*. Find a quiet hotel near the old town",
             date: "Apr 28",
             isPinned: false,
             avatarImage: Image(systemName: "airplane.departure")

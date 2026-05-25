@@ -11,6 +11,7 @@ struct ChatInputBar: View {
 
     @AppStorage(ChatInputBarStorageKeys.sendButtonStyle) private var sendButtonStyleRawValue = ChatInputBarSendButtonStyle.defaultValue.rawValue
     @State private var buttonVisualState: ButtonVisualState = .idle
+    @FocusState private var isInputFocused: Bool
 
     private enum ButtonVisualState: Equatable {
         case idle
@@ -74,8 +75,14 @@ struct ChatInputBar: View {
             .padding(.trailing, 56)
             .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 26))
             .frame(maxWidth: .infinity)
-            .overlay(alignment: .trailing) {
+            .focused($isInputFocused)
+            .overlay(alignment: .bottomTrailing) {
                 sendButton
+                    .padding(.bottom, 8)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .onTapGesture {
+                isInputFocused = true
             }
     }
 

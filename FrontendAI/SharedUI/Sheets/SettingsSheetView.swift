@@ -58,14 +58,17 @@ struct SettingsPageView: View {
                 NavigationLink(destination: APIManagerView(selectedServer: .constant(nil)).environmentObject(apiManager)) {
                     Label("Manage API Servers", systemImage: "server.rack")
                 }
+            }
+            Section(header: Text("iCloud settings")) {
                 NavigationLink(destination: DeveloperSettingsView()) {
-                    Label("Developer Settings", systemImage: "hammer")
+                    Label("iCloud backup", systemImage: "icloud")
                 }
             }
             Section(header: Text("Data and storage")) {
                 NavigationLink(destination: CacheView()) {
                     Label("Storage usage", systemImage: "chart.pie")
                 }
+
                 NavigationLink(destination: DataNetworkManagerView()) {
                     Label("Data usage", systemImage: "chart.bar")
                 }
@@ -74,6 +77,14 @@ struct SettingsPageView: View {
                 }
                 NavigationLink(destination: StatsView()) {
                     Label("Characters statistics", systemImage: "crown")
+                }
+            }
+            Section(header: Text("Developer settings")) {
+                NavigationLink(destination: LocalDataRecoveryView()) {
+                    Label("Local data recovery", systemImage: "externaldrive.badge.timemachine")
+                }
+                NavigationLink(destination: DeveloperSettingsView()) {
+                    Label("Call settings", systemImage: "hammer")
                 }
             }
             Section(header: Text("Balance information")) {

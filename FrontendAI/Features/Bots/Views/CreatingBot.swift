@@ -13,6 +13,8 @@ struct CreateCharacterView: View {
     @State private var name: String = ""
     @State private var description: String = ""
     @State private var greeting: String = ""
+    @State private var isGreetingEditorExpanded = false
+    @State private var isDescriptionEditorExpanded = false
     
     @State private var showMissingPhotoAlert = false
     @FocusState private var focusedField: Field?
@@ -130,7 +132,8 @@ struct CreateCharacterView: View {
             placeholder: "How does the character start a chat?",
             text: $greeting,
             field: .greeting,
-            nextField: .description
+            nextField: .description,
+            isExpanded: $isGreetingEditorExpanded
         )
     }
 
@@ -141,7 +144,8 @@ struct CreateCharacterView: View {
             placeholder: "Describe personality, style and behavior...",
             text: $description,
             field: .description,
-            nextField: nil
+            nextField: nil,
+            isExpanded: $isDescriptionEditorExpanded
         )
     }
 
@@ -151,11 +155,25 @@ struct CreateCharacterView: View {
         placeholder: String,
         text: Binding<String>,
         field: Field,
-        nextField: Field?
+        nextField: Field?,
+        isExpanded: Binding<Bool>
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Button {
+                    isExpanded.wrappedValue = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                }
+                .accessibilityLabel("Expand \(title)")
+            }
 
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -182,6 +200,13 @@ struct CreateCharacterView: View {
         }
         .padding(16)
         .background(cardBackground)
+        .sheet(isPresented: isExpanded) {
+            ExpandedTextEditorSheet(
+                text: text,
+                title: title,
+                placeholder: placeholder
+            )
+        }
     }
 
     private var createButton: some View {

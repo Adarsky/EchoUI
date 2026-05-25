@@ -265,7 +265,7 @@ private struct MessageContentView: View {
                     } else if isStreaming {
                         Text(verbatim: text)
                     } else {
-                        Text(renderedMarkdown(from: text))
+                        Text(renderedMarkdown(from: text, textColor: textColor))
                     }
                 case .divider:
                     Rectangle()
@@ -445,14 +445,14 @@ struct LegacyEditMessageSheet: View {
     }
 }
 
-private func renderedMarkdown(from text: String) -> AttributedString {
+private func renderedMarkdown(from text: String, textColor: Color) -> AttributedString {
     let markdownText = markdownReadyText(from: text)
     let options = AttributedString.MarkdownParsingOptions(
         interpretedSyntax: .inlineOnlyPreservingWhitespace,
         failurePolicy: .returnPartiallyParsedIfPossible
     )
     if let attributed = try? AttributedString(markdown: markdownText, options: options) {
-        return applyingNoHyphenation(to: attributed)
+        return applyingEmphasisColor(to: applyingNoHyphenation(to: attributed), textColor: textColor)
     }
     return applyingNoHyphenation(to: AttributedString(markdownText))
 }
@@ -510,6 +510,20 @@ private func applyingNoHyphenation(to attributed: AttributedString) -> Attribute
     }
 
     return (try? AttributedString(mutable, including: \.uiKit)) ?? attributed
+}
+
+private func applyingEmphasisColor(to attributed: AttributedString, textColor: Color) -> AttributedString {
+    var result = attributed
+    let emphasizedRanges = result.runs.compactMap { run -> Range<AttributedString.Index>? in
+        guard run.inlinePresentationIntent?.contains(.emphasized) == true else { return nil }
+        return run.range
+    }
+
+    for range in emphasizedRanges {
+        result[range].foregroundColor = textColor.opacity(0.72)
+    }
+
+    return result
 }
 
 private struct MessageRowPreviewHost: View {
