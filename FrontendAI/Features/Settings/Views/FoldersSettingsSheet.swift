@@ -1,0 +1,452 @@
+import SwiftUI
+import SwiftData
+#if os(iOS)
+import UIKit
+#endif
+
+struct FoldersSettingsSheet: View {
+    @AppStorage("chatFoldersEnabled") private var foldersEnabled = true
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\ChatFolder.sortIndex), SortDescriptor(\ChatFolder.name)]) private var folders: [ChatFolder]
+    @Query(sort: [SortDescriptor(\BotModel.name)]) private var bots: [BotModel]
+
+    @State private var previewSelectedFolderID = ChatFolder.allFolderID
+    @State private var isCreatingFolder = false
+    @State private var editingFolder: ChatFolder?
+
+    var body: some View {
+        List {
+            Section("Preview") {
+                FolderPickerView(
+                    folders: folders,
+                    selectedFolderID: $previewSelectedFolderID,
+                    showsCounts: true,
+                    countForFolder: folderCount
+                )
+                .listRowInsets(EdgeInsets())
+            }
+
+            Section {
+                Toggle("Enable folders", isOn: $foldersEnabled)
+            }
+
+            Section {
+                if folders.isEmpty {
+                    Text("Create a folder to group chats by work, personal projects, agents, or any workflow you use often.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(folders) { folder in
+                        folderRow(folder)
+                            .swipeActions(edge: .trailing) {
+                                Button {
+                                    editingFolder = folder
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.orange)
+
+                                Button(role: .destructive) {
+                                    deleteFolder(folder)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                    }
+                    .onMove(perform: moveFolders)
+                }
+
+                Button {
+                    isCreatingFolder = true
+                } label: {
+                    Label("Create new folder", systemImage: "plus")
+                }
+            } header: {
+                Text("Folders")
+            } footer: {
+                Text("Folders appear as tabs above the chat list and filter which chats are shown.")
+            }
+        }
+        .navigationTitle("Chat Folders")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !folders.isEmpty {
+                EditButton()
+            }
+        }
+        .sheet(isPresented: $isCreatingFolder) {
+            ChatFolderEditorSheet(
+                title: "New Folder",
+                bots: bots,
+                folder: nil,
+                onSave: createFolder
+            )
+        }
+        .sheet(item: $editingFolder) { folder in
+            ChatFolderEditorSheet(
+                title: "Edit Folder",
+                bots: bots,
+                folder: folder,
+                onSave: { name, symbolName, botIDStrings in
+                    updateFolder(folder, name: name, symbolName: symbolName, botIDStrings: botIDStrings)
+                }
+            )
+        }
+        .onChange(of: folderSignature) { _, _ in
+            if previewSelectedFolderID != ChatFolder.allFolderID && !folders.contains(where: { $0.id.uuidString == previewSelectedFolderID }) {
+                previewSelectedFolderID = ChatFolder.allFolderID
+            }
+        }
+    }
+
+    private var folderSignature: String {
+        folders.map { $0.id.uuidString }.joined(separator: "|")
+    }
+
+    private func folderRow(_ folder: ChatFolder) -> some View {
+        Button {
+            editingFolder = folder
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: folder.symbolName)
+                    .frame(width: 28, height: 28)
+                    .foregroundStyle(.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(folder.displayName)
+                        .foregroundStyle(.primary)
+                    Text("\(folderCount(folder)) chats")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func folderCount(_ folder: ChatFolder?) -> Int {
+        guard let folder else { return bots.count }
+        return bots.filter { folder.contains(botID: $0.id) }.count
+    }
+
+    private func createFolder(name: String, symbolName: String, botIDStrings: [String]) {
+        let folder = ChatFolder(
+            name: name,
+            symbolName: symbolName,
+            botIDStrings: botIDStrings,
+            sortIndex: (folders.map(\.sortIndex).max() ?? -1) + 1
+        )
+        modelContext.insert(folder)
+        saveFolders()
+        previewSelectedFolderID = folder.id.uuidString
+    }
+
+    private func updateFolder(_ folder: ChatFolder, name: String, symbolName: String, botIDStrings: [String]) {
+        folder.name = ChatFolder.clampedName(name)
+        folder.symbolName = symbolName
+        folder.botIDStrings = botIDStrings
+        folder.updatedAt = .now
+        saveFolders()
+    }
+
+    private func deleteFolder(_ folder: ChatFolder) {
+        if previewSelectedFolderID == folder.id.uuidString {
+            previewSelectedFolderID = ChatFolder.allFolderID
+        }
+        modelContext.delete(folder)
+        saveFolders()
+        folderFeedback(.warning)
+    }
+
+    private func moveFolders(from source: IndexSet, to destination: Int) {
+        var orderedFolders = folders
+        orderedFolders.move(fromOffsets: source, toOffset: destination)
+        for (index, folder) in orderedFolders.enumerated() {
+            folder.sortIndex = index
+            folder.updatedAt = .now
+        }
+        saveFolders()
+    }
+
+    private func saveFolders() {
+        try? modelContext.save()
+        folderFeedback(.success)
+    }
+}
+
+struct ChatFolderAssignmentSheet: View {
+    let bot: BotModel
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\ChatFolder.sortIndex), SortDescriptor(\ChatFolder.name)]) private var folders: [ChatFolder]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if folders.isEmpty {
+                    ContentUnavailableView(
+                        "No Folders",
+                        systemImage: "folder",
+                        description: Text("Create folders in Settings, then add this chat to them.")
+                    )
+                } else {
+                    Section {
+                        ForEach(folders) { folder in
+                            Button {
+                                toggle(folder)
+                            } label: {
+                                HStack {
+                                    Label(folder.displayName, systemImage: folder.symbolName)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    if folder.contains(botID: bot.id) {
+                                        Image(systemName: "checkmark")
+                                            .font(.body.weight(.semibold))
+                                            .foregroundStyle(.accent)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } footer: {
+                        Text("A chat can be in more than one folder.")
+                    }
+                }
+            }
+            .navigationTitle("Folders")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func toggle(_ folder: ChatFolder) {
+        folder.toggle(botID: bot.id)
+        try? modelContext.save()
+        folderFeedback(.selection)
+    }
+}
+
+private struct ChatFolderEditorSheet: View {
+    let title: String
+    let bots: [BotModel]
+    let folder: ChatFolder?
+    let onSave: (String, String, [String]) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var symbolName: String
+    @State private var selectedBotIDStrings: Set<String>
+
+    init(
+        title: String,
+        bots: [BotModel],
+        folder: ChatFolder?,
+        onSave: @escaping (String, String, [String]) -> Void
+    ) {
+        self.title = title
+        self.bots = bots
+        self.folder = folder
+        self.onSave = onSave
+        self._name = State(initialValue: folder?.displayName ?? "")
+        self._symbolName = State(initialValue: folder?.symbolName ?? ChatFolderSymbol.defaultSymbol)
+        self._selectedBotIDStrings = State(initialValue: Set(folder?.botIDStrings ?? []))
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Folder") {
+                    TextField("Name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .onChange(of: name) { _, newValue in
+                            if newValue.count > ChatFolder.maxNameLength {
+                                name = String(newValue.prefix(ChatFolder.maxNameLength))
+                            }
+                        }
+
+                    Picker("Icon", selection: $symbolName) {
+                        ForEach(ChatFolderSymbol.allSymbols, id: \.self) { symbol in
+                            Label(ChatFolderSymbol.title(for: symbol), systemImage: symbol)
+                                .tag(symbol)
+                        }
+                    }
+                }
+
+                Section {
+                    if bots.isEmpty {
+                        Text("Create chats first, then add them to this folder.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(bots.sorted(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending })) { bot in
+                            Button {
+                                toggle(bot)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    bot.avatarImage
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 32, height: 32)
+                                        .clipShape(Circle())
+
+                                    Text(bot.name)
+                                        .foregroundStyle(.primary)
+
+                                    Spacer()
+
+                                    if selectedBotIDStrings.contains(ChatFolder.storageID(for: bot.id)) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.accent)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } header: {
+                    Text("Included Chats")
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        save()
+                    }
+                    .disabled(trimmedName.isEmpty)
+                }
+            }
+        }
+    }
+
+    private var trimmedName: String {
+        ChatFolder.clampedName(name)
+    }
+
+    private func toggle(_ bot: BotModel) {
+        let storageID = ChatFolder.storageID(for: bot.id)
+        if selectedBotIDStrings.contains(storageID) {
+            selectedBotIDStrings.remove(storageID)
+        } else {
+            selectedBotIDStrings.insert(storageID)
+        }
+        folderFeedback(.selection)
+    }
+
+    private func save() {
+        onSave(trimmedName, symbolName, Array(selectedBotIDStrings).sorted())
+        folderFeedback(.success)
+        dismiss()
+    }
+}
+
+private enum ChatFolderSymbol {
+    static let defaultSymbol = "folder"
+    static let allSymbols = [
+        "folder",
+        "briefcase",
+        "person.2",
+        "star",
+        "house",
+        "book",
+        "hammer",
+        "paintpalette",
+        "network",
+        "lock"
+    ]
+
+    static func title(for symbolName: String) -> String {
+        switch symbolName {
+        case "briefcase":
+            return "Work"
+        case "person.2":
+            return "People"
+        case "star":
+            return "Favorites"
+        case "house":
+            return "Home"
+        case "book":
+            return "Study"
+        case "hammer":
+            return "Tools"
+        case "paintpalette":
+            return "Creative"
+        case "network":
+            return "API"
+        case "lock":
+            return "Private"
+        default:
+            return "Folder"
+        }
+    }
+}
+
+private enum ChatFolderFeedbackKind {
+    case selection
+    case success
+    case warning
+}
+
+private func folderFeedback(_ kind: ChatFolderFeedbackKind) {
+    #if os(iOS)
+    switch kind {
+    case .selection:
+        UISelectionFeedbackGenerator().selectionChanged()
+    case .success:
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    case .warning:
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+    #endif
+}
+
+#Preview {
+    NavigationStack {
+        FoldersSettingsSheet()
+    }
+    .modelContainer(foldersSettingsPreviewContainer)
+}
+
+@MainActor
+private let foldersSettingsPreviewContainer: ModelContainer = {
+    let schema = Schema([BotModel.self, ChatHistory.self, ChatFolder.self, ChatMessageEntity.self])
+    let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [configuration])
+    let context = container.mainContext
+    let bot = BotModel(
+        name: "Swift Mentor",
+        subtitle: "iOS implementation notes",
+        date: "May 27, 2026",
+        avatarSystemName: "swift",
+        iconColorName: "orange",
+        isPinned: true,
+        greeting: "Ask about SwiftUI."
+    )
+    context.insert(bot)
+    context.insert(
+        ChatFolder(
+            name: "Work",
+            symbolName: "briefcase",
+            botIDStrings: [ChatFolder.storageID(for: bot.id)]
+        )
+    )
+    try? context.save()
+    return container
+}()

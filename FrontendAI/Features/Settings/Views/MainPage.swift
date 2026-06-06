@@ -3,6 +3,32 @@ import Foundation
 import SwiftData
 import UIKit
 import Symbols
+import LocalAuthentication
+
+enum MainPageAPIStatusDisplayStyle: String, CaseIterable, Identifiable {
+    case hidden
+    case coloredDot
+    case monochromeDot
+    case statusSymbols
+    case textOnly
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .hidden:
+            return "Hidden"
+        case .coloredDot:
+            return "Colored dot"
+        case .monochromeDot:
+            return "Black and white dot"
+        case .statusSymbols:
+            return "Signs"
+        case .textOnly:
+            return "No dot"
+        }
+    }
+}
 
 struct MainPage: View {
     @State private var showSheetSettings = false
@@ -14,18 +40,28 @@ struct MainPage: View {
     @State private var showCreatePersonaPage = false
     @State private var shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
     @State private var showAPIpage = false
+    @State private var botForFolderAssignment: BotModel?
 
 
     @State private var botToDelete: BotModel? = nil
     @State private var showDeleteAlert = false
     @State private var checkingAPIStatusServerUUID: UUID? = nil
     @State private var checkingAPIStatusRequestUUID: UUID? = nil
-    @AppStorage("showMainHubAPIStatus") private var showMainHubAPIStatus = true
+    @AppStorage("showMainHubAPIStatus") private var legacyShowMainHubAPIStatus = true
+    @AppStorage("mainPageAPIStatusDisplayStyle") private var apiStatusDisplayStyleRawValue = MainPageAPIStatusDisplayStyle.coloredDot.rawValue
+    @AppStorage("mainPageAPIStatusDisplayStyleDidMigrate") private var didMigrateAPIStatusDisplayStyle = false
 
     @State public var Endpoint: String = ""
     @State private var MessageLength: Int = 2048
+    @AppStorage("chatFoldersEnabled") private var chatFoldersEnabled = true
+    @AppStorage("selectedChatFolderID") private var selectedChatFolderID = ChatFolder.allFolderID
+    @State private var folderNavigationDirection = 1
+    @State private var unlockedPrivateFolderID: String?
+    @State private var privateFolderAuthenticationMessage = "Face ID is required to open the Private folder."
+    @State private var showsPrivateFolderAuthenticationAlert = false
 
     @Query var bots: [BotModel]
+    @Query(sort: [SortDescriptor(\ChatFolder.sortIndex), SortDescriptor(\ChatFolder.name)]) private var chatFolders: [ChatFolder]
     @Environment(\.modelContext) var modelContext
     
     @EnvironmentObject var apiManager: APIManager
@@ -46,6 +82,10 @@ struct MainPage: View {
         apiManager.selectedServer?.connectionStatus ?? .offline
     }
 
+    private var apiStatusDisplayStyle: MainPageAPIStatusDisplayStyle {
+        MainPageAPIStatusDisplayStyle(rawValue: apiStatusDisplayStyleRawValue) ?? .coloredDot
+    }
+
     private var isWaitingForAPIStatusResponse: Bool {
         guard let selectedServerUUID = apiManager.selectedServer?.uuid else { return false }
         return checkingAPIStatusServerUUID == selectedServerUUID && checkingAPIStatusRequestUUID != nil
@@ -60,6 +100,10 @@ struct MainPage: View {
     }
 
     private var apiStatusColor: Color {
+        if apiStatusDisplayStyle == .monochromeDot || apiStatusDisplayStyle == .statusSymbols {
+            return .primary
+        }
+
         if isWaitingForAPIStatusResponse {
             return .secondary
         }
@@ -74,34 +118,31 @@ struct MainPage: View {
         }
     }
 
-    private var apiStatusUIColor: UIColor {
-        if isWaitingForAPIStatusResponse {
-            return .secondaryLabel
+    private var apiStatusSymbolName: String? {
+        switch apiStatusDisplayStyle {
+        case .hidden, .textOnly:
+            return nil
+        case .coloredDot, .monochromeDot:
+            return "circle.fill"
+        case .statusSymbols:
+            if isWaitingForAPIStatusResponse {
+                return "arrow.trianglehead.2.clockwise.rotate.90.icloud.fill"
+            }
         }
 
         switch apiConnectionStatus {
         case .online:
-            return .systemGreen
+            return "checkmark.icloud.fill"
         case .warning:
-            return .systemOrange
+            return "exclamationmark.icloud.fill"
         case .offline:
-            return .systemRed
+            return "icloud.slash.fill"
         }
     }
 
-    private var apiStatusSymbolName: String {
-        if isWaitingForAPIStatusResponse {
-            return "arrow.trianglehead.2.clockwise.rotate.90.icloud.fill"
-        }
-
-        switch apiConnectionStatus {
-        case .online:
-            return "circle.fill"
-        case .warning:
-            return "circle.fill"
-        case .offline:
-            return "circle.fill"
-        }
+    private var rotatesAPIStatusSymbol: Bool {
+        guard apiStatusDisplayStyle == .statusSymbols else { return false }
+        return isWaitingForAPIStatusResponse
     }
 
     private var apiNavigationSubtitleString: String {
@@ -113,7 +154,7 @@ struct MainPage: View {
     }
 
     private var pinnedBots: [BotModel] {
-        bots
+        visibleBots
             .filter { $0.isPinned }
             .sorted {
                 if $0.pinnedSortIndex == $1.pinnedSortIndex {
@@ -124,7 +165,34 @@ struct MainPage: View {
     }
 
     private var regularBots: [BotModel] {
-        bots.filter { !$0.isPinned }
+        visibleBots.filter { !$0.isPinned }
+    }
+
+    private var selectedChatFolder: ChatFolder? {
+        guard chatFoldersEnabled else { return nil }
+        guard selectedChatFolderID != ChatFolder.allFolderID else { return nil }
+        return chatFolders.first { $0.id.uuidString == selectedChatFolderID }
+    }
+
+    private var visibleBots: [BotModel] {
+        guard chatFoldersEnabled else { return bots }
+        guard selectedChatFolderID != ChatFolder.allFolderID else { return bots }
+        guard let selectedChatFolder else { return bots }
+        guard !selectedChatFolder.isPrivate || unlockedPrivateFolderID == selectedChatFolderID else { return [] }
+        return bots.filter { selectedChatFolder.contains(botID: $0.id) }
+    }
+
+    private var folderSignature: String {
+        chatFolders.map { $0.id.uuidString }.joined(separator: "|")
+    }
+
+    private var chatFolderListTransition: AnyTransition {
+        let insertionEdge: Edge = folderNavigationDirection >= 0 ? .trailing : .leading
+        let removalEdge: Edge = folderNavigationDirection >= 0 ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: insertionEdge).combined(with: .opacity),
+            removal: .move(edge: removalEdge).combined(with: .opacity)
+        )
     }
 
     var body: some View {
@@ -137,12 +205,8 @@ struct MainPage: View {
                 }
                 .navigationTitle("Echo UI")
                 .modifier(MainPageAPISubtitleModifier(
-                    isVisible: showMainHubAPIStatus,
-                    subtitle: apiNavigationSubtitle,
-                    subtitleText: apiNavigationSubtitleString,
-                    symbolName: apiStatusSymbolName,
-                    tintColor: apiStatusUIColor,
-                    rotatesSymbol: isWaitingForAPIStatusResponse
+                    isVisible: apiStatusDisplayStyle != .hidden,
+                    subtitle: apiNavigationSubtitle
                 ))
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -185,13 +249,18 @@ struct MainPage: View {
                 isPresented: $showSheetSettings,
                 messageLength: $MessageLength,
                 endpoint: $Endpoint,
-                showAPIStatus: $showMainHubAPIStatus
+                apiStatusDisplayStyle: $apiStatusDisplayStyleRawValue
             )
         }
         .sheet(isPresented: $showAPIpage) {
             APIManagerView(selectedServer: $apiManager.selectedServer)
         }
+        .sheet(item: $botForFolderAssignment) { bot in
+            ChatFolderAssignmentSheet(bot: bot)
+        }
         .onAppear {
+            migrateAPIStatusDisplayStyleIfNeeded()
+
             var didMigrateLegacyKeys = false
             for server in servers {
                 if server.migrateAPIKeyToKeychainIfNeeded() {
@@ -203,6 +272,7 @@ struct MainPage: View {
             }
 
             apiManager.restoreLastSelectedServer(from: servers)
+            lockSelectedPrivateFolderIfNeeded()
             
             if let server = apiManager.selectedServer {
                 Task {
@@ -219,6 +289,20 @@ struct MainPage: View {
 
             Task {
                 await refreshAPIStatus(for: server)
+            }
+        }
+        .onChange(of: folderSignature) { _, _ in
+            validateSelectedFolder()
+        }
+        .onChange(of: chatFoldersEnabled) { _, isEnabled in
+            if !isEnabled {
+                selectedChatFolderID = ChatFolder.allFolderID
+                unlockedPrivateFolderID = nil
+            }
+        }
+        .onChange(of: selectedChatFolderID) { _, folderID in
+            if !isPrivateFolderID(folderID) {
+                unlockedPrivateFolderID = nil
             }
         }
     }
@@ -262,15 +346,17 @@ struct MainPage: View {
                     Text("Echo UI")
                         .font(.title)
                         .bold()
-                    if showMainHubAPIStatus {
+                    if apiStatusDisplayStyle != .hidden {
                         Button {
                             showAPIpage = true
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: apiStatusSymbolName)
-                                    .font(.caption)
-                                    .foregroundStyle(apiStatusColor)
-                                    .symbolEffect(.rotate, isActive: isWaitingForAPIStatusResponse)
+                                if let apiStatusSymbolName {
+                                    Image(systemName: apiStatusSymbolName)
+                                        .font(.caption)
+                                        .foregroundStyle(apiStatusColor)
+                                        .symbolEffect(.rotate, isActive: rotatesAPIStatusSymbol)
+                                }
                                 Text("\(displayedServerName) • \(apiStatusText)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -305,19 +391,45 @@ struct MainPage: View {
 
     private var chatList: some View {
         List {
+            if chatFoldersEnabled && !bots.isEmpty {
+                FolderPickerView(
+                    folders: chatFolders,
+                    selectedFolderID: $selectedChatFolderID,
+                    showsCounts: true,
+                    countForFolder: folderCount,
+                    canSelectFolder: canSelectFolder,
+                    onSelectionDirectionChange: { direction in
+                        folderNavigationDirection = direction
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+            }
+
             if bots.isEmpty {
-                Text("Tap the plus button to create a new character")
+                Text("Tap the plus button to create a new character.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowSeparator(.hidden)
+            } else if visibleBots.isEmpty {
+                Text(emptyFolderMessage)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowSeparator(.hidden)
+                    .id(selectedChatFolderID)
+                    .transition(chatFolderListTransition)
             } else if pinnedBots.isEmpty {
                 ForEach(regularBots) { bot in
                     chatRow(for: bot)
+                        .id(chatListAnimationID(for: bot))
+                        .transition(chatFolderListTransition)
                 }
             } else {
                 Section() {
                     ForEach(pinnedBots) { bot in
                         chatRow(for: bot)
+                            .id(chatListAnimationID(for: bot))
+                            .transition(chatFolderListTransition)
                     }
                     .onMove { source, destination in
                         movePinnedBots(from: source, to: destination)
@@ -328,12 +440,15 @@ struct MainPage: View {
                     Section("All chats") {
                         ForEach(regularBots) { bot in
                             chatRow(for: bot)
+                                .id(chatListAnimationID(for: bot))
+                                .transition(chatFolderListTransition)
                         }
                     }
                 }
             }
         }
         .listStyle(.plain)
+        .animation(.snappy(duration: 0.28), value: selectedChatFolderID)
         .alert("Are you sure you want to delete this bot?", isPresented: $showDeleteAlert, presenting: botToDelete) { bot in
             Button("Yes, delete", role: .destructive) {
                 modelContext.delete(bot)
@@ -343,6 +458,25 @@ struct MainPage: View {
         } message: { bot in
             Text("Bot \(bot.name) will be destroyed.")
         }
+        .alert("Private Folder Locked", isPresented: $showsPrivateFolderAuthenticationAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(privateFolderAuthenticationMessage)
+        }
+    }
+
+    private var emptyFolderMessage: String {
+        guard let selectedChatFolder else { return "No chats in this folder." }
+        return "No chats in \(selectedChatFolder.displayName)."
+    }
+
+    private func folderCount(_ folder: ChatFolder?) -> Int {
+        guard let folder else { return bots.count }
+        return bots.filter { folder.contains(botID: $0.id) }.count
+    }
+
+    private func chatListAnimationID(for bot: BotModel) -> String {
+        "\(selectedChatFolderID)-\(bot.id.uuidString)"
     }
     
     @ViewBuilder
@@ -364,6 +498,15 @@ struct MainPage: View {
             pinButton(for: bot)
         }
         .swipeActions(edge: .trailing) {
+            if !chatFolders.isEmpty {
+                Button {
+                    botForFolderAssignment = bot
+                } label: {
+                    Label("Folders", systemImage: "folder")
+                }
+                .tint(.blue)
+            }
+
             Button {
                 selectedBotForEdit = bot
             } label: {
@@ -380,6 +523,13 @@ struct MainPage: View {
         }
         .contextMenu {
             pinButton(for: bot)
+            if !chatFolders.isEmpty {
+                Button {
+                    botForFolderAssignment = bot
+                } label: {
+                    Label("Folders", systemImage: "folder")
+                }
+            }
         }
     }
 
@@ -422,6 +572,69 @@ struct MainPage: View {
         }
     }
 
+    private func validateSelectedFolder() {
+        guard selectedChatFolderID != ChatFolder.allFolderID else { return }
+        if !chatFolders.contains(where: { $0.id.uuidString == selectedChatFolderID }) {
+            selectedChatFolderID = ChatFolder.allFolderID
+        }
+    }
+
+    @MainActor
+    private func canSelectFolder(_ folderID: String) async -> Bool {
+        guard isPrivateFolderID(folderID) else { return true }
+
+        let result = await authenticatePrivateFolder()
+        switch result {
+        case .success:
+            unlockedPrivateFolderID = folderID
+            return true
+        case .failure(let message):
+            privateFolderAuthenticationMessage = message
+            showsPrivateFolderAuthenticationAlert = true
+            return false
+        }
+    }
+
+    private func isPrivateFolderID(_ folderID: String) -> Bool {
+        chatFolders.first { $0.id.uuidString == folderID }?.isPrivate == true
+    }
+
+    private func lockSelectedPrivateFolderIfNeeded() {
+        guard isPrivateFolderID(selectedChatFolderID), unlockedPrivateFolderID != selectedChatFolderID else { return }
+        selectedChatFolderID = ChatFolder.allFolderID
+    }
+
+    private func migrateAPIStatusDisplayStyleIfNeeded() {
+        guard !didMigrateAPIStatusDisplayStyle else { return }
+        apiStatusDisplayStyleRawValue = legacyShowMainHubAPIStatus
+            ? MainPageAPIStatusDisplayStyle.coloredDot.rawValue
+            : MainPageAPIStatusDisplayStyle.hidden.rawValue
+        didMigrateAPIStatusDisplayStyle = true
+    }
+
+    private func authenticatePrivateFolder() async -> PrivateFolderAuthenticationResult {
+        let context = LAContext()
+        context.localizedCancelTitle = "Cancel"
+
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            return .failure(faceIDUnavailableMessage(from: error))
+        }
+
+        return await withCheckedContinuation { continuation in
+            context.evaluatePolicy(
+                .deviceOwnerAuthenticationWithBiometrics,
+                localizedReason: "Unlock the Private folder."
+            ) { success, error in
+                if success {
+                    continuation.resume(returning: .success)
+                } else {
+                    continuation.resume(returning: .failure(faceIDFailedMessage(from: error)))
+                }
+            }
+        }
+    }
+
     @MainActor
     private func refreshAPIStatus(for server: APIServer) async {
         let requestUUID = UUID()
@@ -437,144 +650,55 @@ struct MainPage: View {
     }
 }
 
+private enum PrivateFolderAuthenticationResult {
+    case success
+    case failure(String)
+}
+
+private func faceIDUnavailableMessage(from error: NSError?) -> String {
+    guard let error else {
+        return "Face ID is not available on this device."
+    }
+
+    switch LAError.Code(rawValue: error.code) {
+    case .biometryNotAvailable:
+        return "Face ID is not available on this device."
+    case .biometryNotEnrolled:
+        return "Set up Face ID in Settings to open the Private folder."
+    case .biometryLockout:
+        return "Face ID is locked. Unlock it in Settings before opening the Private folder."
+    default:
+        return "Face ID is required to open the Private folder."
+    }
+}
+
+private func faceIDFailedMessage(from error: Error?) -> String {
+    guard let error = error as? LAError else {
+        return "Face ID did not unlock the Private folder."
+    }
+
+    switch error.code {
+    case .userCancel, .appCancel, .systemCancel:
+        return "The Private folder was not unlocked."
+    case .authenticationFailed:
+        return "Face ID did not recognize you."
+    case .biometryLockout:
+        return "Face ID is locked. Unlock it in Settings before opening the Private folder."
+    default:
+        return "Face ID did not unlock the Private folder."
+    }
+}
+
 private struct MainPageAPISubtitleModifier: ViewModifier {
     let isVisible: Bool
     let subtitle: Text
-    let subtitleText: String
-    let symbolName: String
-    let tintColor: UIColor
-    let rotatesSymbol: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if isVisible {
             content.navigationSubtitle(subtitle)
-                .background(MainPageCustomNavigationSubtitle(
-                    symbolName: symbolName,
-                    subtitleText: subtitleText,
-                    tintColor: tintColor,
-                    rotatesSymbol: rotatesSymbol
-                ))
         } else {
             content
-                .background(MainPageCustomNavigationSubtitle(
-                    symbolName: nil,
-                    subtitleText: subtitleText,
-                    tintColor: tintColor,
-                    rotatesSymbol: false
-                ))
-        }
-    }
-}
-
-private struct MainPageCustomNavigationSubtitle: UIViewControllerRepresentable {
-    let symbolName: String?
-    let subtitleText: String
-    let tintColor: UIColor
-    let rotatesSymbol: Bool
-
-    func makeUIViewController(context: Context) -> SubtitleController {
-        SubtitleController()
-    }
-
-    func updateUIViewController(_ controller: SubtitleController, context: Context) {
-        controller.symbolName = symbolName
-        controller.subtitleText = subtitleText
-        controller.tintColor = tintColor
-        controller.rotatesSymbol = rotatesSymbol
-    }
-
-    final class SubtitleController: UIViewController {
-        var symbolName: String? {
-            didSet {
-                applySubtitle()
-            }
-        }
-        var subtitleText: String = "" {
-            didSet {
-                applySubtitle()
-            }
-        }
-        var tintColor: UIColor = .secondaryLabel {
-            didSet {
-                applySubtitle()
-            }
-        }
-        var rotatesSymbol: Bool = false {
-            didSet {
-                applySubtitle()
-            }
-        }
-        private var lastAppliedSubtitleKey: String?
-
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            view.isHidden = true
-        }
-
-        override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            applySubtitle()
-        }
-
-        override func viewDidLayoutSubviews() {
-            super.viewDidLayoutSubviews()
-            applySubtitle()
-        }
-
-        private func applySubtitle() {
-            DispatchQueue.main.async { [weak self] in
-                self?.applySubtitleNow()
-            }
-        }
-
-        private func applySubtitleNow() {
-            guard let navigationItem = navigationController?.topViewController?.navigationItem else { return }
-
-            guard let symbolName, !subtitleText.isEmpty else {
-                navigationItem.attributedSubtitle = nil
-                navigationItem.subtitleView = nil
-                navigationItem.largeAttributedSubtitle = nil
-                navigationItem.largeSubtitleView = nil
-                lastAppliedSubtitleKey = nil
-                return
-            }
-
-            let subtitleKey = "\(symbolName)|\(subtitleText)|\(tintColor.description)|\(rotatesSymbol)"
-            if lastAppliedSubtitleKey != subtitleKey {
-                navigationItem.attributedSubtitle = nil
-                navigationItem.subtitleView = makeSubtitleView(symbolName: symbolName, rotatesSymbol: rotatesSymbol)
-                navigationItem.largeAttributedSubtitle = nil
-                navigationItem.largeSubtitleView = makeSubtitleView(symbolName: symbolName, rotatesSymbol: rotatesSymbol)
-                lastAppliedSubtitleKey = subtitleKey
-            }
-        }
-
-        private func makeSubtitleView(symbolName: String, rotatesSymbol: Bool) -> UIView {
-            let font = UIFont.preferredFont(forTextStyle: .subheadline)
-            let symbolConfiguration = UIImage.SymbolConfiguration(pointSize: 8, weight: .regular)
-            let imageView = UIImageView(image: UIImage(systemName: symbolName, withConfiguration: symbolConfiguration))
-            imageView.tintColor = tintColor
-            imageView.contentMode = .scaleAspectFit
-            imageView.setContentHuggingPriority(.required, for: .horizontal)
-            imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
-            if rotatesSymbol {
-                imageView.addSymbolEffect(.rotate)
-            }
-
-            let label = UILabel()
-            label.text = subtitleText
-            label.font = font
-            label.textColor = .secondaryLabel
-            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-            let stack = UIStackView(arrangedSubviews: [imageView, label])
-            stack.axis = .horizontal
-            stack.alignment = .center
-            stack.spacing = 4
-            stack.isUserInteractionEnabled = false
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            return stack
         }
     }
 }
@@ -711,6 +835,7 @@ private func mainPagePreviewContainer(seed: MainPagePreviewSeed = .empty) -> Mod
         BotModel.self,
         APIServer.self,
         ChatHistory.self,
+        ChatFolder.self,
         ChatMessageEntity.self,
         PersonaModel.self
     ])

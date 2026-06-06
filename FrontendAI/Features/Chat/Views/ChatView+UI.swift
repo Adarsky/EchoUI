@@ -16,7 +16,7 @@ extension ChatView {
             }
             .padding(.top, topMessagesInset)
             .padding(.horizontal, 15)
-            .padding(.bottom, 15)
+            .padding(.bottom, 15 + chatInputExpansionMessagesPadding)
         }
         .defaultScrollAnchor(.bottom)
         .scrollDismissesKeyboard(.interactively)
@@ -37,8 +37,33 @@ extension ChatView {
         .background(alignment: .bottom) {
             bottomInputMaterialFade
         }
+        .overlay {
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: ChatInputInsetHeightPreferenceKey.self, value: proxy.size.height)
+            }
+            .allowsHitTesting(false)
+        }
+        .onPreferenceChange(ChatInputInsetHeightPreferenceKey.self) { height in
+            updateChatInputInsetHeight(height)
+        }
         .contentShape(Rectangle())
         .onTapGesture { }
+    }
+
+    var chatInputExpansionMessagesPadding: CGFloat {
+        max(0, chatInputInsetHeight - minimumChatInputInsetHeight)
+    }
+
+    func updateChatInputInsetHeight(_ height: CGFloat) {
+        guard height > 0 else { return }
+
+        if minimumChatInputInsetHeight == 0 || height < minimumChatInputInsetHeight {
+            minimumChatInputInsetHeight = height
+        }
+
+        guard abs(chatInputInsetHeight - height) > 0.5 else { return }
+        chatInputInsetHeight = height
     }
 
     @ViewBuilder
@@ -137,6 +162,38 @@ extension ChatView {
         ChatAppearanceStore.chatID(botID: botID, firstMessageID: messages.first?.id)
     }
 
+    var currentChatTokenCount: Int {
+        let systemPromptTokens = TokenUsageEstimator.estimatedTokenCount(for: currentSystemPrompt)
+        let messageTokens = messages.reduce(0) { $0 + TokenUsageEstimator.estimatedTokenCount(for: $1) }
+        let greetingTokens = shouldInjectGreetingIntoPayload ? TokenUsageEstimator.estimatedTokenCount(for: bot.greeting) : 0
+
+        return systemPromptTokens + greetingTokens + messageTokens
+    }
+
+    var currentTokenWindow: Int? {
+        guard
+            let selectedServer = apiManager.selectedServer,
+            selectedServer.type == .openrouter
+        else {
+            return nil
+        }
+
+        let selectedModelID = selectedServer.selectedModel
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !selectedModelID.isEmpty else { return nil }
+
+        return APIModelCatalogCache
+            .cachedOpenRouterModels(for: selectedServer.baseURL)?
+            .first { $0.id.lowercased() == selectedModelID }?
+            .contextLength
+    }
+
+    private var shouldInjectGreetingIntoPayload: Bool {
+        !bot.greeting.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !messages.contains { !$0.isUser && $0.content == bot.greeting }
+    }
+
     @MainActor
     func refreshActiveAppearance() {
         activeChatAppearance = ChatAppearanceStore.resolved(
@@ -191,6 +248,14 @@ extension ChatView {
 
         messages.remove(at: index)
         saveChatHistory()
+    }
+}
+
+private struct ChatInputInsetHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

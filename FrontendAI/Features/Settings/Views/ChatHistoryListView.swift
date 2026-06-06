@@ -231,7 +231,7 @@ private let templePreviewBotID = UUID(uuidString: "E6C3D6D3-B9D8-4E2A-9AAE-7A6E8
 
 @MainActor
 private let templeChatHistoryPreviewContainer: ModelContainer = {
-    let schema = Schema([BotModel.self, ChatHistory.self, ChatMessageEntity.self])
+    let schema = Schema([BotModel.self, ChatHistory.self, ChatFolder.self, ChatMessageEntity.self])
     let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: schema, configurations: [configuration])
     let context = container.mainContext

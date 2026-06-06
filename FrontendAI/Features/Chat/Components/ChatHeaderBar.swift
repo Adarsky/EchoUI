@@ -4,6 +4,8 @@ struct ChatHeaderBar: View {
     let bot: Bot
     let botID: UUID
     let chatAppearanceID: String?
+    var currentChatTokenCount = 0
+    var tokenWindow: Int?
     var personas: [PersonaModel] = []
     var currentPersona: PersonaModel?
     var globalPersona: PersonaModel?
@@ -52,6 +54,8 @@ struct ChatHeaderBar: View {
                         bot: bot,
                         botID: botID,
                         chatAppearanceID: chatAppearanceID,
+                        currentChatTokenCount: currentChatTokenCount,
+                        tokenWindow: tokenWindow,
                         personas: personas,
                         currentPersona: currentPersona,
                         globalPersona: globalPersona,

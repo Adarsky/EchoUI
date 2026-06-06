@@ -449,6 +449,7 @@ private let cachePreviewModelContainer: ModelContainer = {
     let schema = Schema([
         BotModel.self,
         ChatHistory.self,
+        ChatFolder.self,
         ChatMessageEntity.self
     ])
     let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

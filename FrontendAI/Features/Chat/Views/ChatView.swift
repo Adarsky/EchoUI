@@ -44,6 +44,8 @@ struct ChatView: View {
     @State var activeChatAppearance = ChatAppearanceSnapshot.global()
     @State var chatWallpaperImage: UIImage?
     @State var chatWallpaperSmartGradient: ChatWallpaperSmartGradient?
+    @State var chatInputInsetHeight: CGFloat = 0
+    @State var minimumChatInputInsetHeight: CGFloat = 0
 
     init(bot: Bot) {
         self.bot = bot
@@ -107,6 +109,8 @@ struct ChatView: View {
                     bot: bot,
                     botID: botID,
                     chatAppearanceID: currentChatAppearanceID,
+                    currentChatTokenCount: currentChatTokenCount,
+                    tokenWindow: currentTokenWindow,
                     personas: personas,
                     currentPersona: currentPersona,
                     globalPersona: personaManager.activePersona,

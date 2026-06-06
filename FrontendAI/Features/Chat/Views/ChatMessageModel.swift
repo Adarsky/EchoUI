@@ -307,3 +307,22 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     }
 
 }
+
+enum TokenUsageEstimator {
+    static func estimatedTokenCount(for message: ChatMessageEntity) -> Int {
+        let textCount = estimatedTokenCount(for: message.text)
+        let variantCount = message.variants?.reduce(0) { $0 + estimatedTokenCount(for: $1) } ?? 0
+        return textCount + variantCount
+    }
+
+    static func estimatedTokenCount(for message: ChatMessageModel) -> Int {
+        estimatedTokenCount(for: message.content)
+    }
+
+    static func estimatedTokenCount(for text: String) -> Int {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return 0 }
+
+        return max(1, Int((Double(normalized.utf8.count) / 4.0).rounded(.up)))
+    }
+}

@@ -4,6 +4,8 @@ struct ChatBotSheetView: View {
     let bot: Bot
     let botID: UUID
     let chatAppearanceID: String?
+    var currentChatTokenCount = 0
+    var tokenWindow: Int?
     var personas: [PersonaModel] = []
     var currentPersona: PersonaModel?
     var globalPersona: PersonaModel?
@@ -29,6 +31,7 @@ struct ChatBotSheetView: View {
                     headerSection
                     personaPickerSection
 //                    currentModelSection
+                    currentChatTokenSection
                     profileSectionPicker
                     profileContentSection
                 }
@@ -84,6 +87,33 @@ struct ChatBotSheetView: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isLargeDetent)
+    }
+    private var currentChatTokenSection: some View {
+        ZStack {
+            if let tokenUsageColor {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        tokenUsageColor.opacity(0.34),
+                        tokenUsageColor.opacity(0.12),
+                        Color.clear
+                    ]),
+                    startPoint: .trailing,
+                    endPoint: .leading
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            HStack {
+                Text("Current token usage:")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Text(tokenUsageText)
+                    .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(tokenUsageColor ?? .primary)
+            }
+            .padding(16)
+        }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var currentModelSection: some View {
@@ -446,6 +476,50 @@ struct ChatBotSheetView: View {
         }
     }
 
+    private var tokenUsageText: String {
+        guard let tokenWindow, tokenWindow > 0 else {
+            return "\(currentChatTokenCount.formatted()) tokens"
+        }
+
+        return "\(currentChatTokenCount.formatted()) / \(tokenWindow.formatted())"
+    }
+
+    private var tokenUsageColor: Color? {
+        guard let tokenWindow, tokenWindow > 0 else { return nil }
+
+        let progress = Double(currentChatTokenCount) / Double(tokenWindow)
+        return Self.tokenUsageColor(for: progress)
+    }
+
+    private static func tokenUsageColor(for progress: Double) -> Color {
+        let clampedProgress = max(0, progress)
+        if clampedProgress <= 0.1 {
+            return .green
+        }
+        if clampedProgress >= 1 {
+            return Color(red: 0.86, green: 0.08, blue: 0.24)
+        }
+
+        let stops: [(progress: Double, color: RGBColor)] = [
+            (0.1, RGBColor(red: 0.20, green: 0.72, blue: 0.32)),
+            (0.5, RGBColor(red: 0.95, green: 0.72, blue: 0.16)),
+            (0.85, RGBColor(red: 0.94, green: 0.38, blue: 0.12)),
+            (1.0, RGBColor(red: 0.86, green: 0.08, blue: 0.24))
+        ]
+
+        guard let upperIndex = stops.firstIndex(where: { clampedProgress <= $0.progress }) else {
+            return stops.last?.color.swiftUIColor ?? .red
+        }
+
+        let lowerIndex = max(0, upperIndex - 1)
+        let lower = stops[lowerIndex]
+        let upper = stops[upperIndex]
+        let segmentLength = upper.progress - lower.progress
+        let segmentProgress = segmentLength > 0 ? (clampedProgress - lower.progress) / segmentLength : 0
+
+        return RGBColor.interpolate(from: lower.color, to: upper.color, progress: segmentProgress).swiftUIColor
+    }
+
     private var personaSubtitle: String {
         if hasPersonaOverride {
             return currentPersona == nil ? "Saved for this chat without a persona" : "Saved for this chat"
@@ -521,6 +595,25 @@ private enum ProfileSection: String, CaseIterable, Identifiable {
         case .details:
             return "sparkles"
         }
+    }
+}
+
+private struct RGBColor {
+    let red: Double
+    let green: Double
+    let blue: Double
+
+    var swiftUIColor: Color {
+        Color(red: red, green: green, blue: blue)
+    }
+
+    static func interpolate(from start: RGBColor, to end: RGBColor, progress: Double) -> RGBColor {
+        let clampedProgress = min(max(progress, 0), 1)
+        return RGBColor(
+            red: start.red + (end.red - start.red) * clampedProgress,
+            green: start.green + (end.green - start.green) * clampedProgress,
+            blue: start.blue + (end.blue - start.blue) * clampedProgress
+        )
     }
 }
 

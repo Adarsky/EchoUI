@@ -190,18 +190,6 @@ private struct TokenUsageRow: Identifiable {
     }
 }
 
-private enum TokenUsageEstimator {
-    static func estimatedTokenCount(for message: ChatMessageEntity) -> Int {
-        let textCount = estimatedTokenCount(for: message.text)
-        let variantCount = message.variants?.reduce(0) { $0 + estimatedTokenCount(for: $1) } ?? 0
-        return textCount + variantCount
-    }
-
-    private static func estimatedTokenCount(for text: String) -> Int {
-        max(1, Int((Double(text.utf8.count) / 4.0).rounded(.up)))
-    }
-}
-
 #Preview("Token Usage") {
     NavigationStack {
         TokenUsageView()
@@ -214,6 +202,7 @@ private let tokenUsagePreviewModelContainer: ModelContainer = {
     let schema = Schema([
         BotModel.self,
         ChatHistory.self,
+        ChatFolder.self,
         ChatMessageEntity.self
     ])
     let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

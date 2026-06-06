@@ -5,7 +5,7 @@ struct SettingsSheetView: View {
     @Binding var isPresented: Bool
     @Binding var messageLength: Int
     @Binding var endpoint: String
-    @Binding var showAPIStatus: Bool
+    @Binding var apiStatusDisplayStyle: String
     var navName: String = "Settings"
 
     var body: some View {
@@ -13,7 +13,7 @@ struct SettingsSheetView: View {
             SettingsPageView(
                 messageLength: $messageLength,
                 endpoint: $endpoint,
-                showAPIStatus: $showAPIStatus,
+                apiStatusDisplayStyle: $apiStatusDisplayStyle,
                 navName: navName
             )
             .presentationDetents([.large])
@@ -25,7 +25,7 @@ struct SettingsSheetView: View {
 struct SettingsPageView: View {
     @Binding var messageLength: Int
     @Binding var endpoint: String
-    @Binding var showAPIStatus: Bool
+    @Binding var apiStatusDisplayStyle: String
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var apiManager: APIManager
 
@@ -37,13 +37,41 @@ struct SettingsPageView: View {
     @Query private var servers: [APIServer]
 
     @State private var openRouterBalanceState: OpenRouterBalanceState = .disabled
+    @State private var openRouterBalanceLastUpdated: Date?
     var navName: String = "Settings"
 
     var body: some View {
         List {
+            Section(header: Text("Balance information")) {
+                Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
+
+                if openRouterBalancePingEnabled {
+                    Button {
+                        Task {
+                            await refreshOpenRouterBalance()
+                        }
+                    } label: {
+                        OpenRouterBalancePanel(
+                            server: selectedOpenRouterServer,
+                            state: openRouterBalanceState,
+                            balanceValue: openRouterBalanceValue,
+                            subtitle: openRouterBalanceSubtitle,
+                            valueColor: balanceValueColor,
+                            accentColor: balanceAccentColor,
+                            isLoading: isLoadingBalance,
+                            lastUpdated: openRouterBalanceLastUpdated
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
+                }
+            }
             Section(header: Text("Customization")) {
                 NavigationLink(destination: ChatAppearanceSettingsView()) {
                     Label("Chat Appearance", systemImage: "paintpalette")
+                }
+                NavigationLink(destination: FoldersSettingsSheet()) {
+                    Label("Chat Folders", systemImage: "folder")
                 }
                 NavigationLink(destination: TokenSpeedChangeView()) {
                     Label("Token Speed", systemImage: "hare")
@@ -51,7 +79,13 @@ struct SettingsPageView: View {
                 NavigationLink(destination: AppIconSettingsView()) {
                     Label("App Icon", systemImage: "app.dashed")
                 }
-                Toggle("Show API Status", systemImage:"network", isOn: $showAPIStatus)
+                Picker(selection: $apiStatusDisplayStyle) {
+                    ForEach(MainPageAPIStatusDisplayStyle.allCases) { style in
+                        Text(style.displayName).tag(style.rawValue)
+                    }
+                } label: {
+                    Label("Main Page API", systemImage: "network")
+                }
             }
 
             Section(header: Text("Connection configuration")) {
@@ -85,36 +119,6 @@ struct SettingsPageView: View {
                 }
                 NavigationLink(destination: DeveloperSettingsView()) {
                     Label("Call settings", systemImage: "hammer")
-                }
-            }
-            Section(header: Text("Balance information")) {
-                Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
-
-                if openRouterBalancePingEnabled {
-                    Button {
-                        Task {
-                            await refreshOpenRouterBalance()
-                        }
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "creditcard")
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("OpenRouter balance")
-                                Text(openRouterBalanceSubtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
-                            Spacer()
-                            if isLoadingBalance {
-                                ProgressView()
-                            }
-                            Text(openRouterBalanceValue)
-                                .font(.subheadline.monospacedDigit())
-                                .foregroundStyle(balanceValueColor)
-                        }
-                    }
-                    .disabled(selectedOpenRouterServer == nil || isLoadingBalance)
                 }
             }
         }
@@ -222,10 +226,26 @@ struct SettingsPageView: View {
         }
     }
 
+    private var balanceAccentColor: Color {
+        switch openRouterBalanceState {
+        case .loaded:
+            return .green
+        case .loading:
+            return .blue
+        case .failed:
+            return .red
+        case .missingKey, .noActiveOpenRouter:
+            return .orange
+        case .disabled:
+            return .secondary
+        }
+    }
+
     @MainActor
     private func refreshOpenRouterBalance() async {
         guard openRouterBalancePingEnabled else {
             openRouterBalanceState = .disabled
+            openRouterBalanceLastUpdated = nil
             return
         }
 
@@ -253,9 +273,195 @@ struct SettingsPageView: View {
                 tlsPolicy: server.tlsPolicy
             )
             openRouterBalanceState = .loaded(snapshot)
+            openRouterBalanceLastUpdated = .now
         } catch {
             openRouterBalanceState = .failed(error.localizedDescription)
+            openRouterBalanceLastUpdated = .now
         }
+    }
+}
+
+private struct OpenRouterBalancePanel: View {
+    let server: APIServer?
+    let state: OpenRouterBalanceState
+    let balanceValue: String
+    let subtitle: String
+    let valueColor: Color
+    let accentColor: Color
+    let isLoading: Bool
+    let lastUpdated: Date?
+
+    private var serverLine: String {
+        guard let server else { return "Select an OpenRouter server to enable credits." }
+        let host = URL(string: server.baseURL)?.host ?? server.baseURL
+        return "\(server.name) • \(host)"
+    }
+
+    private var badgeTitle: String {
+        switch state {
+        case .disabled:
+            return "Off"
+        case .noActiveOpenRouter:
+            return "No server"
+        case .missingKey:
+            return "Needs key"
+        case .loading:
+            return "Checking"
+        case .loaded:
+            return "Live"
+        case .failed:
+            return "Error"
+        }
+    }
+
+    private var badgeIcon: String {
+        switch state {
+        case .disabled:
+            return "pause.circle"
+        case .noActiveOpenRouter:
+            return "server.rack"
+        case .missingKey:
+            return "key.slash"
+        case .loading:
+            return "arrow.triangle.2.circlepath"
+        case .loaded:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var lastUpdatedText: String? {
+        guard let lastUpdated else { return nil }
+        return "Checked \(lastUpdated.formatted(date: .omitted, time: .shortened))"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image("AICompanyOpenRouter")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .foregroundStyle(accentColor)
+                    .frame(width: 22, height: 22)
+                    .padding(9)
+                    .background(accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("OpenRouter Credits")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text(serverLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                Label(badgeTitle, systemImage: badgeIcon)
+                    .font(.caption2.weight(.semibold))
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(accentColor.opacity(0.12), in: Capsule())
+            }
+
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                Text(balanceValue)
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(valueColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Spacer(minLength: 8)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+
+                if let lastUpdatedText {
+                    Text(lastUpdatedText)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            if case let .loaded(snapshot) = state,
+               snapshot.totalCredits != nil || snapshot.totalUsage != nil {
+                Divider()
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        balanceMetricViews(for: snapshot)
+                    }
+
+                    VStack(spacing: 8) {
+                        balanceMetricViews(for: snapshot)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func balanceMetricViews(for snapshot: OpenRouterBalanceSnapshot) -> some View {
+        if let totalCredits = snapshot.totalCredits {
+            OpenRouterBalanceMetricView(
+                icon: "plus.circle",
+                title: "Credits",
+                value: totalCredits.formatted(.currency(code: "USD"))
+            )
+        }
+
+        if let totalUsage = snapshot.totalUsage {
+            OpenRouterBalanceMetricView(
+                icon: "chart.line.uptrend.xyaxis",
+                title: "Usage",
+                value: totalUsage.formatted(.currency(code: "USD"))
+            )
+        }
+    }
+}
+
+private struct OpenRouterBalanceMetricView: View {
+    let icon: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -272,7 +478,7 @@ private struct SettingsSheetViewPreviewHost: View {
     @State private var isPresented = true
     @State private var messageLength = 1024
     @State private var endpoint = "http://localhost:1234/v1"
-    @State private var showAPIStatus = true
+    @State private var apiStatusDisplayStyle = MainPageAPIStatusDisplayStyle.coloredDot.rawValue
     var navName: String = "Settings"
 
     var body: some View {
@@ -280,7 +486,7 @@ private struct SettingsSheetViewPreviewHost: View {
             isPresented: $isPresented,
             messageLength: $messageLength,
             endpoint: $endpoint,
-            showAPIStatus: $showAPIStatus,
+            apiStatusDisplayStyle: $apiStatusDisplayStyle,
             navName: navName
         )
     }
@@ -305,6 +511,7 @@ private let settingsPreviewModelContainer: ModelContainer = {
         APIServer.self,
         BotModel.self,
         ChatHistory.self,
+        ChatFolder.self,
         ChatMessageEntity.self
     ])
     let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

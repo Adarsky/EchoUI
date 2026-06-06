@@ -3,10 +3,14 @@ import SwiftData
 import PhotosUI
 
 struct EditBotView: View {
-    @Bindable var bot: BotModel
+    let bot: BotModel
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
 
+    @State private var draftName: String
+    @State private var draftGreeting: String
+    @State private var draftSubtitle: String
+    @State private var draftAvatarData: Data?
     @State private var selectedImageItem: PhotosPickerItem? = nil
     @State private var pendingAvatarImage: AvatarEditorDraftImage? = nil
     @State private var isGreetingEditorExpanded = false
@@ -19,9 +23,17 @@ struct EditBotView: View {
         case description
     }
 
+    init(bot: BotModel) {
+        self.bot = bot
+        _draftName = State(initialValue: bot.name)
+        _draftGreeting = State(initialValue: bot.greeting)
+        _draftSubtitle = State(initialValue: bot.subtitle)
+        _draftAvatarData = State(initialValue: bot.avatarData)
+    }
+
     private var canSave: Bool {
-        !bot.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !bot.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !draftSubtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -50,11 +62,17 @@ struct EditBotView: View {
                 }
             }
         }
-        .onChange(of: bot.name) { _, newValue in
-            bot.name = BotModel.clampedName(newValue)
+        .onChange(of: draftName) { _, newValue in
+            let clampedName = BotModel.clampedName(newValue)
+            if clampedName != newValue {
+                draftName = clampedName
+            }
         }
-        .onChange(of: bot.subtitle) { _, newValue in
-            bot.subtitle = BotModel.clampedSubtitle(newValue)
+        .onChange(of: draftSubtitle) { _, newValue in
+            let clampedSubtitle = BotModel.clampedSubtitle(newValue)
+            if clampedSubtitle != newValue {
+                draftSubtitle = clampedSubtitle
+            }
         }
         .sheet(item: $pendingAvatarImage) { draft in
             AvatarImageEditorView(
@@ -64,7 +82,7 @@ struct EditBotView: View {
                     selectedImageItem = nil
                 },
                 onApply: { editedImage in
-                    bot.avatarData = editedImage.jpegData(compressionQuality: 0.9)
+                    draftAvatarData = editedImage.jpegData(compressionQuality: 0.9)
                     pendingAvatarImage = nil
                     selectedImageItem = nil
                 }
@@ -105,7 +123,7 @@ struct EditBotView: View {
             Label("Name", systemImage: "person.text.rectangle")
                 .font(.subheadline.weight(.semibold))
 
-            TextField("e.g. Luna", text: $bot.name)
+            TextField("e.g. Luna", text: $draftName)
                 .focused($focusedField, equals: .name)
                 .submitLabel(.next)
                 .textInputAutocapitalization(.words)
@@ -125,7 +143,7 @@ struct EditBotView: View {
             title: "Greeting",
             icon: "quote.bubble",
             placeholder: "How does the character start a chat?",
-            text: $bot.greeting,
+            text: $draftGreeting,
             field: .greeting,
             nextField: .description,
             isExpanded: $isGreetingEditorExpanded
@@ -137,7 +155,7 @@ struct EditBotView: View {
             title: "Description",
             icon: "text.alignleft",
             placeholder: "Describe personality, style and behavior...",
-            text: $bot.subtitle,
+            text: $draftSubtitle,
             field: .description,
             nextField: nil,
             isExpanded: $isDescriptionEditorExpanded
@@ -218,7 +236,7 @@ struct EditBotView: View {
 
     private var avatarPreview: some View {
         Group {
-            if let data = bot.avatarData, let image = UIImage(data: data) {
+            if let data = draftAvatarData, let image = UIImage(data: data) {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -258,9 +276,10 @@ struct EditBotView: View {
     }
 
     private func saveBot() {
-        bot.name = BotModel.clampedName(bot.name.trimmingCharacters(in: .whitespacesAndNewlines))
-        bot.subtitle = BotModel.clampedSubtitle(bot.subtitle.trimmingCharacters(in: .whitespacesAndNewlines))
-        bot.greeting = bot.greeting.trimmingCharacters(in: .whitespacesAndNewlines)
+        bot.name = BotModel.clampedName(draftName.trimmingCharacters(in: .whitespacesAndNewlines))
+        bot.subtitle = BotModel.clampedSubtitle(draftSubtitle.trimmingCharacters(in: .whitespacesAndNewlines))
+        bot.greeting = draftGreeting.trimmingCharacters(in: .whitespacesAndNewlines)
+        bot.avatarData = draftAvatarData
         try? modelContext.save()
         dismiss()
     }

@@ -95,6 +95,7 @@ private enum StoreBootstrap {
             BotModel.self,
             APIServer.self,
             ChatHistory.self,
+            ChatFolder.self,
             ChatMessageEntity.self,
             PersonaModel.self
         ])
@@ -227,6 +228,7 @@ enum StoreRecoveryManager {
             BotModel.self,
             APIServer.self,
             ChatHistory.self,
+            ChatFolder.self,
             ChatMessageEntity.self,
             PersonaModel.self
         ])
