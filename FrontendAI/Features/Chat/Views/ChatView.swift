@@ -10,7 +10,6 @@ struct ChatView: View {
     let isPreviewSeeded: Bool
 
     let maxVisibleMessages = 300
-    let topMessagesInset: CGFloat = 12
 
     @State var messages: [ChatMessageModel] = []
     @State var showChatBotSheet = false
@@ -43,9 +42,8 @@ struct ChatView: View {
     @AppStorage(ChatStreamingStorageKeys.chunkFlushIntervalMs) var streamChunkFlushIntervalMs = ChatStreamingDefaults.chunkFlushIntervalMs
     @State var activeChatAppearance = ChatAppearanceSnapshot.global()
     @State var chatWallpaperImage: UIImage?
-    @State var chatWallpaperSmartGradient: ChatWallpaperSmartGradient?
-    @State var chatInputInsetHeight: CGFloat = 0
-    @State var minimumChatInputInsetHeight: CGFloat = 0
+    @State var hasPositionedInitialMessages = false
+    @State var isPositioningInitialMessages = false
 
     init(bot: Bot) {
         self.bot = bot
@@ -98,31 +96,14 @@ struct ChatView: View {
             }
             .environment(\.chatAppearance, activeChatAppearance)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .environment(\.bot, bot)
         .environment(\.personaManager, personaManager)
         .environment(\.isGenerating, isGenerating)
         .environment(\.showCursor, true)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                ChatHeaderBar(
-                    bot: bot,
-                    botID: botID,
-                    chatAppearanceID: currentChatAppearanceID,
-                    currentChatTokenCount: currentChatTokenCount,
-                    tokenWindow: currentTokenWindow,
-                    personas: personas,
-                    currentPersona: currentPersona,
-                    globalPersona: personaManager.activePersona,
-                    hasPersonaOverride: hasChatPersonaOverride,
-                    showChatBotSheet: $showChatBotSheet,
-                    isViewingHistory: $isViewingHistory,
-                    onNewChat: startNewChatTapped,
-                    onSelectPersona: setActiveChatPersona,
-                    onUseGlobalPersona: clearChatPersonaOverride
-                )
-            }
-        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
             refreshActiveAppearance()

@@ -27,8 +27,9 @@ struct InputBarSettings: View {
             Section("Preview") {
                 ChatInputBar(
                     inputText: $previewText,
-                    isGenerating: .constant(false),
-                    isThinking: .constant(false),
+                    isGenerating: false,
+                    isThinking: false,
+                    sendButtonStyle: selectedSendButtonStyle.wrappedValue,
                     placeholder: "Message Assistant",
                     onSend: { },
                     onStop: { }

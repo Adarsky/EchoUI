@@ -9,6 +9,7 @@ extension ChatView {
         // MARK: - History (load/save)
         func loadHistory() {
             Task { @MainActor in
+                resetInitialMessagePositioning()
                 savedBotModel = allBots.first(where: { $0.id == botID })
                 do {
                     let descriptor = FetchDescriptor<ChatHistory>(
@@ -97,6 +98,7 @@ extension ChatView {
 
         @MainActor
         func loadSelectedHistory(_ history: ChatHistory) {
+            resetInitialMessagePositioning()
             currentHistory = history
             applyPersonaOverride(from: history)
             rememberOpenedHistory(history)

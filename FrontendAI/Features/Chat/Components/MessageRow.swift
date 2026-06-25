@@ -26,7 +26,7 @@ struct MessageRow: View {
         HStack(alignment: .top) {
             if msg.isUser { Spacer(minLength: sideSpacerMinLength(for: true)) }
 
-            LazyVStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
+            VStack(alignment: msg.isUser ? .trailing : .leading, spacing: 6) {
                 if !msg.isUser, msg.hasThinkingContent {
                     ThinkingField(msg: msg)
                 }
@@ -528,11 +528,9 @@ private func applyingEmphasisColor(to attributed: AttributedString, textColor: C
 
 private struct MessageRowPreviewHost: View {
     @StateObject private var message: ChatMessageModel
-    private let useGradientBackground: Bool
 
-    init(message: ChatMessageModel, useGradientBackground: Bool = false) {
+    init(message: ChatMessageModel) {
         _message = StateObject(wrappedValue: message)
-        self.useGradientBackground = useGradientBackground
     }
 
     var body: some View {
@@ -543,23 +541,7 @@ private struct MessageRowPreviewHost: View {
             onDelete: { _ in }
         )
         .padding()
-        .background(
-            Group {
-                if useGradientBackground {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.09, green: 0.12, blue: 0.20),
-                            Color(red: 0.16, green: 0.23, blue: 0.34),
-                            Color(red: 0.24, green: 0.18, blue: 0.27)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                } else {
-                    Color(.systemBackground)
-                }
-            }
-        )
+        .background(Color(.systemBackground))
     }
 }
 
@@ -581,13 +563,12 @@ private struct MessageRowPreviewHost: View {
     )
 }
 
-#Preview("Bot Thinking + Gradient") {
+#Preview("Bot Thinking") {
     MessageRowPreviewHost(
         message: ChatMessageModel(
             content: "<think>Reviewing your prompt and outlining the answer structure before responding.</think>Here is the bot response after thinking mode finishes.",
             isUser: false
-        ),
-        useGradientBackground: true
+        )
     )
 }
 

@@ -3,67 +3,80 @@ import UIKit
 
 extension ChatView {
     var messagesScrollView: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(messages) { msg in
-                    MessageRow(
-                        msg: msg,
-                        regenerate: regenerateMessage,
-                        switchVariant: switchVariant,
-                        onDelete: deleteMessage
-                    )
-                }
-            }
-            .padding(.top, topMessagesInset)
-            .padding(.horizontal, 15)
-            .padding(.bottom, 15 + chatInputExpansionMessagesPadding)
-        }
-        .defaultScrollAnchor(.bottom)
-        .scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            chatInputInset
-        }
-    }
-
-    var chatInputInset: some View {
-        ChatInputBar(
-            inputText: $inputText,
-            isGenerating: $isGenerating,
-            isThinking: $isThinking,
-            placeholder: "Message \(bot.name)",
-            onSend: sendMessage,
-            onStop: stopGeneration
+        ChatScreenControllerRepresentable(
+            model: chatScreenModel,
+            bindings: chatScreenBindings,
+            actions: chatScreenActions
         )
-        .background(alignment: .bottom) {
-            bottomInputMaterialFade
-        }
-        .overlay {
-            GeometryReader { proxy in
-                Color.clear
-                    .preference(key: ChatInputInsetHeightPreferenceKey.self, value: proxy.size.height)
-            }
-            .allowsHitTesting(false)
-        }
-        .onPreferenceChange(ChatInputInsetHeightPreferenceKey.self) { height in
-            updateChatInputInsetHeight(height)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { }
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
-    var chatInputExpansionMessagesPadding: CGFloat {
-        max(0, chatInputInsetHeight - minimumChatInputInsetHeight)
+    private var chatScreenModel: ChatScreenModel {
+        ChatScreenModel(
+            messages: messages,
+            appearance: activeChatAppearance,
+            header: ChatScreenModel.Header(
+                bot: bot,
+                botID: botID,
+                chatAppearanceID: currentChatAppearanceID,
+                currentChatTokenCount: currentChatTokenCount,
+                tokenWindow: currentTokenWindow,
+                personas: personas,
+                currentPersona: currentPersona,
+                globalPersona: personaManager.activePersona,
+                hasPersonaOverride: hasChatPersonaOverride,
+                apiManager: apiManager
+            ),
+            composer: ChatScreenModel.Composer(
+                isGenerating: isGenerating,
+                isThinking: isThinking,
+                sendButtonStyle: currentInputBarSendButtonStyle,
+                placeholder: "Message \(bot.name)"
+            )
+        )
     }
 
-    func updateChatInputInsetHeight(_ height: CGFloat) {
-        guard height > 0 else { return }
+    private var chatScreenBindings: ChatScreenBindings {
+        ChatScreenBindings(
+            inputText: $inputText,
+            showChatBotSheet: $showChatBotSheet,
+            isViewingHistory: $isViewingHistory
+        )
+    }
 
-        if minimumChatInputInsetHeight == 0 || height < minimumChatInputInsetHeight {
-            minimumChatInputInsetHeight = height
-        }
+    private var chatScreenActions: ChatScreenActions {
+        ChatScreenActions(
+            navigation: ChatScreenActions.Navigation(
+                dismiss: { dismiss() }
+            ),
+            header: ChatScreenActions.Header(
+                startNewChat: startNewChatTapped,
+                selectPersona: setActiveChatPersona,
+                useGlobalPersona: clearChatPersonaOverride
+            ),
+            messages: ChatScreenActions.Messages(
+                regenerate: regenerateMessage,
+                switchVariant: switchVariant,
+                delete: deleteMessage
+            ),
+            composer: ChatScreenActions.Composer(
+                send: sendMessage,
+                stop: stopGeneration
+            )
+        )
+    }
 
-        guard abs(chatInputInsetHeight - height) > 0.5 else { return }
-        chatInputInsetHeight = height
+    var currentInputBarSendButtonStyle: ChatInputBarSendButtonStyle {
+        ChatInputBarSendButtonStyle.value(
+            from: UserDefaults.standard.string(forKey: ChatInputBarStorageKeys.sendButtonStyle)
+                ?? ChatInputBarSendButtonStyle.defaultValue.rawValue
+        )
+    }
+
+    func resetInitialMessagePositioning() {
+        hasPositionedInitialMessages = false
+        isPositioningInitialMessages = false
     }
 
     @ViewBuilder
@@ -80,72 +93,14 @@ extension ChatView {
                         Color.black.opacity(activeChatAppearance.clampedWallpaperTintOpacity)
                             .frame(width: geo.size.width, height: geo.size.height)
                     )
-                    .overlay {
-                        smartWallpaperGradientOverlay
-                            .frame(width: geo.size.width, height: geo.size.height)
-                    }
             } else {
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        Color(.systemGroupedBackground)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(width: geo.size.width, height: geo.size.height)
+                Color(.systemBackground)
+                    .frame(width: geo.size.width, height: geo.size.height)
             }
         }
         .ignoresSafeArea()
-    }
-
-    var bottomInputMaterialFade: some View {
-        GeometryReader { geo in
-            Rectangle()
-                .fill(chatBottomChromeFadeColor)
-                .frame(height: geo.safeAreaInsets.bottom + geo.size.height + 24)
-                .mask(
-                    LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .clear, location: 1)
-                        ]),
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .ignoresSafeArea(edges: .bottom)
-                .ignoresSafeArea(.keyboard, edges: .bottom)
-        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .allowsHitTesting(false)
-    }
-
-    @ViewBuilder
-    var smartWallpaperGradientOverlay: some View {
-        if let chatWallpaperSmartGradient {
-            LinearGradient(
-                gradient: Gradient(stops: [
-                    .init(color: chatWallpaperSmartGradient.topColor.opacity(0.32), location: 0),
-                    .init(color: chatWallpaperSmartGradient.edgeColor.opacity(0.12), location: 0.5),
-                    .init(color: chatWallpaperSmartGradient.bottomColor.opacity(0.34), location: 1)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-    }
-
-    var chatTopChromeFadeColor: Color {
-        chatWallpaperSmartGradient?.topColor ?? chatChromeFadeColor
-    }
-
-    var chatBottomChromeFadeColor: Color {
-        chatWallpaperSmartGradient?.bottomColor ?? chatChromeFadeColor
-    }
-
-    var chatChromeFadeColor: Color {
-        colorScheme == .light ? .white : .black
     }
 
     var clampedChatWallpaperBlurRadius: CGFloat {
@@ -191,7 +146,7 @@ extension ChatView {
 
     private var shouldInjectGreetingIntoPayload: Bool {
         !bot.greeting.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !messages.contains { !$0.isUser && $0.content == bot.greeting }
+            !messages.contains { !$0.isUser && $0.content == bot.greeting }
     }
 
     @MainActor
@@ -205,9 +160,7 @@ extension ChatView {
 
     @MainActor
     func refreshWallpaperImage() {
-        let image = ChatWallpaperStore.loadImage(from: activeChatAppearance.wallpaperPath)
-        chatWallpaperImage = image
-        chatWallpaperSmartGradient = image.flatMap(ChatWallpaperSmartGradient.make)
+        chatWallpaperImage = ChatWallpaperStore.loadImage(from: activeChatAppearance.wallpaperPath)
     }
 
     // MARK: - Header helpers
@@ -221,6 +174,7 @@ extension ChatView {
 
     func performStartNewChat(persona: PersonaModel? = nil, hasPersonaOverride: Bool = false) {
         saveChatHistory()
+        resetInitialMessagePositioning()
         messages.removeAll()
         currentHistory = nil
         chatPersonaID = persona?.id
@@ -251,149 +205,44 @@ extension ChatView {
     }
 }
 
-private struct ChatInputInsetHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+#Preview {
+    let previewBot = Bot(
+        id: UUID(),
+        name: "PreviewBot",
+        avatarSystemName: "brain.head.profile",
+        iconColor: .blue,
+        subtitle: "Helpful assistant",
+        date: "24.09.2020",
+        isPinned: false,
+        greeting: "Hello, how can I help you today?",
+        avatarData: nil
+    )
+    let previewMessages: [ChatMessageModel] = [
+        ChatMessageModel(content: "Hey, can you help me plan my week?", isUser: true),
+        ChatMessageModel(content: "Absolutely. What are your top 3 priorities this week?", isUser: false),
+        ChatMessageModel(content: "Ship onboarding UI, clean up tech debt, and prepare demo notes.", isUser: true),
+        ChatMessageModel(content: "Great set. Want a day-by-day schedule or a priority matrix first?", isUser: false),
+        ChatMessageModel(content: "Day-by-day please.", isUser: true),
+        ChatMessageModel(content: "Monday: scope + blockers. Tuesday: core UI. Wednesday: polish and tests.", isUser: false),
+        ChatMessageModel(content: "Continue.", isUser: true),
+        ChatMessageModel(content: "Thursday: bugfix and edge cases. Friday: demo run-through and release prep.", isUser: false),
+        ChatMessageModel(content: "Can you add buffer time?", isUser: true),
+        ChatMessageModel(content: "Yes. Add two 45-minute buffers on Tue and Thu for unexpected issues.", isUser: false),
+        ChatMessageModel(content: "Also remind me to write release notes.", isUser: true),
+        ChatMessageModel(content: "Added: Friday 10:00 AM release notes draft, 2:00 PM final pass.", isUser: false),
+        ChatMessageModel(content: "What should I cut if I slip a day?", isUser: true),
+        ChatMessageModel(content: "Cut non-critical animations first, then defer low-risk refactors.", isUser: false),
+        ChatMessageModel(content: "Give me a quick standup format.", isUser: true),
+        ChatMessageModel(content: "Yesterday, Today, Blockers, Risks. Keep each section to one sentence.", isUser: false),
+        ChatMessageModel(content: "Nice. Can you summarize all this in 5 bullets?", isUser: true),
+        ChatMessageModel(content: "1) Focus on onboarding UI.\n2) Timebox tech debt.\n3) Add buffer slots.\n4) Prepare demo early.\n5) Ship with clear release notes.", isUser: false),
+        ChatMessageModel(content: "Looks good. Add a motivational line.", isUser: true),
+        ChatMessageModel(content: "Progress beats perfection. Ship small, improve fast.", isUser: false),
+        ChatMessageModel(content: "Thanks!", isUser: true),
+        ChatMessageModel(content: "Anytime. I can also generate a checklist if you want.", isUser: false)
+    ]
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-struct ChatWallpaperSmartGradient {
-    let topColor: Color
-    let edgeColor: Color
-    let bottomColor: Color
-
-    static func make(from image: UIImage) -> ChatWallpaperSmartGradient? {
-        guard let samples = ChatWallpaperEdgeSampler.samples(from: image) else { return nil }
-
-        return ChatWallpaperSmartGradient(
-            topColor: samples.top.swiftUIColor,
-            edgeColor: samples.edges.swiftUIColor,
-            bottomColor: samples.bottom.swiftUIColor
-        )
-    }
-}
-
-private enum ChatWallpaperEdgeSampler {
-    struct Samples {
-        let top: UIColor
-        let edges: UIColor
-        let bottom: UIColor
-    }
-
-    private static let sampleSize = CGSize(width: 72, height: 72)
-
-    static func samples(from image: UIImage) -> Samples? {
-        let width = Int(sampleSize.width)
-        let height = Int(sampleSize.height)
-        let bytesPerPixel = 4
-        let bytesPerRow = width * bytesPerPixel
-        var pixels = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
-
-        let didRender = pixels.withUnsafeMutableBytes { rawBuffer -> Bool in
-            guard let context = CGContext(
-                data: rawBuffer.baseAddress,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
-                space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
-            ) else {
-                return false
-            }
-
-            context.interpolationQuality = .medium
-            UIGraphicsPushContext(context)
-            UIColor.black.setFill()
-            UIRectFill(CGRect(origin: .zero, size: sampleSize))
-            image.draw(in: CGRect(origin: .zero, size: sampleSize))
-            UIGraphicsPopContext()
-            return true
-        }
-
-        guard didRender else { return nil }
-
-        let verticalBandHeight = max(1, Int(CGFloat(height) * 0.18))
-        let horizontalBandWidth = max(1, Int(CGFloat(width) * 0.12))
-
-        var top = PixelAccumulator()
-        var bottom = PixelAccumulator()
-        var edges = PixelAccumulator()
-
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
-                let pixel = Pixel(
-                    red: pixels[offset],
-                    green: pixels[offset + 1],
-                    blue: pixels[offset + 2],
-                    alpha: pixels[offset + 3]
-                )
-
-                if y < verticalBandHeight {
-                    top.add(pixel)
-                }
-
-                if y >= height - verticalBandHeight {
-                    bottom.add(pixel)
-                }
-
-                if x < horizontalBandWidth || x >= width - horizontalBandWidth {
-                    edges.add(pixel)
-                }
-            }
-        }
-
-        guard top.count > 0, bottom.count > 0, edges.count > 0 else { return nil }
-
-        return Samples(
-            top: top.uiColor,
-            edges: edges.uiColor,
-            bottom: bottom.uiColor
-        )
-    }
-}
-
-private struct Pixel {
-    let red: UInt8
-    let green: UInt8
-    let blue: UInt8
-    let alpha: UInt8
-}
-
-private struct PixelAccumulator {
-    private(set) var count = 0
-    private var red = 0.0
-    private var green = 0.0
-    private var blue = 0.0
-
-    mutating func add(_ pixel: Pixel) {
-        guard pixel.alpha > 0 else { return }
-
-        let alpha = Double(pixel.alpha) / 255.0
-        red += Double(pixel.red) * alpha
-        green += Double(pixel.green) * alpha
-        blue += Double(pixel.blue) * alpha
-        count += 1
-    }
-
-    var uiColor: UIColor {
-        guard count > 0 else { return .clear }
-
-        let divisor = Double(count) * 255.0
-        return UIColor(
-            red: CGFloat(red / divisor),
-            green: CGFloat(green / divisor),
-            blue: CGFloat(blue / divisor),
-            alpha: 1
-        )
-    }
-}
-
-private extension UIColor {
-    var swiftUIColor: Color {
-        Color(self)
-    }
+    ChatView(bot: previewBot, previewMessages: previewMessages)
+        .environmentObject(APIManager())
+        .environment(PersonaManager())
 }

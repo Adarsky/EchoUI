@@ -23,6 +23,10 @@ struct ChatBotSheetView: View {
     @Namespace private var headerNamespace
 
     private let collapsedDescriptionCharacterLimit = 140
+    private let expandedAvatarImageSize: CGFloat = 112
+    private let compactAvatarImageSize: CGFloat = 64
+    private let expandedAvatarSymbolSize: CGFloat = 82
+    private let compactAvatarSymbolSize: CGFloat = 44
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,15 +95,7 @@ struct ChatBotSheetView: View {
     private var currentChatTokenSection: some View {
         ZStack {
             if let tokenUsageColor {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        tokenUsageColor.opacity(0.34),
-                        tokenUsageColor.opacity(0.12),
-                        Color.clear
-                    ]),
-                    startPoint: .trailing,
-                    endPoint: .leading
-                )
+                tokenUsageColor.opacity(0.14)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
 
@@ -325,8 +321,8 @@ struct ChatBotSheetView: View {
     }
 
     private var avatarView: some View {
-        let avatarImageSize: CGFloat = isLargeDetent ? 112 : 64
-        let avatarSymbolSize: CGFloat = isLargeDetent ? 82 : 44
+        let avatarImageSize = isLargeDetent ? expandedAvatarImageSize : compactAvatarImageSize
+        let avatarSymbolSize = isLargeDetent ? expandedAvatarSymbolSize : compactAvatarSymbolSize
 
         return ZStack {
             Circle()

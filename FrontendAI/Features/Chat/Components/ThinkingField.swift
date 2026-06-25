@@ -74,33 +74,20 @@ private struct ThinkingReasoningSheet: View {
 
 private struct ThinkingShimmerTitle: View {
     let text: String
-    @State private var phase: CGFloat = -1
+    @State private var opacity: CGFloat = 0.58
 
     var body: some View {
         Text(text)
-            .foregroundStyle(.clear)
-            .overlay {
-                LinearGradient(
-                    colors: [
-                        Color(white: 0.28),
-                        Color(white: 0.46),
-                        Color(white: 0.82),
-                        Color(white: 0.46),
-                        Color(white: 0.28)
-                    ],
-                    startPoint: UnitPoint(x: phase - 1, y: 0.5),
-                    endPoint: UnitPoint(x: phase + 1, y: 0.5)
-                )
-            }
-            .mask(Text(text))
+            .foregroundStyle(.secondary)
+            .opacity(opacity)
             .onAppear {
-                phase = -1
-                withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) {
-                    phase = 1.6
+                opacity = 0.58
+                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+                    opacity = 1
                 }
             }
             .onDisappear {
-                phase = -1
+                opacity = 0.58
             }
     }
 }

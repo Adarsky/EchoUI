@@ -1,17 +1,45 @@
 import SwiftUI
+import UIKit
 
 struct ChatInputBar: View {
     @Binding var inputText: String
-    @Binding var isGenerating: Bool
-    @Binding var isThinking: Bool
+    let isGenerating: Bool
+    let isThinking: Bool
+    let sendButtonStyle: ChatInputBarSendButtonStyle
     let placeholder: String
 
     let onSend: () -> Void
     let onStop: () -> Void
+    let onMeasuredHeightChange: (CGFloat) -> Void
 
-    @AppStorage(ChatInputBarStorageKeys.sendButtonStyle) private var sendButtonStyleRawValue = ChatInputBarSendButtonStyle.defaultValue.rawValue
-    @State private var buttonVisualState: ButtonVisualState = .idle
     @FocusState private var isInputFocused: Bool
+    @State private var inputFieldWidth: CGFloat = 0
+
+    private let inputLineLimit = 10
+    private let minimumInputHeight: CGFloat = 52
+    private let inputVerticalPadding: CGFloat = 14
+    private let inputLeadingPadding: CGFloat = 14
+    private let inputTrailingPadding: CGFloat = 56
+
+    init(
+        inputText: Binding<String>,
+        isGenerating: Bool,
+        isThinking: Bool,
+        sendButtonStyle: ChatInputBarSendButtonStyle,
+        placeholder: String,
+        onSend: @escaping () -> Void,
+        onStop: @escaping () -> Void,
+        onMeasuredHeightChange: @escaping (CGFloat) -> Void = { _ in }
+    ) {
+        self._inputText = inputText
+        self.isGenerating = isGenerating
+        self.isThinking = isThinking
+        self.sendButtonStyle = sendButtonStyle
+        self.placeholder = placeholder
+        self.onSend = onSend
+        self.onStop = onStop
+        self.onMeasuredHeightChange = onMeasuredHeightChange
+    }
 
     private enum ButtonVisualState: Equatable {
         case idle
@@ -34,63 +62,90 @@ struct ChatInputBar: View {
         }
     }
 
+    private var buttonVisualState: ButtonVisualState {
+        guard isGenerating else { return .idle }
+        return isThinking ? .thinking : .generating
+    }
+
+    private var inputFieldShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+    }
+
+    private var inputFont: Font {
+        .body
+    }
+
+    private var inputSizingText: String {
+        guard !inputText.isEmpty else { return " " }
+        return inputText.hasSuffix("\n") ? inputText + " " : inputText
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 4) {
                 inputField
             }
             .padding(.horizontal)
-            .padding(.bottom, 10)
         }
-        .onAppear {
-            reconcileButtonState(animated: false)
-        }
-        .onChange(of: isGenerating) { _, _ in
-            reconcileButtonState()
-        }
-        .onChange(of: isThinking) { _, _ in
-            reconcileButtonState()
-        }
-    }
-
-    private func reconcileButtonState(animated: Bool = true) {
-        if !isGenerating {
-            setButtonState(.idle, animated: animated)
-            return
-        }
-
-        if isThinking {
-            setButtonState(.thinking, animated: animated)
-            return
-        }
-
-        setButtonState(.generating, animated: animated)
     }
 
     private var inputField: some View {
-        TextField(placeholder, text: $inputText, axis: .vertical)
-            .lineLimit(1...10)
-            .padding(.vertical)
-            .padding(.leading, 14)
-            .padding(.trailing, 56)
-            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 26))
-            .frame(maxWidth: .infinity)
-            .focused($isInputFocused)
-            .overlay(alignment: .bottomTrailing) {
-                sendButton
-                    .padding(.bottom, 8)
+        ZStack(alignment: .topLeading) {
+            Text(verbatim: inputSizingText)
+                .font(inputFont)
+                .lineLimit(inputLineLimit)
+                .padding(.vertical, inputVerticalPadding)
+                .padding(.leading, inputLeadingPadding)
+                .padding(.trailing, inputTrailingPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .hidden()
+                .accessibilityHidden(true)
+
+            TextField(placeholder, text: $inputText, axis: .vertical)
+                .font(inputFont)
+                .textFieldStyle(.plain)
+                .lineLimit(1...inputLineLimit)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, inputVerticalPadding)
+                .padding(.leading, inputLeadingPadding)
+                .padding(.trailing, inputTrailingPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focused($isInputFocused)
+        }
+        .frame(maxWidth: .infinity, minHeight: minimumInputHeight, alignment: .topLeading)
+        .glassEffect(.regular.interactive(), in: inputFieldShape)
+        .overlay(alignment: .bottomTrailing) {
+            sendButton
+                .padding(.bottom, 8)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: ChatInputBarWidthPreferenceKey.self, value: proxy.size.width)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .onTapGesture {
-                isInputFocused = true
-            }
+        }
+        .contentShape(inputFieldShape)
+        .onTapGesture {
+            isInputFocused = true
+        }
+        .onAppear {
+            publishMeasuredHeight()
+        }
+        .onChange(of: inputText) { _, _ in
+            publishMeasuredHeight()
+        }
+        .onPreferenceChange(ChatInputBarWidthPreferenceKey.self) { width in
+            guard width > 0 else { return }
+            inputFieldWidth = width
+            publishMeasuredHeight(for: width)
+        }
     }
 
     private var sendButton: some View {
-        let sendButtonStyle = ChatInputBarSendButtonStyle.value(from: sendButtonStyleRawValue)
+        let visualState = buttonVisualState
 
         return Button(action: performPrimaryAction) {
-            Image(systemName: buttonVisualState.symbolName)
+            Image(systemName: visualState.symbolName)
                 .font(.system(size: 27, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
                 .foregroundColor(Color(.black))
@@ -98,13 +153,14 @@ struct ChatInputBar: View {
                 .symbolEffect(
                     .breathe.pulse.byLayer,
                     options: .repeat(.continuous),
-                    isActive: buttonVisualState == .thinking
+                    isActive: visualState == .thinking
                 )
         }
         .buttonBorderShape(.capsule)
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
         .frame(width: sendButtonStyle.buttonFrameWidth, height: 40)
         .padding(.trailing, 12)
+        .animation(.easeInOut(duration: 0.28), value: visualState)
     }
 
     private func performPrimaryAction() {
@@ -117,15 +173,39 @@ struct ChatInputBar: View {
         onSend()
     }
 
-    private func setButtonState(_ newState: ButtonVisualState, animated: Bool) {
-        guard buttonVisualState != newState else { return }
-        if animated {
-            withAnimation(.easeInOut(duration: 0.28)) {
-                buttonVisualState = newState
-            }
-        } else {
-            buttonVisualState = newState
+    private func publishMeasuredHeight(for width: CGFloat? = nil) {
+        let measuredHeight = measuredInputHeight(for: width ?? inputFieldWidth)
+        DispatchQueue.main.async {
+            onMeasuredHeightChange(measuredHeight)
         }
+    }
+
+    private func measuredInputHeight(for inputWidth: CGFloat) -> CGFloat {
+        guard inputWidth > 0 else { return minimumInputHeight }
+
+        let textWidth = max(1, inputWidth - inputLeadingPadding - inputTrailingPadding)
+        let font = UIFont.preferredFont(forTextStyle: .body)
+        let textHeight = (inputSizingText as NSString).boundingRect(
+            with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font],
+            context: nil
+        ).height
+        let maxTextHeight = font.lineHeight * CGFloat(inputLineLimit)
+
+        return max(
+            minimumInputHeight,
+            ceil(min(textHeight, maxTextHeight) + inputVerticalPadding * 2)
+        )
+    }
+
+}
+
+private struct ChatInputBarWidthPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
@@ -143,8 +223,9 @@ private struct ChatInputBarPreviewHost: View {
     var body: some View {
         ChatInputBar(
             inputText: $inputText,
-            isGenerating: $isGenerating,
-            isThinking: $isThinking,
+            isGenerating: isGenerating,
+            isThinking: isThinking,
+            sendButtonStyle: ChatInputBarSendButtonStyle.defaultValue,
             placeholder: "Message Assistant",
             onSend: { },
             onStop: {
