@@ -30,7 +30,6 @@ struct ChatView: View {
     @State var chatPersonaID: UUID?
     @State var hasChatPersonaOverride = false
 
-    @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var apiManager: APIManager
@@ -101,9 +100,14 @@ struct ChatView: View {
         .environment(\.personaManager, personaManager)
         .environment(\.isGenerating, isGenerating)
         .environment(\.showCursor, true)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                navigationHeaderBar
+            }
+        }
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
             refreshActiveAppearance()

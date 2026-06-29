@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 // MARK: - Preview
 #Preview {
@@ -38,7 +39,23 @@ import SwiftUI
         ChatMessageModel(content: "Anytime. I can also generate a checklist if you want.", isUser: false)
     ]
 
-    ChatView(bot: previewBot, previewMessages: previewMessages)
+    NavigationStack {
+        ChatView(bot: previewBot, previewMessages: previewMessages)
+    }
+        .modelContainer(chatViewPreviewModelContainer)
         .environmentObject(APIManager())
         .environment(PersonaManager())
 }
+
+private let chatViewPreviewModelContainer: ModelContainer = {
+    let schema = Schema([
+        BotModel.self,
+        APIServer.self,
+        ChatHistory.self,
+        ChatFolder.self,
+        ChatMessageEntity.self,
+        PersonaModel.self
+    ])
+    let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    return try! ModelContainer(for: schema, configurations: [configuration])
+}()

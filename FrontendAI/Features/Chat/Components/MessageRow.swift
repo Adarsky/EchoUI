@@ -7,6 +7,7 @@ struct MessageRow: View {
     let regenerate: (ChatMessageModel) -> Void
     let switchVariant: (UUID, Int) -> Void
     let onDelete: (UUID) -> Void
+    let availableWidth: CGFloat
     @Environment(\.chatAppearance) private var chatAppearance
 
     private struct EditSession: Identifiable {
@@ -17,10 +18,23 @@ struct MessageRow: View {
 
     @State private var editSession: EditSession?
     @State private var showDeleteConfirm = false
-    @State private var availableWidth: CGFloat = 0
     @State private var regenerateAnimationTrigger = false
     
     @Namespace var MessageRowGlassContainer
+
+    init(
+        msg: ChatMessageModel,
+        availableWidth: CGFloat = 390,
+        regenerate: @escaping (ChatMessageModel) -> Void,
+        switchVariant: @escaping (UUID, Int) -> Void,
+        onDelete: @escaping (UUID) -> Void
+    ) {
+        self.msg = msg
+        self.availableWidth = max(1, availableWidth)
+        self.regenerate = regenerate
+        self.switchVariant = switchVariant
+        self.onDelete = onDelete
+    }
 
     var body: some View {
         HStack(alignment: .top) {
@@ -138,17 +152,7 @@ struct MessageRow: View {
         }
 
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        availableWidth = proxy.size.width
-                    }
-                    .onChange(of: proxy.size.width) { _, newValue in
-                        availableWidth = newValue
-                    }
-            }
-        }
+        .frame(width: availableWidth, alignment: msg.isUser ? .trailing : .leading)
         .sheet(item: $editSession) { session in
             LegacyEditMessageSheet(
                 text: session.text,
@@ -223,8 +227,7 @@ struct MessageRow: View {
     }
 
     private func maxBubbleWidth(for isUser: Bool) -> CGFloat {
-        let baseWidth = availableWidth > 0 ? availableWidth : 390
-        return baseWidth * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio)
+        availableWidth * (isUser ? clampedUserMessageBubbleWidthRatio : clampedBotMessageBubbleWidthRatio)
     }
 
     private func sideSpacerMinLength(for isUser: Bool) -> CGFloat {

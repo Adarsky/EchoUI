@@ -5,21 +5,7 @@ import Combine
 struct ChatScreenModel {
     let messages: [ChatMessageModel]
     let appearance: ChatAppearanceSnapshot
-    let header: Header
     let composer: Composer
-
-    struct Header {
-        let bot: Bot
-        let botID: UUID
-        let chatAppearanceID: String?
-        let currentChatTokenCount: Int
-        let tokenWindow: Int?
-        let personas: [PersonaModel]
-        let currentPersona: PersonaModel?
-        let globalPersona: PersonaModel?
-        let hasPersonaOverride: Bool
-        let apiManager: APIManager
-    }
 
     struct Composer {
         let isGenerating: Bool
@@ -31,25 +17,11 @@ struct ChatScreenModel {
 
 struct ChatScreenBindings {
     let inputText: Binding<String>
-    let showChatBotSheet: Binding<Bool>
-    let isViewingHistory: Binding<Bool>
 }
 
 struct ChatScreenActions {
-    let navigation: Navigation
-    let header: Header
     let messages: Messages
     let composer: Composer
-
-    struct Navigation {
-        let dismiss: () -> Void
-    }
-
-    struct Header {
-        let startNewChat: () -> Void
-        let selectPersona: (PersonaModel?) -> Void
-        let useGlobalPersona: () -> Void
-    }
 
     struct Messages {
         let regenerate: (ChatMessageModel) -> Void
@@ -78,17 +50,22 @@ struct ChatScreenControllerRepresentable: UIViewControllerRepresentable {
 }
 
 extension ChatScreenControllerRepresentable {
-    final class Controller: UIViewController, UICollectionViewDataSourcePrefetching {
+    final class Controller: UIViewController, UICollectionViewDataSourcePrefetching, UICollectionViewDelegateFlowLayout {
         private enum Section {
             case main
+        }
+
+        private enum LayoutMetrics {
+            static let horizontalInset: CGFloat = 15
+            static let lineSpacing: CGFloat = 12
         }
 
         private typealias DataSource = UICollectionViewDiffableDataSource<Section, UUID>
         private typealias Snapshot = NSDiffableDataSourceSnapshot<Section, UUID>
 
         private let collectionView: UICollectionView
-        private let headerHost = UIHostingController(rootView: AnyView(EmptyView()))
         private let composerView = ChatComposerView()
+        private let sizingController = UIHostingController(rootView: AnyView(EmptyView()))
 
         private var dataSource: DataSource?
         private var messages: [ChatMessageModel] = []
@@ -102,6 +79,7 @@ extension ChatScreenControllerRepresentable {
         private var composerKeyboardConstraint: NSLayoutConstraint?
         private var composerSafeAreaConstraint: NSLayoutConstraint?
         private var isVisible = false
+        private var messageHeightCache: [MessageHeightCacheKey: CGFloat] = [:]
 
         init() {
             collectionView = UICollectionView(
@@ -125,8 +103,8 @@ extension ChatScreenControllerRepresentable {
             }
 
             configureCollectionView()
-            configureHeaderHost()
             configureComposerView()
+            configureSizingController()
             configureDataSource()
         }
 
@@ -160,14 +138,37 @@ extension ChatScreenControllerRepresentable {
         }
 
         func update(model: ChatScreenModel, bindings: ChatScreenBindings, actions: ChatScreenActions) {
-            updateHeader(model.header, bindings: bindings, actions: actions)
             updateComposer(model.composer, bindings: bindings, actions: actions.composer)
             updateMessages(model.messages, appearance: model.appearance, actions: actions.messages)
             view.setNeedsLayout()
         }
 
         func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
-            // The hosting cells are self-sizing; subscriptions below keep visible rows current.
+            let width = messageContentWidth
+            for indexPath in indexPaths {
+                guard
+                    let id = dataSource?.itemIdentifier(for: indexPath),
+                    let message = messagesByID[id]
+                else { continue }
+
+                _ = measuredHeight(for: message, width: width)
+            }
+        }
+
+        func collectionView(
+            _ collectionView: UICollectionView,
+            layout collectionViewLayout: UICollectionViewLayout,
+            sizeForItemAt indexPath: IndexPath
+        ) -> CGSize {
+            let width = messageContentWidth
+            guard
+                let id = dataSource?.itemIdentifier(for: indexPath),
+                let message = messagesByID[id]
+            else {
+                return CGSize(width: width, height: 1)
+            }
+
+            return CGSize(width: width, height: measuredHeight(for: message, width: width))
         }
 
         private func configureCollectionView() {
@@ -176,6 +177,7 @@ extension ChatScreenControllerRepresentable {
             collectionView.keyboardDismissMode = .interactive
             collectionView.contentInsetAdjustmentBehavior = .never
             collectionView.prefetchDataSource = self
+            collectionView.delegate = self
             collectionView.translatesAutoresizingMaskIntoConstraints = false
 
             view.addSubview(collectionView)
@@ -184,23 +186,6 @@ extension ChatScreenControllerRepresentable {
                 collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
                 collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-            ])
-        }
-
-        private func configureHeaderHost() {
-            addChild(headerHost)
-            headerHost.view.backgroundColor = .clear
-            headerHost.view.translatesAutoresizingMaskIntoConstraints = false
-            headerHost.view.setContentHuggingPriority(.required, for: .vertical)
-            headerHost.view.setContentCompressionResistancePriority(.required, for: .vertical)
-            headerHost.sizingOptions = [.intrinsicContentSize]
-            view.addSubview(headerHost.view)
-            headerHost.didMove(toParent: self)
-
-            NSLayoutConstraint.activate([
-                headerHost.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-                headerHost.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                headerHost.view.trailingAnchor.constraint(equalTo: view.trailingAnchor)
             ])
         }
 
@@ -231,38 +216,55 @@ extension ChatScreenControllerRepresentable {
             }
         }
 
-        private static func makeLayout() -> UICollectionViewLayout {
-            let itemSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1),
-                heightDimension: .estimated(80)
-            )
-            let item = NSCollectionLayoutItem(layoutSize: itemSize)
-            let group = NSCollectionLayoutGroup.vertical(
-                layoutSize: itemSize,
-                subitems: [item]
-            )
-            let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = 12
-            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 15, bottom: 0, trailing: 15)
+        private func configureSizingController() {
+            addChild(sizingController)
 
-            let configuration = UICollectionViewCompositionalLayoutConfiguration()
-            configuration.scrollDirection = .vertical
-            return UICollectionViewCompositionalLayout(section: section, configuration: configuration)
+            let sizingView = sizingController.view!
+            sizingView.translatesAutoresizingMaskIntoConstraints = false
+            sizingView.isHidden = true
+            sizingView.backgroundColor = .clear
+            view.addSubview(sizingView)
+
+            NSLayoutConstraint.activate([
+                sizingView.topAnchor.constraint(equalTo: view.topAnchor),
+                sizingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                sizingView.widthAnchor.constraint(equalToConstant: 0),
+                sizingView.heightAnchor.constraint(equalToConstant: 0)
+            ])
+
+            sizingController.didMove(toParent: self)
+        }
+
+        private static func makeLayout() -> UICollectionViewLayout {
+            let layout = UICollectionViewFlowLayout()
+            layout.scrollDirection = .vertical
+            layout.minimumLineSpacing = LayoutMetrics.lineSpacing
+            layout.minimumInteritemSpacing = 0
+            layout.sectionInset = UIEdgeInsets(
+                top: 0,
+                left: LayoutMetrics.horizontalInset,
+                bottom: 0,
+                right: LayoutMetrics.horizontalInset
+            )
+            layout.estimatedItemSize = .zero
+            return layout
         }
 
         private func configureDataSource() {
-            let registration = UICollectionView.CellRegistration<UICollectionViewCell, UUID> { [weak self] cell, _, id in
+            let registration = UICollectionView.CellRegistration<ChatMessageCell, UUID> { [weak self] cell, _, id in
                 guard let self, let message = self.messagesByID[id] else {
                     cell.contentConfiguration = nil
                     return
                 }
 
                 let appearance = self.chatAppearance
+                let availableWidth = self.messageContentWidth
                 cell.backgroundColor = .clear
                 cell.backgroundConfiguration = .clear()
                 cell.contentConfiguration = UIHostingConfiguration {
                     MessageRow(
                         msg: message,
+                        availableWidth: availableWidth,
                         regenerate: { [weak self] message in
                             self?.messageActions?.regenerate(message)
                         },
@@ -285,21 +287,6 @@ extension ChatScreenControllerRepresentable {
                     item: id
                 )
             }
-        }
-
-        private func updateHeader(
-            _ header: ChatScreenModel.Header,
-            bindings: ChatScreenBindings,
-            actions: ChatScreenActions
-        ) {
-            headerHost.rootView = AnyView(
-                ChatTopPanel(
-                    model: header,
-                    bindings: bindings,
-                    actions: actions
-                )
-                .environmentObject(header.apiManager)
-            )
         }
 
         private func updateComposer(
@@ -331,9 +318,69 @@ extension ChatScreenControllerRepresentable {
             chatAppearance = appearance
             messageActions = actions
             subscribeToMessageChanges(messages)
+            pruneMessageHeightCache(keeping: Set(nextMessageIDs))
+
+            if needsAppearanceRefresh {
+                messageHeightCache.removeAll()
+                collectionView.collectionViewLayout.invalidateLayout()
+            }
 
             if needsSnapshotUpdate || needsAppearanceRefresh {
                 applySnapshotPreservingPosition(reconfigureExistingItems: needsAppearanceRefresh)
+            }
+        }
+
+        private var messageContentWidth: CGFloat {
+            let containerWidth = collectionView.bounds.width > 0 ? collectionView.bounds.width : view.bounds.width
+            return max(1, containerWidth - LayoutMetrics.horizontalInset * 2)
+        }
+
+        private func measuredHeight(for message: ChatMessageModel, width: CGFloat) -> CGFloat {
+            let measuringWidth = max(1, width.rounded(.toNearestOrAwayFromZero))
+            let key = MessageHeightCacheKey(
+                message: message,
+                width: measuringWidth,
+                appearance: chatAppearance,
+                contentSizeCategory: traitCollection.preferredContentSizeCategory
+            )
+
+            if let cachedHeight = messageHeightCache[key] {
+                return cachedHeight
+            }
+
+            let row = MessageRow(
+                msg: message,
+                availableWidth: measuringWidth,
+                regenerate: { _ in },
+                switchVariant: { _, _ in },
+                onDelete: { _ in }
+            )
+            .environment(\.chatAppearance, chatAppearance)
+            .fixedSize(horizontal: false, vertical: true)
+
+            sizingController.rootView = AnyView(row)
+            sizingController.view.bounds = CGRect(
+                origin: .zero,
+                size: CGSize(width: measuringWidth, height: CGFloat.greatestFiniteMagnitude)
+            )
+
+            let measuredSize = sizingController.sizeThatFits(
+                in: CGSize(width: measuringWidth, height: CGFloat.greatestFiniteMagnitude)
+            )
+            let measuredHeight = max(1, ceil(measuredSize.height))
+            messageHeightCache[key] = measuredHeight
+            return measuredHeight
+        }
+
+        private func invalidateMessageHeightCache(for id: UUID) {
+            messageHeightCache = messageHeightCache.filter { entry in
+                entry.key.id != id
+            }
+        }
+
+        private func pruneMessageHeightCache(keeping ids: Set<UUID>) {
+            messageHeightCache = messageHeightCache.filter { entry in
+                ids.contains(entry.key.id)
             }
         }
 
@@ -362,12 +409,10 @@ extension ChatScreenControllerRepresentable {
         private func applyInsetsFromSiblingFrames(preservePosition: Bool) {
             guard collectionView.bounds.width > 0, collectionView.bounds.height > 0 else { return }
 
-            let headerBottom = headerHost.view.frame.maxY
             let composerTop = composerView.frame.minY
-            let topInset = max(0, headerBottom - collectionView.frame.minY)
             let bottomInset = max(0, collectionView.frame.maxY - composerTop)
             let nextInsets = UIEdgeInsets(
-                top: ceil(topInset),
+                top: 0,
                 left: 0,
                 bottom: ceil(bottomInset),
                 right: 0
@@ -422,9 +467,12 @@ extension ChatScreenControllerRepresentable {
 
                 let heightDelta = self.collectionView.contentSize.height - oldContentHeight
                 guard abs(heightDelta) > 0.5 else { return }
-                self.collectionView.contentOffset = CGPoint(
-                    x: oldOffset.x,
-                    y: oldOffset.y + heightDelta
+                self.setContentOffsetIfNeeded(
+                    CGPoint(
+                        x: oldOffset.x,
+                        y: oldOffset.y + heightDelta
+                    ),
+                    animated: false
                 )
             }
         }
@@ -464,7 +512,7 @@ extension ChatScreenControllerRepresentable {
                     - collectionView.bounds.height
             )
             let targetY = min(max(attributes.frame.minY + anchor.offset, minY), maxY)
-            collectionView.contentOffset = CGPoint(x: collectionView.contentOffset.x, y: targetY)
+            setContentOffsetIfNeeded(CGPoint(x: collectionView.contentOffset.x, y: targetY), animated: false)
             return true
         }
 
@@ -488,10 +536,12 @@ extension ChatScreenControllerRepresentable {
 
         private func scheduleObservedMessageInvalidation(for id: UUID) {
             guard messagesByID[id] != nil else { return }
+            invalidateMessageHeightCache(for: id)
             guard !pendingObservedInvalidation else { return }
 
             pendingObservedInvalidation = true
             let shouldFollowBottom = isNearBottom(threshold: 120) || messages.last?.id == id
+            let visibleAnchor = shouldFollowBottom ? nil : topVisibleAnchor()
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.pendingObservedInvalidation = false
@@ -499,11 +549,12 @@ extension ChatScreenControllerRepresentable {
 
                 UIView.performWithoutAnimation {
                     self.collectionView.collectionViewLayout.invalidateLayout()
-                    self.collectionView.performBatchUpdates(nil) { _ in
-                        self.applyInsetsFromSiblingFrames(preservePosition: false)
-                        if shouldFollowBottom {
-                            self.scrollToBottom(animated: false)
-                        }
+                    self.collectionView.layoutIfNeeded()
+                    self.applyInsetsFromSiblingFrames(preservePosition: false)
+                    if shouldFollowBottom {
+                        self.scrollToBottom(animated: false)
+                    } else if let visibleAnchor {
+                        _ = self.restoreTopVisibleAnchor(visibleAnchor)
                     }
                 }
             }
@@ -523,60 +574,69 @@ extension ChatScreenControllerRepresentable {
                 + collectionView.contentInset.bottom
                 - collectionView.bounds.height
             let targetY = max(minY, maxY)
-            collectionView.setContentOffset(
-                CGPoint(x: collectionView.contentOffset.x, y: targetY),
-                animated: animated
-            )
+            setContentOffsetIfNeeded(CGPoint(x: collectionView.contentOffset.x, y: targetY), animated: animated)
+        }
+
+        private func setContentOffsetIfNeeded(_ offset: CGPoint, animated: Bool) {
+            let currentOffset = collectionView.contentOffset
+            guard
+                abs(currentOffset.x - offset.x) > 0.5 ||
+                    abs(currentOffset.y - offset.y) > 0.5
+            else {
+                return
+            }
+
+            collectionView.setContentOffset(offset, animated: animated)
         }
     }
 }
 
-private struct ChatTopPanel: View {
-    let model: ChatScreenModel.Header
-    let bindings: ChatScreenBindings
-    let actions: ChatScreenActions
+private struct MessageHeightCacheKey: Hashable {
+    let id: UUID
+    let width: Int
+    let content: String
+    let thinkingStatusText: String
+    let thinkingContent: String
+    let currentIndex: Int
+    let variantCount: Int
+    let isUser: Bool
+    let isStreaming: Bool
+    let isThinkingInProgress: Bool
+    let hasThinkingContent: Bool
+    let userMessageBubbleWidthRatio: Double
+    let botMessageBubbleWidthRatio: Double
+    let messageTextFadeInEnabled: Bool
+    let contentSizeCategory: String
 
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: actions.navigation.dismiss) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .glassEffect(.regular.interactive(), in: Circle())
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
+    init(
+        message: ChatMessageModel,
+        width: CGFloat,
+        appearance: ChatAppearanceSnapshot,
+        contentSizeCategory: UIContentSizeCategory
+    ) {
+        id = message.id
+        self.width = Int(width.rounded(.toNearestOrAwayFromZero))
+        content = message.content
+        thinkingStatusText = message.thinkingStatusText
+        thinkingContent = message.thinkingContent
+        currentIndex = message.currentIndex
+        variantCount = message.allVariants.count
+        isUser = message.isUser
+        isStreaming = message.isStreaming
+        isThinkingInProgress = message.isThinkingInProgress
+        hasThinkingContent = message.hasThinkingContent
+        userMessageBubbleWidthRatio = appearance.clampedUserMessageBubbleWidthRatio
+        botMessageBubbleWidthRatio = appearance.clampedBotMessageBubbleWidthRatio
+        messageTextFadeInEnabled = appearance.messageTextFadeInEnabled
+        self.contentSizeCategory = contentSizeCategory.rawValue
+    }
+}
 
-            Spacer(minLength: 0)
-
-            ChatHeaderBar(
-                bot: model.bot,
-                botID: model.botID,
-                chatAppearanceID: model.chatAppearanceID,
-                currentChatTokenCount: model.currentChatTokenCount,
-                tokenWindow: model.tokenWindow,
-                personas: model.personas,
-                currentPersona: model.currentPersona,
-                globalPersona: model.globalPersona,
-                hasPersonaOverride: model.hasPersonaOverride,
-                showChatBotSheet: bindings.showChatBotSheet,
-                isViewingHistory: bindings.isViewingHistory,
-                onNewChat: actions.header.startNewChat,
-                onSelectPersona: actions.header.selectPersona,
-                onUseGlobalPersona: actions.header.useGlobalPersona
-            )
-            .frame(maxWidth: 320)
-
-            Spacer(minLength: 0)
-
-            Color.clear
-                .frame(width: 44, height: 44)
-                .allowsHitTesting(false)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 8)
+private final class ChatMessageCell: UICollectionViewCell {
+    override func preferredLayoutAttributesFitting(
+        _ layoutAttributes: UICollectionViewLayoutAttributes
+    ) -> UICollectionViewLayoutAttributes {
+        layoutAttributes
     }
 }
 
@@ -744,7 +804,7 @@ private final class ChatComposerView: UIView, UITextViewDelegate {
             placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor, constant: textView.textContainerInset.top),
 
             sendButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.sendButtonEdgeInset),
-            sendButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            sendButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -Metrics.sendButtonEdgeInset),
             sendButtonWidthConstraint,
             sendButton.heightAnchor.constraint(equalToConstant: Metrics.sendButtonSize),
 
