@@ -20,6 +20,10 @@ struct ChatInputBar: View {
     private let inputVerticalPadding: CGFloat = 14
     private let inputLeadingPadding: CGFloat = 14
     private let inputTrailingPadding: CGFloat = 56
+    private let focusedHorizontalPadding: CGFloat = 16
+    private let idleHorizontalPadding: CGFloat = 42
+    private let idleInputMaxWidth: CGFloat = 560
+    private let focusAnimation: Animation = .easeInOut(duration: 0.28)
 
     init(
         inputText: Binding<String>,
@@ -84,9 +88,20 @@ struct ChatInputBar: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 4) {
                 inputField
+                    .frame(maxWidth: inputBarMaxWidth)
             }
-            .padding(.horizontal)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, inputBarHorizontalPadding)
+            .animation(focusAnimation, value: isInputFocused)
         }
+    }
+
+    private var inputBarMaxWidth: CGFloat {
+        isInputFocused ? .infinity : idleInputMaxWidth
+    }
+
+    private var inputBarHorizontalPadding: CGFloat {
+        isInputFocused ? focusedHorizontalPadding : idleHorizontalPadding
     }
 
     private var inputField: some View {
@@ -161,6 +176,14 @@ struct ChatInputBar: View {
         .frame(width: sendButtonStyle.buttonFrameWidth, height: 40)
         .padding(.trailing, 12)
         .animation(.easeInOut(duration: 0.28), value: visualState)
+    }
+
+    private var addButton: some View {
+        return Button{} label: {
+            Image(systemName: "plus")
+                .font(.system(size: 27, weight: .semibold))
+        }
+        .buttonStyle(.borderless)
     }
 
     private func performPrimaryAction() {
