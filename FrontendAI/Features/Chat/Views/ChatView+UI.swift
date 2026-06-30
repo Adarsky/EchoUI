@@ -3,13 +3,12 @@ import UIKit
 
 extension ChatView {
     var messagesScrollView: some View {
-        ChatScreenControllerRepresentable(
+        ChatScreenView(
             model: chatScreenModel,
             bindings: chatScreenBindings,
             actions: chatScreenActions
         )
-        .ignoresSafeArea(.container, edges: .bottom)
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .ignoresSafeArea(.container, edges: .top)
     }
 
     private var chatScreenModel: ChatScreenModel {

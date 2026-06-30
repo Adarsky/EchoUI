@@ -95,7 +95,6 @@ struct ChatView: View {
             }
             .environment(\.chatAppearance, activeChatAppearance)
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .environment(\.bot, bot)
         .environment(\.personaManager, personaManager)
         .environment(\.isGenerating, isGenerating)
