@@ -73,14 +73,16 @@ struct ChatAppearanceSettingsView: View {
                         isUser: true,
                         color: userBubbleColorBinding,
                         transparent: boolBinding(\.userBubbleTransparent),
-                        widthRatio: doubleBinding(\.userMessageBubbleWidthRatio)
+                        widthRatio: doubleBinding(\.userMessageBubbleWidthRatio),
+                        cornerRadius: doubleBinding(\.userMessageBubbleCornerRadius)
                     )
                 } label: {
                     BubbleAppearanceSummaryRow(
                         title: "Your messages",
                         subtitle: bubbleSummary(
                             transparent: appearance.userBubbleTransparent,
-                            widthRatio: appearance.clampedUserMessageBubbleWidthRatio
+                            widthRatio: appearance.clampedUserMessageBubbleWidthRatio,
+                            cornerRadius: appearance.clampedUserMessageBubbleCornerRadius
                         ),
                         color: userBubbleColorBinding.wrappedValue,
                         isTransparent: appearance.userBubbleTransparent
@@ -94,14 +96,16 @@ struct ChatAppearanceSettingsView: View {
                         isUser: false,
                         color: botBubbleColorBinding,
                         transparent: boolBinding(\.botBubbleTransparent),
-                        widthRatio: doubleBinding(\.botMessageBubbleWidthRatio)
+                        widthRatio: doubleBinding(\.botMessageBubbleWidthRatio),
+                        cornerRadius: doubleBinding(\.botMessageBubbleCornerRadius)
                     )
                 } label: {
                     BubbleAppearanceSummaryRow(
                         title: "Bot messages",
                         subtitle: bubbleSummary(
                             transparent: appearance.botBubbleTransparent,
-                            widthRatio: appearance.clampedBotMessageBubbleWidthRatio
+                            widthRatio: appearance.clampedBotMessageBubbleWidthRatio,
+                            cornerRadius: appearance.clampedBotMessageBubbleCornerRadius
                         ),
                         color: botBubbleColorBinding.wrappedValue,
                         isTransparent: appearance.botBubbleTransparent
@@ -270,7 +274,7 @@ struct ChatAppearanceSettingsView: View {
             )
             .background(previewBubbleBackground(isUser: isUser))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: previewBubbleCornerRadius(isUser: isUser), style: .continuous)
                     .stroke(previewBubbleStrokeColor(isUser: isUser), lineWidth: 1)
             )
             .foregroundStyle(previewBubbleTextColor(isUser: isUser))
@@ -328,9 +332,11 @@ struct ChatAppearanceSettingsView: View {
         }
     }
 
-    private func bubbleSummary(transparent: Bool, widthRatio: Double) -> String {
+    private func bubbleSummary(transparent: Bool, widthRatio: Double, cornerRadius: Double) -> String {
         let widthTitle = "\(Int(widthRatio * 100))% width"
-        return transparent ? "Transparent, \(widthTitle)" : widthTitle
+        let radiusTitle = "\(Int(cornerRadius)) pt radius"
+        let summary = "\(widthTitle), \(radiusTitle)"
+        return transparent ? "Transparent, \(summary)" : summary
     }
 
     private var userBubbleColorBinding: Binding<Color> {
@@ -408,7 +414,7 @@ struct ChatAppearanceSettingsView: View {
 
     @ViewBuilder
     private func previewBubbleBackground(isUser: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: previewBubbleCornerRadius(isUser: isUser), style: .continuous)
         shape.fill(previewBubbleFillColor(isUser: isUser))
         if !(isUser ? appearance.userBubbleTransparent : appearance.botBubbleTransparent) {
             shape.fill(.ultraThinMaterial)
@@ -424,6 +430,14 @@ struct ChatAppearanceSettingsView: View {
         let isTransparent = isUser ? appearance.userBubbleTransparent : appearance.botBubbleTransparent
         if isTransparent { return .primary }
         return isUser ? .white : .primary
+    }
+
+    private func previewBubbleCornerRadius(isUser: Bool) -> CGFloat {
+        CGFloat(
+            isUser
+                ? appearance.clampedUserMessageBubbleCornerRadius
+                : appearance.clampedBotMessageBubbleCornerRadius
+        )
     }
 
     private var resetConfirmationTitle: String {
@@ -456,6 +470,8 @@ struct ChatAppearanceSettingsView: View {
         mutation(&next)
         next.userMessageBubbleWidthRatio = min(max(next.userMessageBubbleWidthRatio, 0.45), 1.0)
         next.botMessageBubbleWidthRatio = min(max(next.botMessageBubbleWidthRatio, 0.45), 1.0)
+        next.userMessageBubbleCornerRadius = next.clampedUserMessageBubbleCornerRadius
+        next.botMessageBubbleCornerRadius = next.clampedBotMessageBubbleCornerRadius
         next.wallpaperBlurRadius = next.clampedWallpaperBlurRadius
         next.wallpaperTintOpacity = next.clampedWallpaperTintOpacity
         saveAppearance(next)
@@ -662,6 +678,7 @@ private struct BubbleAppearanceEditor: View {
     @Binding var color: Color
     @Binding var transparent: Bool
     @Binding var widthRatio: Double
+    @Binding var cornerRadius: Double
 
     var body: some View {
         Form {
@@ -692,6 +709,22 @@ private struct BubbleAppearanceEditor: View {
 
                     Slider(value: $widthRatio, in: 0.45...1.0, step: 0.01)
                 }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Corner Radius")
+                        Spacer()
+                        Text("\(Int(cornerRadius)) pt")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
+                    Slider(
+                        value: $cornerRadius,
+                        in: ChatAppearanceDefaults.minMessageBubbleCornerRadius...ChatAppearanceDefaults.maxMessageBubbleCornerRadius,
+                        step: 1
+                    )
+                }
             }
         }
         .navigationTitle(title)
@@ -707,14 +740,14 @@ private struct BubbleAppearanceEditor: View {
             .frame(maxWidth: 280 * widthRatio, alignment: isUser ? .trailing : .leading)
             .background(bubbleBackground)
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: CGFloat(cornerRadius), style: .continuous)
                     .stroke(transparent ? Color.primary.opacity(0.12) : Color.clear, lineWidth: 1)
             )
             .foregroundStyle(textColor)
     }
 
     private var bubbleBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: CGFloat(cornerRadius), style: .continuous)
         return ZStack {
             shape.fill(transparent ? Color.clear : color)
             if !transparent {

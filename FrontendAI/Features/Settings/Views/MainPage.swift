@@ -41,6 +41,7 @@ struct MainPage: View {
     @State private var shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
     @State private var showAPIpage = false
     @State private var botForFolderAssignment: BotModel?
+    @State private var draftsByBotID: [UUID: String] = [:]
 
 
     @State private var botToDelete: BotModel? = nil
@@ -259,6 +260,7 @@ struct MainPage: View {
         }
         .onAppear {
             migrateAPIStatusDisplayStyleIfNeeded()
+            refreshDrafts()
 
             var didMigrateLegacyKeys = false
             for server in servers {
@@ -302,6 +304,18 @@ struct MainPage: View {
         .onChange(of: selectedChatFolderID) { _, folderID in
             if !isPrivateFolderID(folderID) {
                 unlockedPrivateFolderID = nil
+            }
+        }
+        .onChange(of: navigateToChat) { _, isNavigating in
+            if !isNavigating {
+                refreshDrafts()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ChatDraftStore.didChangeNotification)) { notification in
+            if let botID = notification.object as? UUID {
+                refreshDraft(for: botID)
+            } else {
+                refreshDrafts()
             }
         }
     }
@@ -501,6 +515,7 @@ struct MainPage: View {
             subtitle: preview.subtitle,
             date: preview.dateText,
             isPinned: bot.isPinned,
+            draft: draftsByBotID[bot.id],
             avatarImage: bot.avatarImage
         )
         .contentShape(Rectangle())
@@ -567,9 +582,24 @@ struct MainPage: View {
             }
             modelContext.delete(bot)
             try modelContext.save()
+            _ = ChatDraftStore.removeDraft(for: botID)
         } catch {
             modelContext.rollback()
             botDeletionError = error.localizedDescription
+        }
+    }
+
+    private func refreshDrafts() {
+        draftsByBotID = Dictionary(uniqueKeysWithValues: bots.compactMap { bot in
+            ChatDraftStore.loadDraft(for: bot.id).map { (bot.id, $0) }
+        })
+    }
+
+    private func refreshDraft(for botID: UUID) {
+        if let draft = ChatDraftStore.loadDraft(for: botID) {
+            draftsByBotID[botID] = draft
+        } else {
+            draftsByBotID.removeValue(forKey: botID)
         }
     }
 

@@ -22,6 +22,8 @@ struct ChatView: View {
     @State var isThinking = false
     @State var generationTask: Task<Void, Never>? = nil
     @State var activeGenerationID: UUID?
+    @State var hasRestoredDraft = false
+    @State var draftSaveTask: Task<Void, Never>?
 
     @State var alertMessage: String?
     @State var showAlertBanner = false
@@ -32,6 +34,7 @@ struct ChatView: View {
     @State var hasChatPersonaOverride = false
 
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.scenePhase) var scenePhase
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var apiManager: APIManager
     @Environment(PersonaManager.self) var personaManager
@@ -111,6 +114,7 @@ struct ChatView: View {
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
             refreshActiveAppearance()
+            restoreDraftIfNeeded()
             if !isManualHistoryLoad && !isPreviewSeeded {
                 loadHistory()
             }
@@ -121,7 +125,16 @@ struct ChatView: View {
         .onChange(of: currentChatAppearanceID) { _, _ in
             refreshActiveAppearance()
         }
+        .onChange(of: inputText) { _, draft in
+            scheduleDraftPersistence(draft)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                persistDraftImmediately()
+            }
+        }
         .onDisappear {
+            persistDraftImmediately()
             if isGenerating {
                 stopGeneration()
             } else {

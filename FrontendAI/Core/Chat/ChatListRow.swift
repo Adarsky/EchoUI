@@ -6,7 +6,24 @@ struct ChatListRow: View {
     let subtitle: String
     let date: String
     let isPinned: Bool
+    let draft: String?
     let avatarImage: Image
+
+    init(
+        title: String,
+        subtitle: String,
+        date: String,
+        isPinned: Bool,
+        draft: String? = nil,
+        avatarImage: Image
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.date = date
+        self.isPinned = isPinned
+        self.draft = draft
+        self.avatarImage = avatarImage
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -22,30 +39,52 @@ struct ChatListRow: View {
                         .font(.headline)
                         .lineLimit(1)
                 }
-                Text(renderedChatListSubtitle(from: singleLineSubtitle))
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .lineLimit(2)
+                if let displayedDraft {
+                    Text("Draft: \(displayedDraft)")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                } else {
+                    Text(renderedChatListSubtitle(from: singleLineSubtitle))
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .lineLimit(2)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack {
+            ZStack(alignment: .trailing) {
                 Text(date)
                     .font(.caption)
                     .foregroundColor(.gray)
-                Spacer()
+                    .lineLimit(1)
+                    .frame(maxHeight: .infinity, alignment: .topTrailing)
+
                 if isPinned {
                     Image(systemName: "heart.fill")
                         .font(.caption.bold())
                         .foregroundColor(.gray)
+                        .frame(maxHeight: .infinity, alignment: .bottomTrailing)
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .trailing)
         }
         .frame(height: 70)
     }
 
     private var singleLineSubtitle: String {
         subtitle
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    private var displayedDraft: String? {
+        guard let draft,
+              !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        return draft
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }

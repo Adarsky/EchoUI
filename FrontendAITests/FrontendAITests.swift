@@ -6,6 +6,40 @@ import SwiftData
 
 struct FrontendAITests {
 
+    @Test func chatAppearancePersistsClampedBubbleCornerRadii() {
+        let suiteName = "FrontendAITests.chatAppearanceCornerRadius.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var appearance = ChatAppearanceSnapshot.defaultValue
+        appearance.userMessageBubbleCornerRadius = -4
+        appearance.botMessageBubbleCornerRadius = 40
+        appearance.writeToGlobal(defaults: defaults)
+
+        let savedAppearance = ChatAppearanceSnapshot.global(defaults: defaults)
+        #expect(savedAppearance.userMessageBubbleCornerRadius == ChatAppearanceDefaults.minMessageBubbleCornerRadius)
+        #expect(savedAppearance.botMessageBubbleCornerRadius == ChatAppearanceDefaults.maxMessageBubbleCornerRadius)
+    }
+
+    @Test func chatAppearanceDecodesOlderSnapshotsWithoutCornerRadii() throws {
+        let appearance = ChatAppearanceSnapshot.defaultValue
+        var snapshot = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(appearance)) as? [String: Any]
+        )
+        snapshot.removeValue(forKey: "userMessageBubbleCornerRadius")
+        snapshot.removeValue(forKey: "botMessageBubbleCornerRadius")
+
+        let decoded = try JSONDecoder().decode(
+            ChatAppearanceSnapshot.self,
+            from: JSONSerialization.data(withJSONObject: snapshot)
+        )
+
+        #expect(decoded.userMessageBubbleCornerRadius == ChatAppearanceDefaults.userMessageBubbleCornerRadius)
+        #expect(decoded.botMessageBubbleCornerRadius == ChatAppearanceDefaults.botMessageBubbleCornerRadius)
+    }
+
     @Test func officialOpenAIEndpointForcesHTTPSAndNormalizesV1() {
         let normalized = APIType.openai.normalizedBaseURL("http://api.openai.com/v1")
 
@@ -436,6 +470,55 @@ struct FrontendAITests {
         #expect(parser.consume(line: "data: {\"chunk\":2}\r") == "{\"chunk\":2}")
         #expect(parser.consume(line: "data: [DONE]") == "[DONE]")
         #expect(parser.finish() == nil)
+    }
+
+    @Test func chatDraftsRoundTripIndependentlyAndEmptyTextDeletes() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("FrontendAITests-Drafts-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let firstBotID = UUID()
+        let secondBotID = UUID()
+        let firstDraft = "  First line\nsecond line  "
+
+        #expect(ChatDraftStore.saveDraft(
+            firstDraft,
+            for: firstBotID,
+            storageDirectoryURL: rootURL
+        ))
+        #expect(ChatDraftStore.saveDraft(
+            "Second bot",
+            for: secondBotID,
+            storageDirectoryURL: rootURL
+        ))
+        #expect(ChatDraftStore.loadDraft(
+            for: firstBotID,
+            storageDirectoryURL: rootURL
+        ) == firstDraft)
+        #expect(ChatDraftStore.loadDraft(
+            for: secondBotID,
+            storageDirectoryURL: rootURL
+        ) == "Second bot")
+
+        let firstDraftURL = ChatDraftStore.draftFileURL(
+            for: firstBotID,
+            storageDirectoryURL: rootURL
+        )
+        expectProtectedWhenSupported(firstDraftURL)
+
+        #expect(ChatDraftStore.saveDraft(
+            " \n\t ",
+            for: firstBotID,
+            storageDirectoryURL: rootURL
+        ))
+        #expect(ChatDraftStore.loadDraft(
+            for: firstBotID,
+            storageDirectoryURL: rootURL
+        ) == nil)
+        #expect(ChatDraftStore.loadDraft(
+            for: secondBotID,
+            storageDirectoryURL: rootURL
+        ) == "Second bot")
     }
 
     @Test @MainActor func cancellingAnEmptyRegenerationKeepsThePreviousVariant() {

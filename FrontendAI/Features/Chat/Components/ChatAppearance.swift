@@ -17,6 +17,8 @@ enum ChatAppearanceStorageKeys {
     static let userMessageBubbleWidthRatio = "chatUserMessageBubbleWidthRatio"
     static let botMessageBubbleWidthRatio = "chatBotMessageBubbleWidthRatio"
     static let messageBubbleWidthRatio = "chatMessageBubbleWidthRatio"
+    static let userMessageBubbleCornerRadius = "chatUserMessageBubbleCornerRadius"
+    static let botMessageBubbleCornerRadius = "chatBotMessageBubbleCornerRadius"
 
     static let wallpaperPath = "chatWallpaperPath"
     static let wallpaperBase64 = "chatWallpaperBase64" // legacy key for migration
@@ -45,6 +47,10 @@ enum ChatAppearanceDefaults {
     static let userMessageBubbleWidthRatio: Double = 0.82
     static let botMessageBubbleWidthRatio: Double = 0.82
     static let messageBubbleWidthRatio: Double = 0.82
+    static let userMessageBubbleCornerRadius: Double = 16.0
+    static let botMessageBubbleCornerRadius: Double = 16.0
+    static let minMessageBubbleCornerRadius: Double = 0.0
+    static let maxMessageBubbleCornerRadius: Double = 24.0
     static let wallpaperBlurEnabled: Bool = false
     static let wallpaperBlurRadius: Double = 8.0
     static let minWallpaperBlurRadius: Double = 0.0
@@ -60,6 +66,10 @@ enum ChatAppearanceDefaults {
 
     static func clampedWallpaperTintOpacity(_ value: Double) -> Double {
         min(max(value, minWallpaperTintOpacity), maxWallpaperTintOpacity)
+    }
+
+    static func clampedMessageBubbleCornerRadius(_ value: Double) -> Double {
+        min(max(value, minMessageBubbleCornerRadius), maxMessageBubbleCornerRadius)
     }
 }
 
@@ -158,6 +168,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
 
     var userMessageBubbleWidthRatio: Double
     var botMessageBubbleWidthRatio: Double
+    var userMessageBubbleCornerRadius: Double
+    var botMessageBubbleCornerRadius: Double
     var wallpaperPath: String
     var wallpaperBlurEnabled: Bool
     var wallpaperBlurRadius: Double
@@ -178,6 +190,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             botBubbleTransparent: ChatAppearanceDefaults.botBubbleTransparent,
             userMessageBubbleWidthRatio: ChatAppearanceDefaults.userMessageBubbleWidthRatio,
             botMessageBubbleWidthRatio: ChatAppearanceDefaults.botMessageBubbleWidthRatio,
+            userMessageBubbleCornerRadius: ChatAppearanceDefaults.userMessageBubbleCornerRadius,
+            botMessageBubbleCornerRadius: ChatAppearanceDefaults.botMessageBubbleCornerRadius,
             wallpaperPath: "",
             wallpaperBlurEnabled: ChatAppearanceDefaults.wallpaperBlurEnabled,
             wallpaperBlurRadius: ChatAppearanceDefaults.wallpaperBlurRadius,
@@ -199,6 +213,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         case botBubbleTransparent
         case userMessageBubbleWidthRatio
         case botMessageBubbleWidthRatio
+        case userMessageBubbleCornerRadius
+        case botMessageBubbleCornerRadius
         case wallpaperPath
         case wallpaperBlurEnabled
         case wallpaperBlurRadius
@@ -219,6 +235,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         botBubbleTransparent: Bool,
         userMessageBubbleWidthRatio: Double,
         botMessageBubbleWidthRatio: Double,
+        userMessageBubbleCornerRadius: Double,
+        botMessageBubbleCornerRadius: Double,
         wallpaperPath: String,
         wallpaperBlurEnabled: Bool,
         wallpaperBlurRadius: Double,
@@ -237,6 +255,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
         self.botBubbleTransparent = botBubbleTransparent
         self.userMessageBubbleWidthRatio = userMessageBubbleWidthRatio
         self.botMessageBubbleWidthRatio = botMessageBubbleWidthRatio
+        self.userMessageBubbleCornerRadius = userMessageBubbleCornerRadius
+        self.botMessageBubbleCornerRadius = botMessageBubbleCornerRadius
         self.wallpaperPath = wallpaperPath
         self.wallpaperBlurEnabled = wallpaperBlurEnabled
         self.wallpaperBlurRadius = wallpaperBlurRadius
@@ -259,6 +279,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             botBubbleTransparent: try container.decode(Bool.self, forKey: .botBubbleTransparent),
             userMessageBubbleWidthRatio: try container.decode(Double.self, forKey: .userMessageBubbleWidthRatio),
             botMessageBubbleWidthRatio: try container.decode(Double.self, forKey: .botMessageBubbleWidthRatio),
+            userMessageBubbleCornerRadius: try container.decodeIfPresent(Double.self, forKey: .userMessageBubbleCornerRadius) ?? ChatAppearanceDefaults.userMessageBubbleCornerRadius,
+            botMessageBubbleCornerRadius: try container.decodeIfPresent(Double.self, forKey: .botMessageBubbleCornerRadius) ?? ChatAppearanceDefaults.botMessageBubbleCornerRadius,
             wallpaperPath: try container.decode(String.self, forKey: .wallpaperPath),
             wallpaperBlurEnabled: try container.decode(Bool.self, forKey: .wallpaperBlurEnabled),
             wallpaperBlurRadius: try container.decode(Double.self, forKey: .wallpaperBlurRadius),
@@ -281,6 +303,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
             botBubbleTransparent: bool(defaults, key: ChatAppearanceStorageKeys.botBubbleTransparent, fallback: ChatAppearanceDefaults.botBubbleTransparent),
             userMessageBubbleWidthRatio: double(defaults, key: ChatAppearanceStorageKeys.userMessageBubbleWidthRatio, fallback: ChatAppearanceDefaults.userMessageBubbleWidthRatio),
             botMessageBubbleWidthRatio: double(defaults, key: ChatAppearanceStorageKeys.botMessageBubbleWidthRatio, fallback: ChatAppearanceDefaults.botMessageBubbleWidthRatio),
+            userMessageBubbleCornerRadius: double(defaults, key: ChatAppearanceStorageKeys.userMessageBubbleCornerRadius, fallback: ChatAppearanceDefaults.userMessageBubbleCornerRadius),
+            botMessageBubbleCornerRadius: double(defaults, key: ChatAppearanceStorageKeys.botMessageBubbleCornerRadius, fallback: ChatAppearanceDefaults.botMessageBubbleCornerRadius),
             wallpaperPath: defaults.string(forKey: ChatAppearanceStorageKeys.wallpaperPath) ?? "",
             wallpaperBlurEnabled: bool(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurEnabled, fallback: ChatAppearanceDefaults.wallpaperBlurEnabled),
             wallpaperBlurRadius: double(defaults, key: ChatAppearanceStorageKeys.wallpaperBlurRadius, fallback: ChatAppearanceDefaults.wallpaperBlurRadius),
@@ -304,6 +328,8 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
 
         defaults.set(userMessageBubbleWidthRatio, forKey: ChatAppearanceStorageKeys.userMessageBubbleWidthRatio)
         defaults.set(botMessageBubbleWidthRatio, forKey: ChatAppearanceStorageKeys.botMessageBubbleWidthRatio)
+        defaults.set(clampedUserMessageBubbleCornerRadius, forKey: ChatAppearanceStorageKeys.userMessageBubbleCornerRadius)
+        defaults.set(clampedBotMessageBubbleCornerRadius, forKey: ChatAppearanceStorageKeys.botMessageBubbleCornerRadius)
         defaults.set(wallpaperPath, forKey: ChatAppearanceStorageKeys.wallpaperPath)
         defaults.set(wallpaperBlurEnabled, forKey: ChatAppearanceStorageKeys.wallpaperBlurEnabled)
         defaults.set(clampedWallpaperBlurRadius, forKey: ChatAppearanceStorageKeys.wallpaperBlurRadius)
@@ -317,6 +343,14 @@ struct ChatAppearanceSnapshot: Codable, Equatable {
 
     var clampedBotMessageBubbleWidthRatio: Double {
         min(max(botMessageBubbleWidthRatio, 0.45), 1.0)
+    }
+
+    var clampedUserMessageBubbleCornerRadius: Double {
+        ChatAppearanceDefaults.clampedMessageBubbleCornerRadius(userMessageBubbleCornerRadius)
+    }
+
+    var clampedBotMessageBubbleCornerRadius: Double {
+        ChatAppearanceDefaults.clampedMessageBubbleCornerRadius(botMessageBubbleCornerRadius)
     }
 
     var clampedWallpaperBlurRadius: Double {

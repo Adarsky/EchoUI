@@ -137,8 +137,10 @@ private struct TokenSpeedChatPreview: View {
     @AppStorage(ChatAppearanceStorageKeys.userBubbleOpacity) private var userBubbleOpacity = ChatAppearanceDefaults.userBubbleOpacity
     @AppStorage(ChatAppearanceStorageKeys.userBubbleTransparent) private var userBubbleTransparent = ChatAppearanceDefaults.userBubbleTransparent
     @AppStorage(ChatAppearanceStorageKeys.userMessageBubbleWidthRatio) private var userMessageBubbleWidthRatio = ChatAppearanceDefaults.userMessageBubbleWidthRatio
+    @AppStorage(ChatAppearanceStorageKeys.userMessageBubbleCornerRadius) private var userMessageBubbleCornerRadius = ChatAppearanceDefaults.userMessageBubbleCornerRadius
 
     @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleWidthRatio) private var botMessageBubbleWidthRatio = ChatAppearanceDefaults.botMessageBubbleWidthRatio
+    @AppStorage(ChatAppearanceStorageKeys.botMessageBubbleCornerRadius) private var botMessageBubbleCornerRadius = ChatAppearanceDefaults.botMessageBubbleCornerRadius
     @State private var availableWidth: CGFloat = 0
 
     var body: some View {
@@ -172,10 +174,10 @@ private struct TokenSpeedChatPreview: View {
                 .padding(12)
                 .background(bubbleBackground(isUser: isUser))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
                         .stroke(Color.clear, lineWidth: 1)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous))
                 .frame(maxWidth: maxBubbleWidth(for: isUser), alignment: .leading)
         } else {
             bubbleText(assistantMessage, isUser: isUser)
@@ -187,7 +189,7 @@ private struct TokenSpeedChatPreview: View {
             .padding(12)
             .background(bubbleBackground(isUser: isUser))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
                     .stroke(Color.clear, lineWidth: 1)
             )
             .foregroundColor(bubbleTextColor(isUser: isUser))
@@ -196,7 +198,7 @@ private struct TokenSpeedChatPreview: View {
 
     @ViewBuilder
     private func bubbleBackground(isUser: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
         shape.fill(bubbleFillColor(isUser: isUser))
         if !isBubbleTransparent(isUser: isUser) {
             shape.fill(.ultraThinMaterial)
@@ -225,6 +227,14 @@ private struct TokenSpeedChatPreview: View {
             : CGFloat(min(max(botMessageBubbleWidthRatio, 0.45), 1.0))
         let baseWidth = availableWidth > 0 ? availableWidth : 390
         return baseWidth * ratio
+    }
+
+    private func bubbleCornerRadius(for isUser: Bool) -> CGFloat {
+        CGFloat(
+            ChatAppearanceDefaults.clampedMessageBubbleCornerRadius(
+                isUser ? userMessageBubbleCornerRadius : botMessageBubbleCornerRadius
+            )
+        )
     }
 
     private var userConfiguredColor: Color {

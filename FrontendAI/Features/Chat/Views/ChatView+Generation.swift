@@ -31,6 +31,7 @@ extension ChatView {
                 try? modelContext.save()
             }
             guard !inputText.isEmpty else { return }
+            let submittedText = inputText
             let config = ServerConfig(
                 type: server.type,
                 baseURL: server.baseURL,
@@ -44,10 +45,11 @@ extension ChatView {
             // User picked a branch; previous alternative variants are no longer needed.
             pruneAssistantVariants(keepingMessageID: nil)
 
-            let userMessage = ChatMessageModel(content: inputText, isUser: true)
+            let userMessage = ChatMessageModel(content: submittedText, isUser: true)
             withTransaction(.init(animation: nil)) { messages.append(userMessage) }
             trimMessagesIfNeeded()
             inputText = ""
+            clearSavedDraft()
 
             let payload = buildPayload(dummyUser: true)
             let replyID = UUID()

@@ -51,10 +51,10 @@ struct MessageRow: View {
                         .padding(12)
                         .background(bubbleFillColor(for: false))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: bubbleCornerRadius(for: false), style: .continuous)
                                 .stroke(bubbleStrokeColor(for: false), lineWidth: 1)
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: bubbleCornerRadius(for: false), style: .continuous))
                         .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
                 } else {
                     messageText
@@ -64,7 +64,7 @@ struct MessageRow: View {
                             bubbleBackground(for: msg.isUser)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: bubbleCornerRadius(for: msg.isUser), style: .continuous)
                                 .stroke(bubbleStrokeColor(for: msg.isUser), lineWidth: 1)
                         )
                         .foregroundColor(bubbleTextColor(for: msg.isUser))
@@ -201,7 +201,7 @@ struct MessageRow: View {
 
     @ViewBuilder
     private func bubbleBackground(for isUser: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
         shape.fill(bubbleFillColor(for: isUser))
         if !isBubbleTransparent(for: isUser) {
             shape.fill(.ultraThinMaterial)
@@ -221,6 +221,14 @@ struct MessageRow: View {
 
     private func bubbleStrokeColor(for isUser: Bool) -> Color {
         Color.clear
+    }
+
+    private func bubbleCornerRadius(for isUser: Bool) -> CGFloat {
+        CGFloat(
+            isUser
+                ? chatAppearance.clampedUserMessageBubbleCornerRadius
+                : chatAppearance.clampedBotMessageBubbleCornerRadius
+        )
     }
 
     private func bubbleTextColor(for isUser: Bool) -> Color {
