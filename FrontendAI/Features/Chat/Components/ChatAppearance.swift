@@ -98,21 +98,12 @@ enum ChatInputBarSendButtonStyle: String, CaseIterable, Identifiable {
         }
     }
 
-    var iconFrameWidth: CGFloat {
+    var buttonWidth: CGFloat {
         switch self {
         case .capsule:
             return 50
         case .circle:
             return 40
-        }
-    }
-
-    var buttonFrameWidth: CGFloat {
-        switch self {
-        case .capsule:
-            return 40
-        case .circle:
-            return 30
         }
     }
 

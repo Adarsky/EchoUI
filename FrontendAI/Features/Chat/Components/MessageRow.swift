@@ -9,6 +9,7 @@ struct MessageRow: View {
     let onDelete: (UUID) -> Void
     let availableWidth: CGFloat
     @Environment(\.chatAppearance) private var chatAppearance
+    @Environment(\.isGenerating) private var isGenerating
 
     private struct EditSession: Identifiable {
         let id = UUID()
@@ -133,6 +134,7 @@ struct MessageRow: View {
                             }
                             .buttonStyle(.glass)
                             .buttonBorderShape(.circle)
+                            .disabled(isGenerating || msg.isStreaming)
                             
                             Text("\(msg.currentIndex + 1)/\(max(msg.allVariants.count, 1))")
                                 .font(.footnote)
@@ -142,6 +144,7 @@ struct MessageRow: View {
                         .buttonStyle(.borderless)
                         .labelStyle(.iconOnly)
                         .padding(.top, 2)
+                        .disabled(isGenerating || msg.isStreaming)
                     }
                 }
             }

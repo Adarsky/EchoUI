@@ -45,14 +45,13 @@ struct MainPage: View {
 
     @State private var botToDelete: BotModel? = nil
     @State private var showDeleteAlert = false
+    @State private var botDeletionError: String?
     @State private var checkingAPIStatusServerUUID: UUID? = nil
     @State private var checkingAPIStatusRequestUUID: UUID? = nil
     @AppStorage("showMainHubAPIStatus") private var legacyShowMainHubAPIStatus = true
     @AppStorage("mainPageAPIStatusDisplayStyle") private var apiStatusDisplayStyleRawValue = MainPageAPIStatusDisplayStyle.coloredDot.rawValue
     @AppStorage("mainPageAPIStatusDisplayStyleDidMigrate") private var didMigrateAPIStatusDisplayStyle = false
 
-    @State public var Endpoint: String = ""
-    @State private var MessageLength: Int = 2048
     @AppStorage("chatFoldersEnabled") private var chatFoldersEnabled = true
     @AppStorage("selectedChatFolderID") private var selectedChatFolderID = ChatFolder.allFolderID
     @State private var folderNavigationDirection = 1
@@ -175,11 +174,13 @@ struct MainPage: View {
     }
 
     private var visibleBots: [BotModel] {
-        guard chatFoldersEnabled else { return bots }
-        guard selectedChatFolderID != ChatFolder.allFolderID else { return bots }
-        guard let selectedChatFolder else { return bots }
-        guard !selectedChatFolder.isPrivate || unlockedPrivateFolderID == selectedChatFolderID else { return [] }
-        return bots.filter { selectedChatFolder.contains(botID: $0.id) }
+        PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: chatFolders,
+            foldersEnabled: chatFoldersEnabled,
+            selectedFolderID: selectedChatFolderID,
+            unlockedPrivateFolderID: unlockedPrivateFolderID
+        )
     }
 
     private var folderSignature: String {
@@ -247,8 +248,6 @@ struct MainPage: View {
         .sheet(isPresented: $showSheetSettings) {
             SettingsSheetView(
                 isPresented: $showSheetSettings,
-                messageLength: $MessageLength,
-                endpoint: $Endpoint,
                 apiStatusDisplayStyle: $apiStatusDisplayStyleRawValue
             )
         }
@@ -451,8 +450,7 @@ struct MainPage: View {
         .animation(.snappy(duration: 0.28), value: selectedChatFolderID)
         .alert("Are you sure you want to delete this bot?", isPresented: $showDeleteAlert, presenting: botToDelete) { bot in
             Button("Yes, delete", role: .destructive) {
-                modelContext.delete(bot)
-                try? modelContext.save()
+                deleteBot(bot)
             }
             Button("Cancel", role: .cancel) { }
         } message: { bot in
@@ -463,6 +461,17 @@ struct MainPage: View {
         } message: {
             Text(privateFolderAuthenticationMessage)
         }
+        .alert(
+            "Could Not Delete Chat",
+            isPresented: Binding(
+                get: { botDeletionError != nil },
+                set: { if !$0 { botDeletionError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { botDeletionError = nil }
+        } message: {
+            Text(botDeletionError ?? "The chat could not be deleted.")
+        }
     }
 
     private var emptyFolderMessage: String {
@@ -471,8 +480,13 @@ struct MainPage: View {
     }
 
     private func folderCount(_ folder: ChatFolder?) -> Int {
-        guard let folder else { return bots.count }
-        return bots.filter { folder.contains(botID: $0.id) }.count
+        PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: chatFolders,
+            foldersEnabled: true,
+            selectedFolderID: folder?.id.uuidString ?? ChatFolder.allFolderID,
+            unlockedPrivateFolderID: unlockedPrivateFolderID
+        ).count
     }
 
     private func chatListAnimationID(for bot: BotModel) -> String {
@@ -540,6 +554,23 @@ struct MainPage: View {
             Label(bot.isPinned ? "Unpin" : "Pin", systemImage: bot.isPinned ? "pin.slash" : "pin")
         }
         .tint(bot.isPinned ? .gray : .gray)
+    }
+
+    @MainActor
+    private func deleteBot(_ bot: BotModel) {
+        let botID = bot.id
+
+        do {
+            try ChatHistoryPersistence.deleteHistories(for: botID, context: modelContext)
+            for folder in chatFolders where folder.contains(botID: botID) {
+                folder.setContains(false, botID: botID)
+            }
+            modelContext.delete(bot)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            botDeletionError = error.localizedDescription
+        }
     }
 
     private func togglePinned(_ bot: BotModel) {

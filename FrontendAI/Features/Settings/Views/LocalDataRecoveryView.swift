@@ -15,7 +15,11 @@ struct LocalDataRecoveryView: View {
         List {
             Section {
                 Button {
-                    exportFiles(snapshot.activeFiles, prefix: "FrontendAI-active")
+                    exportFiles(
+                        snapshot.activeFiles,
+                        prefix: "FrontendAI-active",
+                        snapshotLiveStore: true
+                    )
                 } label: {
                     Label("Export Active Store", systemImage: "square.and.arrow.up")
                 }
@@ -169,10 +173,17 @@ struct LocalDataRecoveryView: View {
         snapshot = StoreRecoveryManager.recoverySnapshot()
     }
 
-    private func exportFiles(_ files: [StoreRecoveryFileSnapshot], prefix: String) {
+    private func exportFiles(
+        _ files: [StoreRecoveryFileSnapshot],
+        prefix: String,
+        snapshotLiveStore: Bool = false
+    ) {
         do {
             exportDocument = FrontendAIBackupDocument(
-                data: try PortableStoreBackup.makeBackupData(from: files)
+                data: try PortableStoreBackup.makeBackupData(
+                    from: files,
+                    snapshotLiveStore: snapshotLiveStore
+                )
             )
             exportFileName = PortableStoreBackup.defaultFileName(prefix: prefix)
             isShowingExporter = true
@@ -194,7 +205,9 @@ struct LocalDataRecoveryView: View {
                 }
             }
 
-            let backup = try PortableStoreBackup.importBackupData(Data(contentsOf: url))
+            let backup = try PortableStoreBackup.importBackupData(
+                PortableStoreBackup.readImportData(from: url)
+            )
             snapshot = StoreRecoveryManager.recoverySnapshot()
             backupPendingRestore = backup
             isShowingRestoreConfirmation = true

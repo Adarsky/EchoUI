@@ -187,7 +187,7 @@ struct ChatHistoryListView: View {
     }
 
     private func deleteHistory(_ history: ChatHistory) {
-        modelContext.delete(history)
+        ChatHistoryPersistence.delete(history, context: modelContext)
         do {
             try modelContext.save()
             loadHistory()

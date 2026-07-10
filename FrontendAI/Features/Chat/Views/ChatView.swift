@@ -21,6 +21,7 @@ struct ChatView: View {
     @State var isGenerating = false
     @State var isThinking = false
     @State var generationTask: Task<Void, Never>? = nil
+    @State var activeGenerationID: UUID?
 
     @State var alertMessage: String?
     @State var showAlertBanner = false
@@ -120,7 +121,18 @@ struct ChatView: View {
         .onChange(of: currentChatAppearanceID) { _, _ in
             refreshActiveAppearance()
         }
-        .onDisappear { saveChatHistory() }
+        .onDisappear {
+            if isGenerating {
+                stopGeneration()
+            } else {
+                saveChatHistory()
+            }
+        }
+        .onChange(of: isViewingHistory) { _, isViewingHistory in
+            if isViewingHistory && isGenerating {
+                stopGeneration()
+            }
+        }
         .sheet(isPresented: $openSettings) {
             APIManagerView(selectedServer: $apiManager.selectedServer)
                 .environmentObject(apiManager)

@@ -5,8 +5,16 @@ extension ChatView {
         // MARK: - Generation flow
         func stopGeneration() {
             generationTask?.cancel()
+            activeGenerationID = nil
             streamingReply?.finalizeThinkingNow()
             streamingReply?.setStreaming(false)
+            if let streamingReply,
+               streamingReply.content.isEmpty,
+               !streamingReply.hasThinkingContent {
+                if !streamingReply.discardEmptyCurrentVariant() {
+                    messages.removeAll { $0.id == streamingReply.id }
+                }
+            }
             isThinking = false
             isGenerating = false
             generationTask = nil
@@ -15,6 +23,7 @@ extension ChatView {
         }
 
         func sendMessage() {
+            guard generationTask == nil, !isGenerating else { return }
             guard let server = apiManager.selectedServer else {
                 showMissingAPIAlert = true; return
             }
@@ -48,14 +57,22 @@ extension ChatView {
             streamingReply = placeholder
             isThinking = false
             isGenerating = true
+            let generationID = UUID()
+            activeGenerationID = generationID
 
             generationTask = Task {
-                await streamReply(payload: payload, config: config, replyID: replyID)
+                await streamReply(
+                    payload: payload,
+                    config: config,
+                    replyID: replyID,
+                    generationID: generationID
+                )
             }
         }
 
         @MainActor
         func regenerateMessage(for message: ChatMessageModel) {
+            guard generationTask == nil, !isGenerating else { return }
             guard let server = apiManager.selectedServer else {
                 showMissingAPIAlert = true; return
             }
@@ -83,21 +100,34 @@ extension ChatView {
             isThinking = false
             isGenerating = true
             streamingReply = messages[index]
+            let generationID = UUID()
+            activeGenerationID = generationID
 
             generationTask = Task {
-                await streamReply(payload: payload, config: config, replyID: replyID)
+                await streamReply(
+                    payload: payload,
+                    config: config,
+                    replyID: replyID,
+                    generationID: generationID
+                )
             }
         }
 
         @MainActor
         func switchVariant(for id: UUID, direction: Int) {
+            guard !isGenerating else { return }
             guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
             messages[index].switchVariant(offset: direction)
             saveChatHistory()
         }
 
         // MARK: - Streaming helper
-        private func streamReply(payload: [ChatPayloadMessage], config: ServerConfig, replyID: UUID) async {
+        private func streamReply(
+            payload: [ChatPayloadMessage],
+            config: ServerConfig,
+            replyID: UUID,
+            generationID: UUID
+        ) async {
             let clampedChunkFlushIntervalMs = ChatStreamingDefaults.clampedChunkFlushIntervalMs(streamChunkFlushIntervalMs)
             let eventStream = ChatReplyStreamService.makeEventStream(
                 payload: payload,
@@ -111,6 +141,8 @@ extension ChatView {
                     if Task.isCancelled { break }
 
                     await MainActor.run {
+                        guard activeGenerationID == generationID else { return }
+
                         switch event {
                         case let .chunk(chunk):
                             applyStreamChunk(chunk, for: replyID)
@@ -129,6 +161,7 @@ extension ChatView {
                             }
                             isThinking = false
                             isGenerating = false
+                            activeGenerationID = nil
                             generationTask = nil
                             streamingReply = nil
                             saveChatHistory()

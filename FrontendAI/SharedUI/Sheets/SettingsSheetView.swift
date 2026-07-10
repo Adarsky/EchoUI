@@ -3,16 +3,12 @@ import SwiftData
 
 struct SettingsSheetView: View {
     @Binding var isPresented: Bool
-    @Binding var messageLength: Int
-    @Binding var endpoint: String
     @Binding var apiStatusDisplayStyle: String
     var navName: String = "Settings"
 
     var body: some View {
         NavigationStack {
             SettingsPageView(
-                messageLength: $messageLength,
-                endpoint: $endpoint,
                 apiStatusDisplayStyle: $apiStatusDisplayStyle,
                 navName: navName
             )
@@ -23,8 +19,6 @@ struct SettingsSheetView: View {
 }
 
 struct SettingsPageView: View {
-    @Binding var messageLength: Int
-    @Binding var endpoint: String
     @Binding var apiStatusDisplayStyle: String
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var apiManager: APIManager
@@ -93,9 +87,9 @@ struct SettingsPageView: View {
                     Label("Manage API Servers", systemImage: "server.rack")
                 }
             }
-            Section(header: Text("iCloud settings")) {
-                NavigationLink(destination: DeveloperSettingsView()) {
-                    Label("iCloud backup", systemImage: "icloud")
+            Section(header: Text("Backup and recovery")) {
+                NavigationLink(destination: LocalDataRecoveryView()) {
+                    Label("Local data backup", systemImage: "externaldrive.badge.timemachine")
                 }
             }
             Section(header: Text("Data and storage")) {
@@ -114,9 +108,6 @@ struct SettingsPageView: View {
                 }
             }
             Section(header: Text("Developer settings")) {
-                NavigationLink(destination: LocalDataRecoveryView()) {
-                    Label("Local data recovery", systemImage: "externaldrive.badge.timemachine")
-                }
                 NavigationLink(destination: DeveloperSettingsView()) {
                     Label("Call settings", systemImage: "hammer")
                 }
@@ -476,16 +467,12 @@ private enum OpenRouterBalanceState {
 
 private struct SettingsSheetViewPreviewHost: View {
     @State private var isPresented = true
-    @State private var messageLength = 1024
-    @State private var endpoint = "http://localhost:1234/v1"
     @State private var apiStatusDisplayStyle = MainPageAPIStatusDisplayStyle.coloredDot.rawValue
     var navName: String = "Settings"
 
     var body: some View {
         SettingsSheetView(
             isPresented: $isPresented,
-            messageLength: $messageLength,
-            endpoint: $endpoint,
             apiStatusDisplayStyle: $apiStatusDisplayStyle,
             navName: navName
         )

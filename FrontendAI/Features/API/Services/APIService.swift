@@ -14,6 +14,64 @@ struct OpenAIStreamChunk: Codable {
     let choices: [Choice]
 }
 
+struct ServerSentEventParser {
+    private var dataLines: [String] = []
+
+    mutating func consume(line: String) -> String? {
+        let normalizedLine = line.last == "\r" ? String(line.dropLast()) : line
+
+        if normalizedLine.isEmpty {
+            return finishEvent()
+        }
+        if normalizedLine.hasPrefix(":") {
+            return nil
+        }
+
+        let field: Substring
+        var value: Substring
+        if let colonIndex = normalizedLine.firstIndex(of: ":") {
+            field = normalizedLine[..<colonIndex]
+            value = normalizedLine[normalizedLine.index(after: colonIndex)...]
+            if value.first == " " {
+                value = value.dropFirst()
+            }
+        } else {
+            field = Substring(normalizedLine)
+            value = ""
+        }
+
+        if field == "data" {
+            dataLines.append(String(value))
+            let combinedData = dataLines.joined(separator: "\n")
+            if isCompleteStreamingEvent(combinedData) {
+                return finishEvent()
+            }
+        }
+        return nil
+    }
+
+    mutating func finish() -> String? {
+        finishEvent()
+    }
+
+    private mutating func finishEvent() -> String? {
+        guard !dataLines.isEmpty else { return nil }
+        defer { dataLines.removeAll(keepingCapacity: true) }
+        return dataLines.joined(separator: "\n")
+    }
+
+    private func isCompleteStreamingEvent(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == "[DONE]" { return true }
+        guard let data = trimmed.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              object is [String: Any] else {
+            return false
+        }
+        return true
+    }
+}
+
 // MARK: - Snapshot of APIServer (safe to send to async contexts)
 struct ServerConfig: Sendable {
     let type: APIType
@@ -100,19 +158,20 @@ actor APIService {
 
         var finalResultParts: [String] = []
 
+        var eventParser = ServerSentEventParser()
+        var didFinishStream = false
+
         for try await line in stream.lines {
             try Task.checkCancellation()
-            if line.starts(with: "data: ") {
-                let jsonString = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
-                if jsonString == "[DONE]" { break }
-
-                if let jsonData = jsonString.data(using: .utf8),
-                   let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
-                   let delta = chunk.choices.first?.delta.content {
-                    finalResultParts.append(delta)
-                    onStream?(delta)
-                }
+            if let eventData = eventParser.consume(line: line),
+               appendOpenAIEvent(eventData, to: &finalResultParts, onStream: onStream) {
+                didFinishStream = true
+                break
             }
+        }
+
+        if !didFinishStream, let eventData = eventParser.finish() {
+            _ = appendOpenAIEvent(eventData, to: &finalResultParts, onStream: onStream)
         }
 
         return finalResultParts.joined()
@@ -183,48 +242,32 @@ actor APIService {
         var injectedThinkingOpened = false
         var injectedThinkingClosed = false
 
+        var eventParser = ServerSentEventParser()
+        var didFinishStream = false
+
         for try await line in stream.lines {
             try Task.checkCancellation()
-            if line.starts(with: "data: ") {
-                let jsonString = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
-                if jsonString == "[DONE]" { break }
-
-                if let jsonData = jsonString.data(using: .utf8) {
-                    // OpenRouter can stream reasoning separately from content.
-                    let parsed = parseOpenRouterStreamDelta(from: jsonData)
-
-                    if !parsed.reasoning.isEmpty {
-                        if !injectedThinkingOpened {
-                            finalResultParts.append("<think>")
-                            onStream?("<think>")
-                            injectedThinkingOpened = true
-                        }
-                        for reasoningChunk in parsed.reasoning {
-                            finalResultParts.append(reasoningChunk)
-                            onStream?(reasoningChunk)
-                        }
-                    }
-
-                    if !parsed.content.isEmpty {
-                        if injectedThinkingOpened && !injectedThinkingClosed {
-                            finalResultParts.append("</think>")
-                            onStream?("</think>")
-                            injectedThinkingClosed = true
-                        }
-
-                        for contentChunk in parsed.content {
-                            finalResultParts.append(contentChunk)
-                            onStream?(contentChunk)
-                        }
-                    }
-
-                    if parsed.didFinish && injectedThinkingOpened && !injectedThinkingClosed {
-                        finalResultParts.append("</think>")
-                        onStream?("</think>")
-                        injectedThinkingClosed = true
-                    }
-                }
+            if let eventData = eventParser.consume(line: line),
+               appendOpenRouterEvent(
+                    eventData,
+                    to: &finalResultParts,
+                    thinkingOpened: &injectedThinkingOpened,
+                    thinkingClosed: &injectedThinkingClosed,
+                    onStream: onStream
+               ) {
+                didFinishStream = true
+                break
             }
+        }
+
+        if !didFinishStream, let eventData = eventParser.finish() {
+            _ = appendOpenRouterEvent(
+                eventData,
+                to: &finalResultParts,
+                thinkingOpened: &injectedThinkingOpened,
+                thinkingClosed: &injectedThinkingClosed,
+                onStream: onStream
+            )
         }
 
         return finalResultParts.joined()
@@ -247,6 +290,69 @@ actor APIService {
         default:
             return "Request failed (HTTP \(statusCode))."
         }
+    }
+
+    private static func appendOpenAIEvent(
+        _ eventData: String,
+        to resultParts: inout [String],
+        onStream: ((String) -> Void)?
+    ) -> Bool {
+        let normalized = eventData.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized == "[DONE]" { return true }
+
+        guard let jsonData = normalized.data(using: .utf8),
+              let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
+              let delta = chunk.choices.first?.delta.content else {
+            return false
+        }
+
+        resultParts.append(delta)
+        onStream?(delta)
+        return false
+    }
+
+    private static func appendOpenRouterEvent(
+        _ eventData: String,
+        to resultParts: inout [String],
+        thinkingOpened: inout Bool,
+        thinkingClosed: inout Bool,
+        onStream: ((String) -> Void)?
+    ) -> Bool {
+        let normalized = eventData.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized == "[DONE]" { return true }
+        guard let jsonData = normalized.data(using: .utf8) else { return false }
+
+        let parsed = parseOpenRouterStreamDelta(from: jsonData)
+        if !parsed.reasoning.isEmpty {
+            if !thinkingOpened {
+                resultParts.append("<think>")
+                onStream?("<think>")
+                thinkingOpened = true
+            }
+            for reasoningChunk in parsed.reasoning {
+                resultParts.append(reasoningChunk)
+                onStream?(reasoningChunk)
+            }
+        }
+
+        if !parsed.content.isEmpty {
+            if thinkingOpened && !thinkingClosed {
+                resultParts.append("</think>")
+                onStream?("</think>")
+                thinkingClosed = true
+            }
+            for contentChunk in parsed.content {
+                resultParts.append(contentChunk)
+                onStream?(contentChunk)
+            }
+        }
+
+        if parsed.didFinish && thinkingOpened && !thinkingClosed {
+            resultParts.append("</think>")
+            onStream?("</think>")
+            thinkingClosed = true
+        }
+        return false
     }
 
     private static func parseOpenRouterStreamDelta(from data: Data) -> (content: [String], reasoning: [String], didFinish: Bool) {

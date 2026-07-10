@@ -19,10 +19,10 @@ struct ChatInputBar: View {
     private let minimumInputHeight: CGFloat = 52
     private let inputVerticalPadding: CGFloat = 14
     private let inputLeadingPadding: CGFloat = 14
-    private let inputTrailingPadding: CGFloat = 56
     private let focusedHorizontalPadding: CGFloat = 16
     private let idleHorizontalPadding: CGFloat = 42
     private let idleInputMaxWidth: CGFloat = 560
+    private let sendButtonHeight: CGFloat = 40
     private let focusAnimation: Animation = .easeInOut(duration: 0.28)
 
     init(
@@ -55,7 +55,7 @@ struct ChatInputBar: View {
             case .idle:
                 return "arrow.up"
             case .thinking:
-                return "circle.hexagongrid"
+                return "ellipsis"
             case .generating:
                 return "stop.fill"
             }
@@ -72,7 +72,7 @@ struct ChatInputBar: View {
     }
 
     private var inputFieldShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 26, style: .continuous)
+        RoundedRectangle(cornerRadius: minimumInputHeight / 2, style: .continuous)
     }
 
     private var inputFont: Font {
@@ -104,6 +104,14 @@ struct ChatInputBar: View {
         isInputFocused ? focusedHorizontalPadding : idleHorizontalPadding
     }
 
+    private var sendButtonEdgeInset: CGFloat {
+        max(0, (minimumInputHeight - sendButtonHeight) / 2)
+    }
+
+    private var inputTrailingPadding: CGFloat {
+        sendButtonStyle.buttonWidth + sendButtonEdgeInset * 2
+    }
+
     private var inputField: some View {
         ZStack(alignment: .topLeading) {
             Text(verbatim: inputSizingText)
@@ -131,7 +139,8 @@ struct ChatInputBar: View {
         .glassEffect(.regular.interactive(), in: inputFieldShape)
         .overlay(alignment: .bottomTrailing) {
             sendButton
-                .padding(.bottom, 8)
+                .padding(.trailing, sendButtonEdgeInset)
+                .padding(.bottom, sendButtonEdgeInset)
         }
         .background {
             GeometryReader { proxy in
@@ -161,10 +170,10 @@ struct ChatInputBar: View {
 
         return Button(action: performPrimaryAction) {
             Image(systemName: visualState.symbolName)
-                .font(.system(size: 27, weight: .semibold))
+                .font(.system(size: 23, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
                 .foregroundColor(Color(.black))
-                .frame(width: sendButtonStyle.iconFrameWidth, height: 40)
+                .frame(width: sendButtonStyle.buttonWidth, height: sendButtonHeight)
                 .symbolEffect(
                     .breathe.pulse.byLayer,
                     options: .repeat(.continuous),
@@ -173,8 +182,7 @@ struct ChatInputBar: View {
         }
         .buttonBorderShape(.capsule)
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
-        .frame(width: sendButtonStyle.buttonFrameWidth, height: 40)
-        .padding(.trailing, 12)
+        .frame(width: sendButtonStyle.buttonWidth, height: sendButtonHeight)
         .animation(.easeInOut(duration: 0.28), value: visualState)
     }
 

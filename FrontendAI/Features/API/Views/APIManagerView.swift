@@ -11,6 +11,7 @@ struct APIManagerView: View {
 
     @State private var showCreateSheet = false
     @State private var editServer: APIServer? = nil
+    @State private var deletionErrorMessage: String?
 
     private var activeServer: APIServer? {
         selectedServer ?? apiManager.selectedServer
@@ -50,9 +51,7 @@ struct APIManagerView: View {
                     )
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
-                            server.deleteAPIKeyFromKeychain()
-                            modelContext.delete(server)
-                            try? modelContext.save()
+                            deleteServer(server)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -88,6 +87,17 @@ struct APIManagerView: View {
                     await ping(server: server)
                 }
             }
+            .alert(
+                "Could Not Delete API Server",
+                isPresented: Binding(
+                    get: { deletionErrorMessage != nil },
+                    set: { if !$0 { deletionErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { deletionErrorMessage = nil }
+            } message: {
+                Text(deletionErrorMessage ?? "The API server could not be deleted.")
+            }
         }
     }
 
@@ -95,6 +105,25 @@ struct APIManagerView: View {
         let status = await APIManager.evaluateConnectionStatus(for: server)
         server.updateConnectionStatus(status)
         try? modelContext.save()
+    }
+
+    @MainActor
+    private func deleteServer(_ server: APIServer) {
+        let uuid = server.uuid
+        let wasActive = activeServer?.uuid == uuid
+
+        modelContext.delete(server)
+        do {
+            try modelContext.save()
+            APIServer.deleteAPIKeyFromKeychain(for: uuid)
+            if wasActive {
+                selectedServer = nil
+                apiManager.selectedServer = nil
+            }
+        } catch {
+            modelContext.rollback()
+            deletionErrorMessage = error.localizedDescription
+        }
     }
 }
 

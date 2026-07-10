@@ -8,7 +8,6 @@ extension ChatView {
             bindings: chatScreenBindings,
             actions: chatScreenActions
         )
-        .ignoresSafeArea(.container, edges: .top)
     }
 
     private var chatScreenModel: ChatScreenModel {
@@ -171,6 +170,9 @@ extension ChatView {
     }
 
     func performStartNewChat(persona: PersonaModel? = nil, hasPersonaOverride: Bool = false) {
+        if isGenerating {
+            stopGeneration()
+        }
         saveChatHistory()
         resetInitialMessagePositioning()
         messages.removeAll()
@@ -196,6 +198,7 @@ extension ChatView {
     }
 
     func deleteMessage(id: UUID) {
+        guard !isGenerating else { return }
         guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
 
         messages.remove(at: index)

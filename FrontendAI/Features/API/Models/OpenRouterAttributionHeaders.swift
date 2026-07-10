@@ -15,7 +15,7 @@ struct OpenRouterAttributionPreset: Identifiable, Equatable {
 }
 
 enum OpenRouterAttributionHeaders {
-    static let defaultReferer = "none"
+    static let defaultReferer = "https://echo-ui.app"
     static let defaultTitle = "Echo UI"
     static let defaultUserAgent = "EchoUI/1.0"
 

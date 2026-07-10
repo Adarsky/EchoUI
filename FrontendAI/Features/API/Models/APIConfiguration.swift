@@ -643,6 +643,10 @@ extension APIServer {
         legacyAPIKeyStorage = nil
     }
 
+    static func deleteAPIKeyFromKeychain(for uuid: UUID) {
+        APIKeychainStore.deleteAPIKey(for: uuid)
+    }
+
     func updateConnectionStatus(_ status: APIConnectionStatus) {
         connectionStatus = status
         isOnline = status == .online

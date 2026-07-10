@@ -51,6 +51,10 @@ extension ChatView {
         func saveChatHistory() {
             guard !messages.isEmpty else { return }
             let lastMessageID = messages.last?.id
+            var existingEntitiesByID: [UUID: ChatMessageEntity] = [:]
+            for entity in currentHistory?.messages ?? [] {
+                existingEntitiesByID[entity.id] = entity
+            }
 
             let entities = messages.enumerated().map { index, msg in
                 let shouldSaveVariants = !msg.isUser && msg.id == lastMessageID
@@ -65,6 +69,16 @@ extension ChatView {
                     storedCurrentVariantIndex = nil
                 }
 
+                if let entity = existingEntitiesByID[msg.id] {
+                    entity.text = msg.content
+                    entity.isUser = msg.isUser
+                    entity.index = index
+                    entity.timestamp = msg.timestamp
+                    entity.variants = storedVariants
+                    entity.currentVariantIndex = storedCurrentVariantIndex
+                    return entity
+                }
+
                 return ChatMessageEntity(
                     id: msg.id,
                     text: msg.content,
@@ -77,7 +91,11 @@ extension ChatView {
             }
 
             if let history = currentHistory {
-                history.messages = entities
+                ChatHistoryPersistence.replaceMessages(
+                    in: history,
+                    with: entities,
+                    context: modelContext
+                )
                 history.date = .now
                 history.personaID = chatPersonaID
                 history.hasPersonaOverride = hasChatPersonaOverride
@@ -93,7 +111,12 @@ extension ChatView {
                 currentHistory = new
                 rememberOpenedHistory(new)
             }
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+            } catch {
+                alertMessage = "Could not save this chat. Your current messages remain open so you can try again."
+                showAlertBanner = true
+            }
         }
 
         @MainActor

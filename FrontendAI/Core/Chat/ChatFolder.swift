@@ -72,3 +72,34 @@ final class ChatFolder {
         String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxNameLength))
     }
 }
+
+enum PrivateChatVisibility {
+    static func visibleBots(
+        from bots: [BotModel],
+        folders: [ChatFolder],
+        foldersEnabled: Bool,
+        selectedFolderID: String,
+        unlockedPrivateFolderID: String?
+    ) -> [BotModel] {
+        let privateBotIDs = Set(
+            folders
+                .filter(\.isPrivate)
+                .flatMap(\.botIDStrings)
+                .compactMap(UUID.init(uuidString:))
+        )
+        let privacyFilteredBots = bots.filter { !privateBotIDs.contains($0.id) }
+
+        guard foldersEnabled else { return privacyFilteredBots }
+        guard selectedFolderID != ChatFolder.allFolderID else { return privacyFilteredBots }
+        guard let selectedFolder = folders.first(where: { $0.id.uuidString == selectedFolderID }) else {
+            return privacyFilteredBots
+        }
+
+        if selectedFolder.isPrivate {
+            guard unlockedPrivateFolderID == selectedFolderID else { return [] }
+            return bots.filter { selectedFolder.contains(botID: $0.id) }
+        }
+
+        return privacyFilteredBots.filter { selectedFolder.contains(botID: $0.id) }
+    }
+}

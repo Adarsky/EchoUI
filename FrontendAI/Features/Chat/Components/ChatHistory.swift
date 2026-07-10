@@ -72,3 +72,51 @@ class ChatMessageEntity: Identifiable {
         self.currentVariantIndex = currentVariantIndex
     }
 }
+
+enum ChatHistoryPersistence {
+    @MainActor
+    static func replaceMessages(
+        in history: ChatHistory,
+        with messages: [ChatMessageEntity],
+        context: ModelContext
+    ) {
+        let retainedObjects = Set(messages.map(ObjectIdentifier.init))
+        let removedMessages = history.messages.filter {
+            !retainedObjects.contains(ObjectIdentifier($0))
+        }
+
+        history.messages = messages
+        for message in removedMessages {
+            context.delete(message)
+        }
+    }
+
+    @MainActor
+    static func delete(_ history: ChatHistory, context: ModelContext) {
+        let messages = history.messages
+        context.delete(history)
+        for message in messages {
+            context.delete(message)
+        }
+    }
+
+    @MainActor
+    static func deleteHistories(for botID: UUID, context: ModelContext) throws {
+        let descriptor = FetchDescriptor<ChatHistory>(
+            predicate: #Predicate { $0.botID == botID }
+        )
+        for history in try context.fetch(descriptor) {
+            delete(history, context: context)
+        }
+    }
+
+    @MainActor
+    static func deleteAllHistoriesAndMessages(context: ModelContext) throws {
+        for history in try context.fetch(FetchDescriptor<ChatHistory>()) {
+            context.delete(history)
+        }
+        for message in try context.fetch(FetchDescriptor<ChatMessageEntity>()) {
+            context.delete(message)
+        }
+    }
+}

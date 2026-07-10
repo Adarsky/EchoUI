@@ -261,6 +261,20 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     }
 
     @MainActor
+    func discardEmptyCurrentVariant() -> Bool {
+        guard variants.count > 1,
+              variants.indices.contains(currentIndex),
+              variants[currentIndex].displayContent.isEmpty,
+              !variants[currentIndex].hasLeadingThink else {
+            return false
+        }
+
+        variants.remove(at: currentIndex)
+        currentIndex = min(currentIndex, variants.count - 1)
+        return true
+    }
+
+    @MainActor
     func switchVariant(offset: Int) {
         guard !variants.isEmpty else { return }
         currentIndex = (currentIndex + offset + variants.count) % variants.count

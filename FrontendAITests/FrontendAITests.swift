@@ -1,5 +1,7 @@
 import Testing
 import Foundation
+import SQLite3
+import SwiftData
 @testable import FrontendAI
 
 struct FrontendAITests {
@@ -61,7 +63,7 @@ struct FrontendAITests {
 
         #expect(presetRequest.value(forHTTPHeaderField: "HTTP-Referer") == "https://janitorai.com")
         #expect(presetRequest.value(forHTTPHeaderField: "X-Title") == "Janitor AI")
-        #expect(presetRequest.value(forHTTPHeaderField: "User-Agent") == "JanitorAI/1.0")
+        #expect(presetRequest.value(forHTTPHeaderField: "User-Agent") == janitorPreset.userAgent)
     }
 
     @Test func openRouterAttributionHeadersSupportCustomValues() {
@@ -341,6 +343,200 @@ struct FrontendAITests {
             let movedURL = backupURL.appendingPathComponent(sourceURL.lastPathComponent)
             #expect(fileManager.fileExists(atPath: movedURL.path))
             expectProtectedWhenSupported(movedURL)
+        }
+    }
+
+    @Test func privateChatsStayHiddenOutsideAnUnlockedPrivateFolder() {
+        let privateBot = BotModel(
+            name: "Private",
+            subtitle: "Secret",
+            date: "Today",
+            avatarSystemName: "lock",
+            iconColorName: "blue",
+            isPinned: false,
+            greeting: "Private"
+        )
+        let publicBot = BotModel(
+            name: "Public",
+            subtitle: "Visible",
+            date: "Today",
+            avatarSystemName: "person",
+            iconColorName: "blue",
+            isPinned: false,
+            greeting: "Public"
+        )
+        let privateFolder = ChatFolder(
+            name: "Private",
+            botIDStrings: [ChatFolder.storageID(for: privateBot.id)]
+        )
+        let workFolder = ChatFolder(
+            name: "Work",
+            botIDStrings: [
+                ChatFolder.storageID(for: privateBot.id),
+                ChatFolder.storageID(for: publicBot.id)
+            ]
+        )
+        let bots = [privateBot, publicBot]
+        let folders = [privateFolder, workFolder]
+
+        #expect(PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: folders,
+            foldersEnabled: true,
+            selectedFolderID: ChatFolder.allFolderID,
+            unlockedPrivateFolderID: nil
+        ).map(\.id) == [publicBot.id])
+        #expect(PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: folders,
+            foldersEnabled: true,
+            selectedFolderID: ChatFolder.allFolderID,
+            unlockedPrivateFolderID: privateFolder.id.uuidString
+        ).map(\.id) == [publicBot.id])
+        #expect(PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: folders,
+            foldersEnabled: false,
+            selectedFolderID: ChatFolder.allFolderID,
+            unlockedPrivateFolderID: nil
+        ).map(\.id) == [publicBot.id])
+        #expect(PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: folders,
+            foldersEnabled: true,
+            selectedFolderID: workFolder.id.uuidString,
+            unlockedPrivateFolderID: nil
+        ).map(\.id) == [publicBot.id])
+        #expect(PrivateChatVisibility.visibleBots(
+            from: bots,
+            folders: folders,
+            foldersEnabled: true,
+            selectedFolderID: privateFolder.id.uuidString,
+            unlockedPrivateFolderID: privateFolder.id.uuidString
+        ).map(\.id) == [privateBot.id])
+    }
+
+    @Test func serverSentEventParserAcceptsOptionalSpaceAndMultilineData() {
+        var parser = ServerSentEventParser()
+
+        #expect(parser.consume(line: ": keep-alive") == nil)
+        #expect(parser.consume(line: "data:{\"first\":1}") == "{\"first\":1}")
+        #expect(parser.consume(line: "") == nil)
+        #expect(parser.consume(line: "data: first") == nil)
+        #expect(parser.consume(line: "data:second") == nil)
+        #expect(parser.consume(line: "event: message") == nil)
+        #expect(parser.consume(line: "") == "first\nsecond")
+        #expect(parser.finish() == nil)
+    }
+
+    @Test func serverSentEventParserStreamsJSONWithoutBlankSeparators() {
+        var parser = ServerSentEventParser()
+
+        #expect(parser.consume(line: "data:{\"chunk\":1}") == "{\"chunk\":1}")
+        #expect(parser.consume(line: "data: {\"chunk\":2}\r") == "{\"chunk\":2}")
+        #expect(parser.consume(line: "data: [DONE]") == "[DONE]")
+        #expect(parser.finish() == nil)
+    }
+
+    @Test @MainActor func cancellingAnEmptyRegenerationKeepsThePreviousVariant() {
+        let message = ChatMessageModel(content: "Original reply", isUser: false)
+        message.addNewVariant()
+
+        #expect(message.content.isEmpty)
+        #expect(message.discardEmptyCurrentVariant())
+        #expect(message.content == "Original reply")
+        #expect(message.allVariants == ["Original reply"])
+    }
+
+    @Test @MainActor func replacingAndDeletingHistoryMessagesDoesNotLeaveChildrenBehind() throws {
+        let schema = Schema([BotModel.self, ChatHistory.self, ChatMessageEntity.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = container.mainContext
+        let bot = BotModel(
+            name: "History",
+            subtitle: "Persistence",
+            date: "Today",
+            avatarSystemName: "bubble.left",
+            iconColorName: "blue",
+            isPinned: false,
+            greeting: "Hello"
+        )
+        let original = ChatMessageEntity(text: "Original", isUser: true, index: 0)
+        let history = ChatHistory(messages: [original], bot: bot)
+        context.insert(bot)
+        context.insert(history)
+        try context.save()
+
+        let replacement = ChatMessageEntity(text: "Replacement", isUser: true, index: 0)
+        ChatHistoryPersistence.replaceMessages(
+            in: history,
+            with: [replacement],
+            context: context
+        )
+        try context.save()
+
+        let messagesAfterReplacement = try context.fetch(FetchDescriptor<ChatMessageEntity>())
+        #expect(messagesAfterReplacement.count == 1)
+        #expect(messagesAfterReplacement.first?.text == "Replacement")
+
+        ChatHistoryPersistence.delete(history, context: context)
+        try context.save()
+
+        #expect(try context.fetchCount(FetchDescriptor<ChatHistory>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<ChatMessageEntity>()) == 0)
+    }
+
+    @Test func liveSQLiteBackupCreatesAReadableConsistentSnapshot() throws {
+        let fileManager = FileManager.default
+        let rootURL = fileManager.temporaryDirectory
+            .appendingPathComponent("FrontendAITests-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: rootURL) }
+
+        let storeURL = rootURL.appendingPathComponent("FrontendAI.store")
+        var database: OpaquePointer?
+        #expect(sqlite3_open(storeURL.path, &database) == SQLITE_OK)
+        guard let database else { return }
+        defer { sqlite3_close(database) }
+        #expect(sqlite3_exec(database, "PRAGMA journal_mode=WAL", nil, nil, nil) == SQLITE_OK)
+        #expect(sqlite3_exec(database, "CREATE TABLE sample(value TEXT)", nil, nil, nil) == SQLITE_OK)
+        #expect(sqlite3_exec(database, "INSERT INTO sample VALUES ('saved')", nil, nil, nil) == SQLITE_OK)
+
+        let backupData = try PortableStoreBackup.makeBackupData(
+            from: StoreBackupManager.storeFileURLs(for: storeURL).map(StoreRecoveryFileSnapshot.init),
+            snapshotLiveStore: true
+        )
+        let importedBackup = try PortableStoreBackup.importBackupData(backupData)
+        defer { try? fileManager.removeItem(at: importedBackup.url) }
+
+        let importedStoreURL = importedBackup.url.appendingPathComponent("FrontendAI.store")
+        var importedDatabase: OpaquePointer?
+        #expect(sqlite3_open_v2(importedStoreURL.path, &importedDatabase, SQLITE_OPEN_READONLY, nil) == SQLITE_OK)
+        guard let importedDatabase else { return }
+        defer { sqlite3_close(importedDatabase) }
+
+        var statement: OpaquePointer?
+        #expect(sqlite3_prepare_v2(importedDatabase, "SELECT value FROM sample", -1, &statement, nil) == SQLITE_OK)
+        guard let statement else { return }
+        defer { sqlite3_finalize(statement) }
+        #expect(sqlite3_step(statement) == SQLITE_ROW)
+        #expect(String(cString: sqlite3_column_text(statement, 0)) == "saved")
+    }
+
+    @Test func oversizedPortableBackupIsRejectedBeforeReading() throws {
+        let fileManager = FileManager.default
+        let url = fileManager.temporaryDirectory
+            .appendingPathComponent("FrontendAITests-\(UUID().uuidString).frontendai-backup")
+        defer { try? fileManager.removeItem(at: url) }
+
+        #expect(fileManager.createFile(atPath: url.path, contents: Data()))
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: UInt64(PortableStoreBackup.maximumArchiveByteCount + 1))
+        try handle.close()
+
+        #expect(throws: PortableStoreBackupError.self) {
+            try PortableStoreBackup.readImportData(from: url)
         }
     }
 

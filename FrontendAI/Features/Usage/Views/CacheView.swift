@@ -104,7 +104,7 @@ struct CacheView: View {
         }
         .alert("Clear all cached chat histories?", isPresented: $isShowingClearAllConfirmation) {
             Button("Clear Cache", role: .destructive) {
-                deleteHistories(histories)
+                deleteAllHistories()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -125,13 +125,23 @@ struct CacheView: View {
 
     private func deleteHistories(_ historiesToDelete: [ChatHistory]) {
         for history in historiesToDelete {
-            modelContext.delete(history)
+            ChatHistoryPersistence.delete(history, context: modelContext)
         }
 
         do {
             try modelContext.save()
         } catch {
             print("Failed to delete cached histories: \(error)")
+        }
+    }
+
+    private func deleteAllHistories() {
+        do {
+            try ChatHistoryPersistence.deleteAllHistoriesAndMessages(context: modelContext)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            print("Failed to clear cached histories: \(error)")
         }
     }
 }
