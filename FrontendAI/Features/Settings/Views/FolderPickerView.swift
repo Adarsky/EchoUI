@@ -8,6 +8,7 @@ struct FolderPickerView: View {
     @Binding var selectedFolderID: String
     var showsCounts = false
     var countForFolder: (ChatFolder?) -> Int = { _ in 0 }
+    var requiresSelectionAuthorization: (String) -> Bool = { _ in false }
     var canSelectFolder: (String) async -> Bool = { _ in true }
     var onSelectionDirectionChange: (Int) -> Void = { _ in }
 
@@ -102,19 +103,28 @@ struct FolderPickerView: View {
         guard selectedFolderID != folderID else { return }
         let direction = selectionDirection(from: selectedFolderID, to: folderID)
 
+        guard requiresSelectionAuthorization(folderID) else {
+            applySelection(folderID, direction: direction)
+            return
+        }
+
         Task {
             guard await canSelectFolder(folderID) else { return }
 
             await MainActor.run {
-                onSelectionDirectionChange(direction)
-                withAnimation(.snappy(duration: 0.22)) {
-                    selectedFolderID = folderID
-                }
-                #if os(iOS)
-                UISelectionFeedbackGenerator().selectionChanged()
-                #endif
+                applySelection(folderID, direction: direction)
             }
         }
+    }
+
+    private func applySelection(_ folderID: String, direction: Int) {
+        onSelectionDirectionChange(direction)
+        withAnimation(.snappy(duration: 0.22)) {
+            selectedFolderID = folderID
+        }
+        #if os(iOS)
+        UISelectionFeedbackGenerator().selectionChanged()
+        #endif
     }
 
     private func selectionDirection(from currentFolderID: String, to nextFolderID: String) -> Int {

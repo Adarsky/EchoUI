@@ -31,6 +31,7 @@ struct ChatScreenView: View {
                     bottomAnchor
                 }
                 .coordinateSpace(name: ChatScreenLayout.scrollCoordinateSpace)
+                .defaultScrollAnchor(.bottom, for: .alignment)
                 .scrollDismissesKeyboard(.interactively)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     ChatComposerDock(

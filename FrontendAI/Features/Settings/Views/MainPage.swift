@@ -410,6 +410,7 @@ struct MainPage: View {
                     selectedFolderID: $selectedChatFolderID,
                     showsCounts: true,
                     countForFolder: folderCount,
+                    requiresSelectionAuthorization: isPrivateFolderID,
                     canSelectFolder: canSelectFolder,
                     onSelectionDirectionChange: { direction in
                         folderNavigationDirection = direction

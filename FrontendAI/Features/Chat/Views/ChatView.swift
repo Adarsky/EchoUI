@@ -23,7 +23,6 @@ struct ChatView: View {
     @State var generationTask: Task<Void, Never>? = nil
     @State var activeGenerationID: UUID?
     @State var hasRestoredDraft = false
-    @State var draftSaveTask: Task<Void, Never>?
 
     @State var alertMessage: String?
     @State var showAlertBanner = false
@@ -124,9 +123,6 @@ struct ChatView: View {
         }
         .onChange(of: currentChatAppearanceID) { _, _ in
             refreshActiveAppearance()
-        }
-        .onChange(of: inputText) { _, draft in
-            scheduleDraftPersistence(draft)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
