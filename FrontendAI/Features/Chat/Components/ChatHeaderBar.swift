@@ -19,36 +19,29 @@ struct ChatHeaderBar: View {
     var onUseGlobalPersona: () -> Void = { }
 
     var body: some View {
-        GlassEffectContainer {
-            HStack {
+        HStack () {
                 Button { showChatBotSheet = true } label: {
-                    HStack(spacing: 6) {
                         if let data = bot.avatarData,
                            let uiImage = UIImage(data: data) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 38, height: 38)
                                 .clipShape(Circle())
                                 .offset(x: -5)
                         } else {
                             Image(systemName: bot.avatarSystemName)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 38, height: 38)
                                 .foregroundColor(bot.iconColor)
                                 .offset(x: -5)
                         }
                         Text(bot.name)
-                            .font(.headline)
+                        .font(.system(size: 18).bold())
                             .lineLimit(1)
-                    }
+                            .foregroundColor(.white)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .frame(maxWidth: 280)
-                .buttonStyle(.glass)
-                .glassEffectUnion(id: 1, namespace: chatBotSheetNamespace)
                 .sheet(isPresented: $showChatBotSheet) {
                     ChatBotSheetView(
                         bot: bot,
@@ -71,7 +64,6 @@ struct ChatHeaderBar: View {
                         onSelectPersona: onSelectPersona,
                         onUseGlobalPersona: onUseGlobalPersona
                     )
-                }
             }
         }
     }

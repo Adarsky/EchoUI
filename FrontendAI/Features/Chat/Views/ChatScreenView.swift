@@ -33,12 +33,17 @@ struct ChatScreenView: View {
                 .coordinateSpace(name: ChatScreenLayout.scrollCoordinateSpace)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 .scrollDismissesKeyboard(.interactively)
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     ChatComposerDock(
                         composer: model.composer,
                         bindings: bindings,
                         actions: actions.composer
                     )
+                }
+                .safeAreaBar(edge: .bottom, spacing: 0) {
+                    // Register the edge effect without moving the focus-driven composer into the bar host.
+                    Color.clear.frame(height: 0)
                 }
                 .onPreferenceChange(ChatScreenBottomPreferenceKey.self) { bottomY in
                     updatePinnedState(bottomY: bottomY, viewportHeight: geometry.size.height)
