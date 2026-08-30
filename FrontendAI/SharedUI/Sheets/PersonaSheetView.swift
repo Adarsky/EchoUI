@@ -42,8 +42,8 @@ struct PersonasPageView: View {
         .alert("Delete Persona", isPresented: $showDeleteAlert, presenting: personaToDelete) { persona in
             Button("Delete", role: .destructive) {
                 modelContext.delete(persona)
-                if personaManager.activePersona?.id == persona.id {
-                    personaManager.activePersona = nil
+                if personaManager.activePersonaID == persona.id {
+                    personaManager.selectPersona(nil)
                 }
                 try? modelContext.save()
             }
@@ -72,7 +72,7 @@ struct PersonasPageView: View {
     }
 
     private func personaRow(for persona: PersonaModel) -> some View {
-        let isSelected = personaManager.activePersona?.id == persona.id
+        let isSelected = personaManager.activePersonaID == persona.id
 
         return HStack {
             persona.avatarImage
@@ -97,7 +97,7 @@ struct PersonasPageView: View {
             }
         }
         .onTapGesture {
-            personaManager.activePersona = persona
+            personaManager.selectPersona(persona)
         }
         .swipeActions(edge: .trailing) {
             Button {
@@ -252,6 +252,6 @@ private let personaSheetPreviewPersonaManager: PersonaManager = {
         sortBy: [SortDescriptor(\.name, order: .forward)]
     )
     let personas = (try? personaSheetPreviewModelContainer.mainContext.fetch(descriptor)) ?? []
-    manager.activePersona = personas.first
+    manager.selectPersona(personas.first)
     return manager
 }()

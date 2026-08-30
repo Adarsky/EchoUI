@@ -322,8 +322,9 @@ private struct StreamingFadeText: View {
             return Text(verbatim: text).foregroundColor(textColor)
         }
 
-        return Text(verbatim: stableText).foregroundColor(textColor)
-            + Text(verbatim: fadingText).foregroundColor(textColor.opacity(fadeOpacity))
+        return Text(
+            "\(Text(verbatim: stableText).foregroundColor(textColor))\(Text(verbatim: fadingText).foregroundColor(textColor.opacity(fadeOpacity)))"
+        )
     }
 
     private func applyText(_ newText: String) {

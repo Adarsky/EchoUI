@@ -314,11 +314,10 @@ enum OpenRouterModelCatalogServiceError: LocalizedError {
 }
 
 enum OpenRouterModelCatalogService {
-    static func fetchModels(
+    static func makeModelsRequest(
         baseURL: String,
-        apiKey: String?,
-        tlsPolicy: TLSPolicy = .strict
-    ) async throws -> [OpenRouterModel] {
+        apiKey: String?
+    ) throws -> URLRequest {
         let endpoint = APIType.openrouter.endpoint(baseURL: baseURL, path: "models")
         guard let url = URL(string: endpoint) else {
             throw OpenRouterModelCatalogServiceError.invalidURL(endpoint)
@@ -327,14 +326,25 @@ enum OpenRouterModelCatalogService {
             throw OpenRouterModelCatalogServiceError.insecureTransportRequired
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.httpMethod = "GET"
-        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         request.applyOpenRouterAttributionHeaders()
 
         if let bearerToken = APIAuthorization.bearerHeaderValue(apiKey: apiKey, for: url) {
-            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
+            request.setValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
+
+        return request
+    }
+
+    static func fetchModels(
+        baseURL: String,
+        apiKey: String?,
+        tlsPolicy: TLSPolicy = .strict
+    ) async throws -> [OpenRouterModel] {
+        let request = try makeModelsRequest(baseURL: baseURL, apiKey: apiKey)
 
         let session = TLSSessionFactory.makeSession(policy: tlsPolicy)
         let (data, response) = try await session.data(for: request)
@@ -351,6 +361,9 @@ enum OpenRouterModelCatalogService {
 
         do {
             let models = try JSONDecoder().decode(OpenRouterModelList.self, from: data).data
+            guard !models.isEmpty else {
+                throw OpenRouterModelCatalogServiceError.invalidPayload
+            }
             APIModelCatalogCache.storeOpenRouterModels(models, for: baseURL)
             return models
         } catch {

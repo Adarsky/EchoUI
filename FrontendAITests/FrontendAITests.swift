@@ -6,6 +6,60 @@ import SwiftData
 
 struct FrontendAITests {
 
+    @Test @MainActor func activePersonaResolvesTheLatestModelWithTheSelectedID() {
+        let suiteName = "FrontendAITests.activePersona.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let personaID = UUID()
+        let originallySelectedPersona = PersonaModel(
+            id: personaID,
+            name: "Editor",
+            systemPrompt: "Original prompt",
+            avatarSystemName: "person.crop.circle.fill",
+            iconColorName: "blue"
+        )
+        let editedPersona = PersonaModel(
+            id: personaID,
+            name: "Editor",
+            systemPrompt: "Updated prompt",
+            avatarSystemName: "person.crop.circle.fill",
+            iconColorName: "blue"
+        )
+
+        let manager = PersonaManager(defaults: defaults)
+        manager.selectPersona(originallySelectedPersona)
+
+        #expect(manager.activePersona(from: [editedPersona]) === editedPersona)
+        #expect(manager.activePersona(from: [editedPersona])?.systemPrompt == "Updated prompt")
+
+        let restoredManager = PersonaManager(defaults: defaults)
+        #expect(restoredManager.activePersona(from: [editedPersona]) === editedPersona)
+    }
+
+    @Test @MainActor func clearingActivePersonaClearsItsPersistedSelection() {
+        let suiteName = "FrontendAITests.clearActivePersona.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let persona = PersonaModel(
+            name: "Editor",
+            systemPrompt: "Prompt",
+            avatarSystemName: "person.crop.circle.fill",
+            iconColorName: "blue"
+        )
+        let manager = PersonaManager(defaults: defaults)
+        manager.selectPersona(persona)
+        manager.selectPersona(nil)
+
+        #expect(manager.activePersonaID == nil)
+        #expect(PersonaManager(defaults: defaults).activePersonaID == nil)
+    }
+
     @Test func chatAppearancePersistsClampedBubbleCornerRadii() {
         let suiteName = "FrontendAITests.chatAppearanceCornerRadius.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -159,6 +213,19 @@ struct FrontendAITests {
                 supportedParameters: ["max_tokens", "temperature"]
             )
         ])
+    }
+
+    @Test func openRouterModelCatalogRequestAlwaysRevalidatesTheRemoteList() throws {
+        let request = try OpenRouterModelCatalogService.makeModelsRequest(
+            baseURL: "https://openrouter.ai",
+            apiKey: " sk-test\n"
+        )
+
+        #expect(request.url?.absoluteString == "https://openrouter.ai/api/v1/models")
+        #expect(request.httpMethod == "GET")
+        #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
+        #expect(request.value(forHTTPHeaderField: "Cache-Control") == "no-cache")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer sk-test")
     }
 
     @Test func openRouterModelSearchPrioritizesPrefixMatches() {

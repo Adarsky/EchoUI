@@ -71,7 +71,11 @@ struct ChatView: View {
             return personas.first { $0.id == chatPersonaID }
         }
 
-        return personaManager.activePersona
+        return globalPersona
+    }
+
+    var globalPersona: PersonaModel? {
+        personaManager.activePersona(from: personas)
     }
 
     var body: some View {

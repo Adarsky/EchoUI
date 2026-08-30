@@ -127,6 +127,7 @@ struct CreateAPIServerView: View {
                 models: openRouterModels,
                 isLoadingModels: isLoadingModels,
                 isModelLoadDisabled: baseURL.isEmpty || isLoadingModels,
+                modelLoadMessage: openRouterModelLoadMessage,
                 onLoadModels: requestFetchModels,
                 onUseTypedModel: useTypedOpenRouterModelID,
                 onCancel: {
@@ -432,6 +433,7 @@ struct CreateAPIServerView: View {
         loadCachedModelsForCurrentConfiguration()
         openRouterModelSearchText = selectedModel
         showOpenRouterModelSearch = true
+        requestFetchModels()
     }
 
     private func useTypedOpenRouterModelID() {
@@ -537,6 +539,8 @@ struct CreateAPIServerView: View {
     }
 
     private func fetchModels() async {
+        guard !isLoadingModels else { return }
+
         isLoadingModels = true
         defer { isLoadingModels = false }
 

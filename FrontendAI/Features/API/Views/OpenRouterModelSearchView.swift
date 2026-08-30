@@ -8,6 +8,7 @@ struct OpenRouterModelSearchView: View {
     let models: [OpenRouterModel]
     let isLoadingModels: Bool
     let isModelLoadDisabled: Bool
+    let modelLoadMessage: String
     let onLoadModels: () -> Void
     let onUseTypedModel: () -> Void
     let onCancel: () -> Void
@@ -35,9 +36,19 @@ struct OpenRouterModelSearchView: View {
             bottomMaterialFade
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            bottomSearchControls
-                .padding(.horizontal, 18)
-                .padding(.bottom, 8)
+            VStack(spacing: 6) {
+                if !modelLoadMessage.isEmpty {
+                    Text(modelLoadMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+
+                bottomSearchControls
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 8)
         }
         .task {
             try? await Task.sleep(for: .milliseconds(250))
@@ -149,6 +160,8 @@ struct OpenRouterModelSearchView: View {
             .frame(height: 50)
             .glassEffect(.regular.interactive())
 
+            refreshModelsButton
+
             Button(action: onCancel) {
                 Image(systemName: "xmark")
                     .font(.system(size: 20, weight: .regular))
@@ -159,6 +172,26 @@ struct OpenRouterModelSearchView: View {
             .buttonBorderShape(.circle)
             .accessibilityLabel("Close model search")
         }
+    }
+
+    private var refreshModelsButton: some View {
+        Button(action: onLoadModels) {
+            Group {
+                if isLoadingModels {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18, weight: .regular))
+                }
+            }
+            .foregroundStyle(.primary)
+            .frame(width: 35, height: 35)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .disabled(isModelLoadDisabled)
+        .accessibilityLabel(models.isEmpty ? "Load OpenRouter models" : "Refresh OpenRouter models")
     }
 
     private var searchResultsContent: some View {
@@ -429,6 +462,7 @@ private let previewOpenRouterSuggestionModels: [OpenRouterModel] = [
         models: previewOpenRouterSuggestionModels,
         isLoadingModels: false,
         isModelLoadDisabled: false,
+        modelLoadMessage: "Loaded 20 OpenRouter models.",
         onLoadModels: {},
         onUseTypedModel: {},
         onCancel: {},
@@ -442,6 +476,7 @@ private let previewOpenRouterSuggestionModels: [OpenRouterModel] = [
         models: [],
         isLoadingModels: false,
         isModelLoadDisabled: false,
+        modelLoadMessage: "",
         onLoadModels: {},
         onUseTypedModel: {},
         onCancel: {},

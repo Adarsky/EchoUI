@@ -52,7 +52,7 @@ extension ChatView {
             tokenWindow: currentTokenWindow,
             personas: personas,
             currentPersona: currentPersona,
-            globalPersona: personaManager.activePersona,
+            globalPersona: globalPersona,
             hasPersonaOverride: hasChatPersonaOverride,
             showChatBotSheet: $showChatBotSheet,
             isViewingHistory: $isViewingHistory,

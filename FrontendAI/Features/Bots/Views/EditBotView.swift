@@ -200,7 +200,7 @@ struct EditBotView: View {
                 TextEditor(text: text)
                     .focused($focusedField, equals: field)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 130)
+                    .frame(height: 130)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(Color.clear)
