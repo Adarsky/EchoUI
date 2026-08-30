@@ -14,8 +14,10 @@ struct ChatInputBar: View {
 
     @FocusState private var isInputFocused: Bool
     @State private var inputFieldWidth: CGFloat = 0
+    @State private var isExpandedEditorPresented = false
+    @State private var showsExpandButton = false
 
-    private let inputLineLimit = 10
+    private let inputLineLimit = 5
     private let minimumInputHeight: CGFloat = 52
     private let inputVerticalPadding: CGFloat = 14
     private let inputLeadingPadding: CGFloat = 14
@@ -94,6 +96,16 @@ struct ChatInputBar: View {
             .padding(.horizontal, inputBarHorizontalPadding)
             .animation(focusAnimation, value: isInputFocused)
         }
+        .fullScreenCover(
+            isPresented: $isExpandedEditorPresented,
+            onDismiss: restoreInputFocus
+        ) {
+            ExpandedTextEditorSheet(
+                text: $inputText,
+                title: "Edit Message",
+                placeholder: placeholder
+            )
+        }
     }
 
     private var inputBarMaxWidth: CGFloat {
@@ -142,6 +154,14 @@ struct ChatInputBar: View {
                 .padding(.trailing, sendButtonEdgeInset)
                 .padding(.bottom, sendButtonEdgeInset)
         }
+        .overlay(alignment: .topTrailing) {
+            expandButton
+                .padding(.top, sendButtonEdgeInset)
+                .padding(.trailing, sendButtonEdgeInset)
+                .opacity(showsExpandButton ? 1 : 0)
+                .allowsHitTesting(showsExpandButton)
+                .accessibilityHidden(!showsExpandButton)
+        }
         .background {
             GeometryReader { proxy in
                 Color.clear
@@ -163,6 +183,7 @@ struct ChatInputBar: View {
             inputFieldWidth = width
             publishMeasuredHeight(for: width)
         }
+        .animation(focusAnimation, value: showsExpandButton)
     }
 
     private var sendButton: some View {
@@ -186,6 +207,20 @@ struct ChatInputBar: View {
         .animation(.easeInOut(duration: 0.28), value: visualState)
     }
 
+    private var expandButton: some View {
+        Button(
+            "Expand editor",
+            systemImage: "arrow.up.left.and.arrow.down.right",
+            action: presentExpandedEditor
+        )
+        .labelStyle(.iconOnly)
+        .font(.body.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .frame(width: 44, height: 44)
+        .contentShape(.rect)
+        .buttonStyle(.plain)
+    }
+
     private var addButton: some View {
         return Button{} label: {
             Image(systemName: "plus")
@@ -204,15 +239,25 @@ struct ChatInputBar: View {
         onSend()
     }
 
+    private func presentExpandedEditor() {
+        isInputFocused = false
+        isExpandedEditorPresented = true
+    }
+
+    private func restoreInputFocus() {
+        isInputFocused = true
+    }
+
     private func publishMeasuredHeight(for width: CGFloat? = nil) {
-        let measuredHeight = measuredInputHeight(for: width ?? inputFieldWidth)
-        DispatchQueue.main.async {
-            onMeasuredHeightChange(measuredHeight)
+        let metrics = measuredInputMetrics(for: width ?? inputFieldWidth)
+        Task { @MainActor in
+            showsExpandButton = metrics.lineCount >= inputLineLimit
+            onMeasuredHeightChange(metrics.height)
         }
     }
 
-    private func measuredInputHeight(for inputWidth: CGFloat) -> CGFloat {
-        guard inputWidth > 0 else { return minimumInputHeight }
+    private func measuredInputMetrics(for inputWidth: CGFloat) -> (height: CGFloat, lineCount: Int) {
+        guard inputWidth > 0 else { return (minimumInputHeight, 1) }
 
         let textWidth = max(1, inputWidth - inputLeadingPadding - inputTrailingPadding)
         let font = UIFont.preferredFont(forTextStyle: .body)
@@ -222,12 +267,14 @@ struct ChatInputBar: View {
             attributes: [.font: font],
             context: nil
         ).height
+        let lineCount = max(1, Int(ceil((textHeight / font.lineHeight) - 0.01)))
         let maxTextHeight = font.lineHeight * CGFloat(inputLineLimit)
-
-        return max(
+        let height = max(
             minimumInputHeight,
             ceil(min(textHeight, maxTextHeight) + inputVerticalPadding * 2)
         )
+
+        return (height, lineCount)
     }
 
 }
