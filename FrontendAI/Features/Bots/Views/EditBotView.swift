@@ -188,27 +188,32 @@ struct EditBotView: View {
                 .accessibilityLabel("Expand \(title)")
             }
 
-            ZStack(alignment: .topLeading) {
-                if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            TextEditor(text: text)
+                .focused($focusedField, equals: field)
+                .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.never)
+                .frame(maxWidth: .infinity, minHeight: 130, maxHeight: 130)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color.clear)
+                .overlay(alignment: .topLeading) {
                     Text(placeholder)
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .padding(.top, 14)
                         .padding(.leading, 12)
+                        .opacity(text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 1 : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
-
-                TextEditor(text: text)
-                    .focused($focusedField, equals: field)
-                    .scrollContentBackground(.hidden)
-                    .frame(height: 130)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color.clear)
-                    .submitLabel(nextField == nil ? .done : .next)
-                    .onSubmit {
-                        focusedField = nextField
-                    }
-            }
+                .frame(height: 142)
+                .submitLabel(nextField == nil ? .done : .next)
+                .onSubmit {
+                    focusedField = nextField
+                }
+                .transaction { transaction in
+                    transaction.animation = nil
+                }
             .background(inputBackground)
         }
         .padding(16)
