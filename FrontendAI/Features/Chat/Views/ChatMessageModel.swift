@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import Combine
 
 // MARK: - Chat Message Model
 final class ChatMessageModel: ObservableObject, Identifiable {
@@ -118,8 +119,9 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         var parserState: ThinkingParserState
         var thinkingStartedAt: Date?
         var thinkingClosedAt: Date?
+        var failure: ChatReplyFailure?
 
-        init(rawContent: String) {
+        init(rawContent: String, failure: ChatReplyFailure? = nil) {
             let parsed = ThinkingParserState.parsed(from: rawContent)
             self.rawContent = rawContent
             self.displayContent = parsed.chunk.displayContent
@@ -128,11 +130,13 @@ final class ChatMessageModel: ObservableObject, Identifiable {
             self.parserState = parsed.state
             self.thinkingStartedAt = nil
             self.thinkingClosedAt = nil
+            self.failure = failure
         }
 
         mutating func appendChunk(_ chunk: String) {
             let now = Date()
 
+            failure = nil
             rawContent.append(chunk)
             let parsed = parserState.consume(chunk)
 
@@ -187,6 +191,12 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         var isThinkingInProgress: Bool {
             hasLeadingThink && thinkingClosedAt == nil
         }
+
+        var isEmptyPlaceholder: Bool {
+            failure == nil
+                && displayContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !hasLeadingThink
+        }
     }
 
     let id: UUID
@@ -227,6 +237,29 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         return variants[currentIndex].isThinkingInProgress
     }
 
+    var failure: ChatReplyFailure? {
+        guard variants.indices.contains(currentIndex) else { return variants.first?.failure }
+        return variants[currentIndex].failure
+    }
+
+    var hasPersistableVariant: Bool {
+        !variants.isEmpty && !isDiscardableEmptyAssistantPlaceholder
+    }
+
+    var isDiscardableEmptyAssistantPlaceholder: Bool {
+        !isUser
+            && !isStreaming
+            && variants.allSatisfy(\.isEmptyPlaceholder)
+    }
+
+    var contentForConversation: String? {
+        if variants.indices.contains(currentIndex), variants[currentIndex].failure == nil {
+            return variants[currentIndex].displayContent
+        }
+
+        return variants.last(where: { $0.failure == nil })?.displayContent
+    }
+
     var allVariants: [String] { variants.map(\.displayContent) }
     var hasMultipleVariants: Bool { variants.count > 1 }
 
@@ -236,16 +269,38 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         isUser: Bool,
         timestamp: Date = Date(),
         variants: [String]? = nil,
-        currentIndex: Int = 0
+        currentIndex: Int = 0,
+        restorePersistedFailures: Bool = false
     ) {
         let initialVariantTexts = (variants?.isEmpty == false ? variants : [content]) ?? [content]
         let clampedIndex = max(0, min(currentIndex, initialVariantTexts.count - 1))
+        var restoredVariants = initialVariantTexts.map { storedValue in
+            let restored = ChatStoredVariant.restored(
+                from: storedValue,
+                migrateLegacyError: restorePersistedFailures && !isUser
+            )
+            return VariantStorage(rawContent: restored.content, failure: restored.failure)
+        }
+        var restoredIndex = clampedIndex
+
+        if restorePersistedFailures && !isUser {
+            let retainedIndices = restoredVariants.indices.filter {
+                !restoredVariants[$0].isEmptyPlaceholder
+            }
+            if !retainedIndices.isEmpty, retainedIndices.count != restoredVariants.count {
+                let selectedOriginalIndex = retainedIndices.contains(clampedIndex)
+                    ? clampedIndex
+                    : retainedIndices[retainedIndices.count - 1]
+                restoredIndex = retainedIndices.firstIndex(of: selectedOriginalIndex) ?? 0
+                restoredVariants = retainedIndices.map { restoredVariants[$0] }
+            }
+        }
 
         self.id = id
         self.isUser = isUser
         self.timestamp = timestamp
-        self.variants = initialVariantTexts.map { VariantStorage(rawContent: $0) }
-        self.currentIndex = clampedIndex
+        self.variants = restoredVariants
+        self.currentIndex = restoredIndex
     }
 
     @MainActor
@@ -289,7 +344,7 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     @MainActor
     func finalizeThinkingNow() {
         guard variants.indices.contains(currentIndex) else { return }
-        variants[currentIndex].finalizeThinkingIfNeeded(at: Date())
+        variants[currentIndex].finalizeThinkingIfNeeded(at: .now)
     }
 
     @MainActor
@@ -299,33 +354,60 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     }
 
     @MainActor
+    func setFailure(_ failure: ChatReplyFailure) {
+        guard variants.indices.contains(currentIndex) else { return }
+        variants[currentIndex].finalizeThinkingIfNeeded(at: .now)
+        variants[currentIndex].failure = failure
+        setStreaming(false)
+    }
+
+    @MainActor
     func touchTimestamp(_ value: Date = Date()) {
         timestamp = value
     }
 
     @MainActor
-    func persistableVariantsForLastMessage() -> ([String], Int)? {
-        guard hasMultipleVariants else { return nil }
-        let safeIndex = max(0, min(currentIndex, variants.count - 1))
-        return (variants.map(\.displayContent), safeIndex)
-    }
+    func persistenceValues(includeVariants: Bool) -> (
+        text: String,
+        variants: [String]?,
+        currentVariantIndex: Int?
+    )? {
+        guard !variants.isEmpty, !isDiscardableEmptyAssistantPlaceholder else { return nil }
 
-    @MainActor
-    func keepOnlyCurrentVariant() {
-        guard !variants.isEmpty else { return }
+        let persistedIndex = max(0, min(currentIndex, variants.count - 1))
+        let texts = variants.map { variant in
+            ChatStoredVariant(
+                content: variant.displayContent,
+                failure: variant.failure
+            )
+            .encodedValue
+        }
 
-        let safeIndex = max(0, min(currentIndex, variants.count - 1))
-        let currentVariant = variants[safeIndex]
-        variants = [currentVariant]
-        currentIndex = 0
+        return (
+            text: texts[persistedIndex],
+            variants: includeVariants && texts.count > 1 ? texts : nil,
+            currentVariantIndex: includeVariants && texts.count > 1 ? persistedIndex : nil
+        )
     }
 
 }
 
 enum TokenUsageEstimator {
     static func estimatedTokenCount(for message: ChatMessageEntity) -> Int {
-        let textCount = estimatedTokenCount(for: message.text)
-        let variantCount = message.variants?.reduce(0) { $0 + estimatedTokenCount(for: $1) } ?? 0
+        let text = ChatStoredVariant.restored(
+            from: message.text,
+            migrateLegacyError: !message.isUser
+        )
+        .content
+        let textCount = estimatedTokenCount(for: text)
+        let variantCount = message.variants?.reduce(0) { result, storedValue in
+            let content = ChatStoredVariant.restored(
+                from: storedValue,
+                migrateLegacyError: !message.isUser
+            )
+            .content
+            return result + estimatedTokenCount(for: content)
+        } ?? 0
         return textCount + variantCount
     }
 

@@ -10,7 +10,7 @@ struct ChatHistoryDetailView: View {
                     if msg.isUser {
                         HStack {
                             Spacer()
-                            Text(msg.text)
+                            Text(msg.displayText)
                                 .padding()
                                 .background(Color.blue)
                                 .cornerRadius(12)
@@ -18,7 +18,7 @@ struct ChatHistoryDetailView: View {
                         }
                     } else {
                         HStack {
-                            Text(msg.text)
+                            Text(msg.displayText)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(12)
@@ -32,4 +32,3 @@ struct ChatHistoryDetailView: View {
         .navigationTitle("History")
     }
 }
-

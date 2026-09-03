@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import SQLite3
 import SwiftData
+import SwiftUI
 @testable import FrontendAI
 
 struct FrontendAITests {
@@ -688,6 +689,71 @@ struct FrontendAITests {
         #expect(throws: PortableStoreBackupError.self) {
             try PortableStoreBackup.readImportData(from: url)
         }
+    }
+
+    @Test func chatAutoScrollStopsAsSoonAsTheUserScrollsUp() {
+        var state = ChatAutoScrollState()
+
+        state.update(
+            from: ChatScrollMetrics(visibleTop: 500, distanceToBottom: 0),
+            to: ChatScrollMetrics(visibleTop: 499.99, distanceToBottom: 0.01),
+            isUserScrolling: true,
+            bottomThreshold: 24
+        )
+
+        #expect(!state.isFollowing)
+    }
+
+    @Test func chatScrollMetricsMeasuresTheInsetAdjustedBottomDistance() {
+        let geometry = ScrollGeometry(
+            contentOffset: CGPoint(x: 0, y: 650),
+            contentSize: CGSize(width: 300, height: 1_000),
+            contentInsets: EdgeInsets(top: 20, leading: 0, bottom: 80, trailing: 0),
+            containerSize: CGSize(width: 300, height: 400)
+        )
+
+        let metrics = ChatScrollMetrics(geometry: geometry)
+
+        #expect(metrics.visibleTop == 650)
+        #expect(metrics.distanceToBottom == 30)
+    }
+
+    @Test func streamedContentDoesNotReenableChatAutoScroll() {
+        var state = ChatAutoScrollState()
+        state.update(
+            from: ChatScrollMetrics(visibleTop: 500, distanceToBottom: 0),
+            to: ChatScrollMetrics(visibleTop: 499.99, distanceToBottom: 0.01),
+            isUserScrolling: true,
+            bottomThreshold: 24
+        )
+
+        state.update(
+            from: ChatScrollMetrics(visibleTop: 499.99, distanceToBottom: 0.01),
+            to: ChatScrollMetrics(visibleTop: 499.99, distanceToBottom: 10),
+            isUserScrolling: false,
+            bottomThreshold: 24
+        )
+
+        #expect(!state.isFollowing)
+    }
+
+    @Test func returningToChatBottomReenablesAutoScroll() {
+        var state = ChatAutoScrollState()
+        state.update(
+            from: ChatScrollMetrics(visibleTop: 500, distanceToBottom: 0),
+            to: ChatScrollMetrics(visibleTop: 400, distanceToBottom: 100),
+            isUserScrolling: true,
+            bottomThreshold: 24
+        )
+
+        state.update(
+            from: ChatScrollMetrics(visibleTop: 400, distanceToBottom: 100),
+            to: ChatScrollMetrics(visibleTop: 490, distanceToBottom: 10),
+            isUserScrolling: true,
+            bottomThreshold: 24
+        )
+
+        #expect(state.isFollowing)
     }
 
     private func expectProtectedWhenSupported(_ url: URL) {

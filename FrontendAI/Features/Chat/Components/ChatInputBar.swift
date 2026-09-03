@@ -18,14 +18,14 @@ struct ChatInputBar: View {
     @State private var showsExpandButton = false
 
     private let inputLineLimit = 5
-    private let minimumInputHeight: CGFloat = 52
-    private let inputVerticalPadding: CGFloat = 14
+    private let minimumInputHeight: CGFloat = 44
+    private let inputVerticalPadding: CGFloat = 10
     private let inputLeadingPadding: CGFloat = 14
     private let focusedHorizontalPadding: CGFloat = 16
     private let idleHorizontalPadding: CGFloat = 42
     private let idleInputMaxWidth: CGFloat = 560
-    private let sendButtonHeight: CGFloat = 40
-    private let focusAnimation: Animation = .easeInOut(duration: 0.28)
+    private let sendButtonHeight: CGFloat = 32
+    private let focusAnimation: Animation = .easeInOut(duration: 0.18)
 
     init(
         inputText: Binding<String>,
@@ -191,7 +191,7 @@ struct ChatInputBar: View {
 
         return Button(action: performPrimaryAction) {
             Image(systemName: visualState.symbolName)
-                .font(.system(size: 23, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace.magic(fallback: .replace)))
                 .foregroundColor(Color(.black))
                 .frame(width: sendButtonStyle.buttonWidth, height: sendButtonHeight)

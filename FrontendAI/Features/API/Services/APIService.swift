@@ -292,7 +292,7 @@ actor APIService {
         }
     }
 
-    private static func appendOpenAIEvent(
+    static func appendOpenAIEvent(
         _ eventData: String,
         to resultParts: inout [String],
         onStream: ((String) -> Void)?
@@ -300,18 +300,22 @@ actor APIService {
         let normalized = eventData.trimmingCharacters(in: .whitespacesAndNewlines)
         if normalized == "[DONE]" { return true }
 
-        guard let jsonData = normalized.data(using: .utf8),
-              let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
-              let delta = chunk.choices.first?.delta.content else {
+        guard
+            let jsonData = normalized.data(using: .utf8),
+            let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData),
+            let choice = chunk.choices.first
+        else {
             return false
         }
 
-        resultParts.append(delta)
-        onStream?(delta)
-        return false
+        if let content = choice.delta.content, !content.isEmpty {
+            resultParts.append(content)
+            onStream?(content)
+        }
+        return choice.finish_reason != nil
     }
 
-    private static func appendOpenRouterEvent(
+    static func appendOpenRouterEvent(
         _ eventData: String,
         to resultParts: inout [String],
         thinkingOpened: inout Bool,
@@ -352,7 +356,7 @@ actor APIService {
             onStream?("</think>")
             thinkingClosed = true
         }
-        return false
+        return parsed.didFinish
     }
 
     private static func parseOpenRouterStreamDelta(from data: Data) -> (content: [String], reasoning: [String], didFinish: Bool) {

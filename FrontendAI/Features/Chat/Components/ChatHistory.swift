@@ -71,6 +71,14 @@ class ChatMessageEntity: Identifiable {
         self.variants = variants
         self.currentVariantIndex = currentVariantIndex
     }
+
+    var displayText: String {
+        ChatStoredVariant.restored(
+            from: text,
+            migrateLegacyError: !isUser
+        )
+        .displayText
+    }
 }
 
 enum ChatHistoryPersistence {

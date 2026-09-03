@@ -205,8 +205,8 @@ struct ChatHistoryListView: View {
         }
 
         let prefix = last.isUser ? "You: " : "\(botName): "
-        let previewText = truncatedPreviewText(prefix: prefix, message: last.text)
-        return Text(prefix).fontWeight(.semibold) + Text(previewText)
+        let previewText = truncatedPreviewText(prefix: prefix, message: last.displayText)
+        return Text("\(Text(prefix).fontWeight(.semibold))\(Text(previewText))")
     }
 
     private func truncatedPreviewText(prefix: String, message: String) -> String {

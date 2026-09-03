@@ -5,7 +5,8 @@ struct ChatScreenView: View {
     let bindings: ChatScreenBindings
     let actions: ChatScreenActions
 
-    @State private var isPinnedToBottom = true
+    @State private var autoScrollState = ChatAutoScrollState()
+    @State private var scrollPhase: ScrollPhase = .idle
     @State private var pendingBottomScroll = false
 
     private static let bottomAnchorID = "chat-screen-bottom-anchor"
@@ -30,7 +31,6 @@ struct ChatScreenView: View {
 
                     bottomAnchor
                 }
-                .coordinateSpace(name: ChatScreenLayout.scrollCoordinateSpace)
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 .scrollDismissesKeyboard(.interactively)
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
@@ -45,11 +45,16 @@ struct ChatScreenView: View {
                     // Register the edge effect without moving the focus-driven composer into the bar host.
                     Color.clear.frame(height: 0)
                 }
-                .onPreferenceChange(ChatScreenBottomPreferenceKey.self) { bottomY in
-                    updatePinnedState(bottomY: bottomY, viewportHeight: geometry.size.height)
+                .onScrollGeometryChange(for: ChatScrollMetrics.self) { geometry in
+                    ChatScrollMetrics(geometry: geometry)
+                } action: { previous, current in
+                    updateAutoScrollState(from: previous, to: current)
+                }
+                .onScrollPhaseChange { _, newPhase in
+                    scrollPhase = newPhase
                 }
                 .onAppear {
-                    scheduleScrollToBottom(proxy, animated: false)
+                    scheduleScrollToBottom(proxy, animated: false, force: true)
                 }
                 .onChange(of: messageIDs) { _, _ in
                     scheduleScrollToBottom(proxy, animated: true)
@@ -66,14 +71,6 @@ struct ChatScreenView: View {
         Color.clear
             .frame(height: 1)
             .id(Self.bottomAnchorID)
-            .background {
-                GeometryReader { proxy in
-                    Color.clear.preference(
-                        key: ChatScreenBottomPreferenceKey.self,
-                        value: proxy.frame(in: .named(ChatScreenLayout.scrollCoordinateSpace)).maxY
-                    )
-                }
-            }
     }
 
     private func messageWidth(in geometry: GeometryProxy) -> CGFloat {
@@ -85,21 +82,40 @@ struct ChatScreenView: View {
     }
 
     private func shouldFollowMessageChange(_ message: ChatMessageModel) -> Bool {
-        isPinnedToBottom && message.id == model.messages.last?.id
+        shouldAutoScroll && message.id == model.messages.last?.id
     }
 
-    private func updatePinnedState(bottomY: CGFloat, viewportHeight: CGFloat) {
-        let nextValue = bottomY <= viewportHeight + ChatScreenLayout.bottomStickinessThreshold
-        guard isPinnedToBottom != nextValue else { return }
-        isPinnedToBottom = nextValue
+    private var shouldAutoScroll: Bool {
+        autoScrollState.isFollowing && !isUserScrolling
     }
 
-    private func scheduleScrollToBottom(_ proxy: ScrollViewProxy, animated: Bool) {
+    private var isUserScrolling: Bool {
+        switch scrollPhase {
+        case .tracking, .interacting, .decelerating:
+            true
+        case .idle, .animating:
+            false
+        }
+    }
+
+    private func updateAutoScrollState(from previous: ChatScrollMetrics, to current: ChatScrollMetrics) {
+        autoScrollState.update(
+            from: previous,
+            to: current,
+            isUserScrolling: isUserScrolling,
+            bottomThreshold: ChatScreenLayout.bottomStickinessThreshold
+        )
+    }
+
+    private func scheduleScrollToBottom(_ proxy: ScrollViewProxy, animated: Bool, force: Bool = false) {
+        guard force || shouldAutoScroll else { return }
         guard !pendingBottomScroll else { return }
         pendingBottomScroll = true
 
         DispatchQueue.main.async {
             pendingBottomScroll = false
+            guard force || shouldAutoScroll else { return }
+
             if animated {
                 withAnimation(.easeOut(duration: ChatScreenLayout.scrollAnimationDuration)) {
                     proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
@@ -162,15 +178,6 @@ private enum ChatScreenLayout {
     static let topContentSpacing: CGFloat = 12
     static let bottomContentPadding: CGFloat = 8
     static let composerVerticalPadding: CGFloat = 8
-    static let bottomStickinessThreshold: CGFloat = 96
+    static let bottomStickinessThreshold: CGFloat = 24
     static let scrollAnimationDuration: TimeInterval = 0.22
-    static let scrollCoordinateSpace = "chat-screen-scroll"
-}
-
-private struct ChatScreenBottomPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
 }

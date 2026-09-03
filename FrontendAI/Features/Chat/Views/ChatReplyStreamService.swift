@@ -81,7 +81,7 @@ private final class StreamChunkCoalescer: @unchecked Sendable {
 
 enum ChatReplyStreamEvent: Sendable {
     case chunk(String)
-    case failed(String)
+    case failed(ChatReplyFailure)
     case finished
 }
 
@@ -142,7 +142,7 @@ enum ChatReplyStreamService {
                         continuation.yield(.chunk(remainingChunk))
                     }
                     if !isCancellationError(error) {
-                        continuation.yield(.failed(userFacingStreamErrorMessage(from: error)))
+                        continuation.yield(.failed(userFacingFailure(from: error)))
                     }
                 }
 
@@ -179,30 +179,63 @@ enum ChatReplyStreamService {
             || normalized.contains("cancelled")
     }
 
-    private static func userFacingStreamErrorMessage(from error: Error) -> String {
+    static func userFacingFailure(from error: Error) -> ChatReplyFailure {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain {
             switch nsError.code {
             case NSURLErrorNotConnectedToInternet:
-                return "No internet connection."
+                return ChatReplyFailure(
+                    kind: .offline,
+                    message: "Reconnect to the internet, then try sending your message again."
+                )
             case NSURLErrorTimedOut:
-                return "The request timed out."
-            case NSURLErrorCannotConnectToHost:
-                return "Cannot connect to the server."
+                return ChatReplyFailure(
+                    kind: .timedOut,
+                    message: "The server didn’t respond in time. Try again in a moment."
+                )
             case NSURLErrorNetworkConnectionLost:
-                return "Network connection was interrupted."
+                return ChatReplyFailure(
+                    kind: .connectionInterrupted,
+                    message: "The connection dropped while the reply was being generated."
+                )
+            case NSURLErrorCannotFindHost,
+                 NSURLErrorCannotConnectToHost,
+                 NSURLErrorDNSLookupFailed,
+                 NSURLErrorCannotLoadFromNetwork,
+                 NSURLErrorResourceUnavailable:
+                return ChatReplyFailure(
+                    kind: .serverUnavailable,
+                    message: "Check the server address and your connection, then try again."
+                )
+            case NSURLErrorSecureConnectionFailed,
+                 NSURLErrorServerCertificateHasBadDate,
+                 NSURLErrorServerCertificateUntrusted,
+                 NSURLErrorServerCertificateHasUnknownRoot,
+                 NSURLErrorServerCertificateNotYetValid,
+                 NSURLErrorClientCertificateRejected,
+                 NSURLErrorClientCertificateRequired:
+                return ChatReplyFailure(
+                    kind: .configuration,
+                    message: "A secure connection couldn’t be established. Review the server’s TLS settings."
+                )
             default:
                 break
             }
         }
 
-        let normalized = error.localizedDescription
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\r", with: " ")
+        return ChatReplyFailure.classified(
+            message: sanitizedErrorMessage(error.localizedDescription)
+        )
+    }
+
+    private static func sanitizedErrorMessage(_ message: String) -> String {
+        let normalized = message
+            .replacing("\n", with: " ")
+            .replacing("\r", with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !normalized.isEmpty else {
-            return "Request failed. Please try again."
+            return "Something interrupted the request. Please try again."
         }
 
         let blockedTokens = [
@@ -215,7 +248,7 @@ enum ChatReplyStreamService {
         ]
         let lowercased = normalized.lowercased()
         if blockedTokens.contains(where: { lowercased.contains($0) }) {
-            return "Request failed. Please check server settings and try again."
+            return "Review your server settings, then try again."
         }
 
         let maxLength = 180

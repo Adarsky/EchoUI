@@ -8,10 +8,16 @@ struct APIManagerView: View {
     @Query var servers: [APIServer]
     @Binding var selectedServer: APIServer?
     @EnvironmentObject var apiManager: APIManager
+    private let showsAddButton: Bool
 
     @State private var showCreateSheet = false
     @State private var editServer: APIServer? = nil
     @State private var deletionErrorMessage: String?
+
+    init(selectedServer: Binding<APIServer?>, showsAddButton: Bool = true) {
+        self._selectedServer = selectedServer
+        self.showsAddButton = showsAddButton
+    }
 
     private var activeServer: APIServer? {
         selectedServer ?? apiManager.selectedServer
@@ -60,9 +66,11 @@ struct APIManagerView: View {
             }
             .navigationTitle("API Servers")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showCreateSheet = true }) {
-                        Label("Add", systemImage: "plus")
+                if showsAddButton {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: { showCreateSheet = true }) {
+                            Label("Add", systemImage: "plus")
+                        }
                     }
                 }
             }
@@ -73,19 +81,7 @@ struct APIManagerView: View {
                 CreateAPIServerView(editingServer: server)
             }
             .task {
-                var didMigrateLegacyKeys = false
-                for server in servers {
-                    if server.migrateAPIKeyToKeychainIfNeeded() {
-                        didMigrateLegacyKeys = true
-                    }
-                }
-                if didMigrateLegacyKeys {
-                    try? modelContext.save()
-                }
-
-                for server in servers {
-                    await ping(server: server)
-                }
+                migrateLegacyAPIKeysIfNeeded()
             }
             .alert(
                 "Could Not Delete API Server",
@@ -101,7 +97,18 @@ struct APIManagerView: View {
         }
     }
 
-    func ping(server: APIServer) async {
+    @MainActor
+    private func migrateLegacyAPIKeysIfNeeded() {
+        let didMigrateLegacyKeys = servers.reduce(into: false) { didMigrate, server in
+            didMigrate = server.migrateAPIKeyToKeychainIfNeeded() || didMigrate
+        }
+
+        if didMigrateLegacyKeys {
+            try? modelContext.save()
+        }
+    }
+
+    private func ping(server: APIServer) async {
         let status = await APIManager.evaluateConnectionStatus(for: server)
         server.updateConnectionStatus(status)
         try? modelContext.save()

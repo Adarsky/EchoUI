@@ -10,6 +10,7 @@ struct MessageRow: View {
     let availableWidth: CGFloat
     @Environment(\.chatAppearance) private var chatAppearance
     @Environment(\.isGenerating) private var isGenerating
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct EditSession: Identifiable {
         let id = UUID()
@@ -19,7 +20,7 @@ struct MessageRow: View {
 
     @State private var editSession: EditSession?
     @State private var showDeleteConfirm = false
-    @State private var regenerateAnimationTrigger = false
+    @State private var regenerateRotationTurns = 0
     
     @Namespace var MessageRowGlassContainer
 
@@ -46,7 +47,7 @@ struct MessageRow: View {
                     ThinkingField(msg: msg)
                 }
 
-                if msg.content.isEmpty && !msg.isUser {
+                if shouldShowTypingIndicator {
                     TypingIndicator()
                         .padding(12)
                         .background(bubbleFillColor(for: false))
@@ -56,7 +57,7 @@ struct MessageRow: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: bubbleCornerRadius(for: false), style: .continuous))
                         .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
-                } else {
+                } else if !msg.content.isEmpty || msg.isUser {
                     messageText
                         .id(msg.currentIndex)
                         .padding(12)
@@ -67,7 +68,7 @@ struct MessageRow: View {
                             RoundedRectangle(cornerRadius: bubbleCornerRadius(for: msg.isUser), style: .continuous)
                                 .stroke(bubbleStrokeColor(for: msg.isUser), lineWidth: 1)
                         )
-                        .foregroundColor(bubbleTextColor(for: msg.isUser))
+                        .foregroundStyle(bubbleTextColor(for: msg.isUser))
                         .frame(maxWidth: maxBubbleWidth(for: msg.isUser), alignment: msg.isUser ? .trailing : .leading)
                         .contextMenu {
                             Button {
@@ -82,63 +83,66 @@ struct MessageRow: View {
                                 Label("Edit", systemImage: "pencil")
                             }
 
-                            Button(role: .destructive) {
-                                showDeleteConfirm = true
-                            } label: {
+                            Button(role: .destructive, action: presentDeleteConfirmation) {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-                        .confirmationDialog(
-                            "Are you sure?",
-                            isPresented: $showDeleteConfirm,
-                            titleVisibility: .visible
-                        ) {
-                            Button("Delete", role: .destructive) { onDelete(msg.id) }
-                            Button("Cancel", role: .cancel) { }
-                        }
                 }
 
-                if !msg.isUser {
-                    GlassEffectContainer() {
+                if !msg.isUser, let failure = msg.failure {
+                    ErrorMessage(
+                        failure: failure,
+                        isRetryDisabled: isGenerating || msg.isStreaming,
+                        retry: retryFailedResponse
+                    )
+                    .id(failure)
+                    .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
+                    .transition(ErrorMessage.appearanceTransition(reduceMotion: reduceMotion))
+                    .contextMenu {
+                        Button(role: .destructive, action: presentDeleteConfirmation) {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+
+                if shouldShowAssistantControls {
+                    GlassEffectContainer {
                         HStack(spacing: 16) {
-                            Button {
-                                switchVariant(msg.id, -1)
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .imageScale(.medium)
-                            }
+                            Button(
+                                "Previous response",
+                                systemImage: "chevron.left",
+                                action: showPreviousVariant
+                            )
+                            .imageScale(.medium)
                             .disabled(!msg.hasMultipleVariants)
                             .buttonStyle(.glass)
                             .buttonBorderShape(.circle)
 
-                            
-                            Button {
-                                switchVariant(msg.id, +1)
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .imageScale(.medium)
-                            }
+                            Button(
+                                "Next response",
+                                systemImage: "chevron.right",
+                                action: showNextVariant
+                            )
+                            .imageScale(.medium)
                             .disabled(!msg.hasMultipleVariants)
                             .buttonStyle(.glass)
                             .buttonBorderShape(.circle)
-                            
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.35)) {
-                                    regenerateAnimationTrigger.toggle()
+
+                            if msg.failure == nil {
+                                Button(action: regenerateResponse) {
+                                    Label("Regenerate response", systemImage: "arrow.clockwise")
+                                        .labelStyle(.iconOnly)
+                                        .imageScale(.medium)
+                                        .rotationEffect(.degrees(Double(regenerateRotationTurns) * 360))
                                 }
-                                regenerate(msg)
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .imageScale(.medium)
-                                    .rotationEffect(.degrees(regenerateAnimationTrigger ? 360 : 0))
+                                .buttonStyle(.glass)
+                                .buttonBorderShape(.circle)
+                                .disabled(isGenerating || msg.isStreaming)
                             }
-                            .buttonStyle(.glass)
-                            .buttonBorderShape(.circle)
-                            .disabled(isGenerating || msg.isStreaming)
-                            
+
                             Text("\(msg.currentIndex + 1)/\(max(msg.allVariants.count, 1))")
                                 .font(.footnote)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .frame(minWidth: 44, alignment: .center)
                         }
                         .buttonStyle(.borderless)
@@ -153,8 +157,11 @@ struct MessageRow: View {
 
             if !msg.isUser { Spacer(minLength: sideSpacerMinLength(for: false)) }
         }
-
         .animation(.easeOut(duration: 0.15), value: msg.currentIndex)
+        .animation(
+            ErrorMessage.appearanceAnimation(reduceMotion: reduceMotion),
+            value: msg.failure
+        )
         .frame(width: availableWidth, alignment: msg.isUser ? .trailing : .leading)
         .sheet(item: $editSession) { session in
             LegacyEditMessageSheet(
@@ -167,8 +174,54 @@ struct MessageRow: View {
                 }
             )
         }
+        .confirmationDialog(
+            "Are you sure?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { onDelete(msg.id) }
+            Button("Cancel", role: .cancel) { }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityHint(msg.isUser ? "User's message" : "Bot's message")
+    }
+
+    private var shouldShowTypingIndicator: Bool {
+        !msg.isUser
+            && msg.isStreaming
+            && msg.content.isEmpty
+            && msg.failure == nil
+    }
+
+    private var shouldShowAssistantControls: Bool {
+        guard !msg.isUser else { return false }
+        if msg.failure != nil { return msg.hasMultipleVariants }
+        return !msg.content.isEmpty || msg.hasThinkingContent || msg.hasMultipleVariants
+    }
+
+    private func showPreviousVariant() {
+        switchVariant(msg.id, -1)
+    }
+
+    private func showNextVariant() {
+        switchVariant(msg.id, 1)
+    }
+
+    private func regenerateResponse() {
+        if !reduceMotion {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                regenerateRotationTurns += 1
+            }
+        }
+        regenerate(msg)
+    }
+
+    private func retryFailedResponse() {
+        regenerate(msg)
+    }
+
+    private func presentDeleteConfirmation() {
+        showDeleteConfirm = true
     }
 
     @ViewBuilder

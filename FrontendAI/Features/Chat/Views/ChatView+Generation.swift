@@ -42,9 +42,6 @@ extension ChatView {
                 thinkingEffort: ChatThinkingEffortStore.resolvedEffort(botID: botID, server: server)
             )
 
-            // User picked a branch; previous alternative variants are no longer needed.
-            pruneAssistantVariants(keepingMessageID: nil)
-
             let userMessage = ChatMessageModel(content: submittedText, isUser: true)
             withTransaction(.init(animation: nil)) { messages.append(userMessage) }
             trimMessagesIfNeeded()
@@ -95,7 +92,6 @@ extension ChatView {
             let replyID = message.id
             let payload = buildPayload(upTo: index, dummyUser: true)
 
-            pruneAssistantVariants(keepingMessageID: replyID)
             messages[index].touchTimestamp()
             messages[index].addNewVariant()
             messages[index].setStreaming(true)
@@ -142,37 +138,111 @@ extension ChatView {
                 for await event in eventStream.stream {
                     if Task.isCancelled { break }
 
-                    await MainActor.run {
-                        guard activeGenerationID == generationID else { return }
-
-                        switch event {
-                        case let .chunk(chunk):
-                            applyStreamChunk(chunk, for: replyID)
-                        case let .failed(message):
-                            if let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                                let currentVariantIndex = messages[idx].currentIndex
-                                messages[idx].appendChunk("⚠️ Error: \(message)", to: currentVariantIndex)
-                                messages[idx].setStreaming(false)
-                            }
-                            isThinking = false
-                        case .finished:
-                            if let streamingReply, streamingReply.id == replyID {
-                                streamingReply.setStreaming(false)
-                            } else if let idx = messages.firstIndex(where: { $0.id == replyID }) {
-                                messages[idx].setStreaming(false)
-                            }
-                            isThinking = false
-                            isGenerating = false
-                            activeGenerationID = nil
-                            generationTask = nil
-                            streamingReply = nil
-                            saveChatHistory()
-                        }
+                    let shouldFinish = await MainActor.run {
+                        handleStreamEvent(
+                            event,
+                            replyID: replyID,
+                            generationID: generationID
+                        )
                     }
+                    if shouldFinish {
+                        let reachedTerminalEvent: Bool
+                        switch event {
+                        case .failed, .finished:
+                            reachedTerminalEvent = true
+                        case .chunk:
+                            reachedTerminalEvent = false
+                        }
+
+                        await MainActor.run {
+                            finishGenerationIfActive(
+                                replyID: replyID,
+                                generationID: generationID,
+                                reachedTerminalEvent: reachedTerminalEvent
+                            )
+                        }
+                        return
+                    }
+                }
+
+                await MainActor.run {
+                    finishGenerationIfActive(
+                        replyID: replyID,
+                        generationID: generationID,
+                        reachedTerminalEvent: false
+                    )
                 }
             } onCancel: {
                 cancelEventStream()
             }
+        }
+
+        @MainActor
+        private func handleStreamEvent(
+            _ event: ChatReplyStreamEvent,
+            replyID: UUID,
+            generationID: UUID
+        ) -> Bool {
+            guard activeGenerationID == generationID else { return true }
+
+            switch event {
+            case let .chunk(chunk):
+                applyStreamChunk(chunk, for: replyID)
+                return false
+            case let .failed(failure):
+                if let index = messages.firstIndex(where: { $0.id == replyID }) {
+                    messages[index].setFailure(failure)
+                }
+                isThinking = false
+                return true
+            case .finished:
+                return true
+            }
+        }
+
+        @MainActor
+        private func finishGenerationIfActive(
+            replyID: UUID,
+            generationID: UUID,
+            reachedTerminalEvent: Bool
+        ) {
+            guard activeGenerationID == generationID else { return }
+
+            let reply = if let streamingReply, streamingReply.id == replyID {
+                streamingReply
+            } else {
+                messages.first(where: { $0.id == replyID })
+            }
+
+            if let reply {
+                reply.finalizeThinkingNow()
+
+                if !reachedTerminalEvent, reply.failure == nil {
+                    reply.setFailure(
+                        ChatReplyFailure(
+                            kind: .connectionInterrupted,
+                            message: "The reply stream ended unexpectedly. Try again."
+                        )
+                    )
+                } else if reply.failure == nil,
+                          reply.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    reply.setFailure(
+                        ChatReplyFailure(
+                            kind: .unknown,
+                            message: "The server finished without returning a reply. Try again."
+                        )
+                    )
+                } else {
+                    reply.setStreaming(false)
+                }
+            }
+
+            isThinking = false
+            isGenerating = false
+            activeGenerationID = nil
+            generationTask = nil
+            streamingReply = nil
+            saveChatHistory()
         }
 
         @MainActor
@@ -215,19 +285,18 @@ extension ChatView {
             let slice: [ChatMessageModel] = {
                 if let limit { Array(messages.prefix(upTo: limit)) } else { messages }
             }()
-            payload += slice.map { ChatPayloadMessage(role: $0.isUser ? "user" : "assistant", content: $0.content) }
+            payload += slice.compactMap { message in
+                guard let content = message.contentForConversation else { return nil }
+                return ChatPayloadMessage(
+                    role: message.isUser ? "user" : "assistant",
+                    content: content
+                )
+            }
 
             return payload
         }
 
         // MARK: - Utils
-        @MainActor
-        private func pruneAssistantVariants(keepingMessageID: UUID?) {
-            for message in messages where !message.isUser && message.id != keepingMessageID {
-                message.keepOnlyCurrentVariant()
-            }
-        }
-
         private func trimMessagesIfNeeded() {
             if messages.count > maxVisibleMessages {
                 messages.removeFirst(messages.count - maxVisibleMessages)

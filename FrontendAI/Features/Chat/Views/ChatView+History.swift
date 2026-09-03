@@ -21,18 +21,7 @@ extension ChatView {
                         currentHistory = history
                         applyPersonaOverride(from: history)
                         rememberOpenedHistory(history)
-                        messages = history.messages
-                            .sorted { $0.index < $1.index }
-                            .map { entity in
-                                ChatMessageModel(
-                                    id: entity.id,
-                                    content: entity.text,
-                                    isUser: entity.isUser,
-                                    timestamp: entity.timestamp ?? history.date,
-                                    variants: entity.variants,
-                                    currentIndex: entity.currentVariantIndex ?? 0
-                                )
-                            }
+                        messages = restoredMessages(from: history)
                         refreshActiveAppearance()
                     } else {
                         chatPersonaID = nil
@@ -49,44 +38,37 @@ extension ChatView {
 
         @MainActor
         func saveChatHistory() {
-            guard !messages.isEmpty else { return }
-            let lastMessageID = messages.last?.id
+            let persistableMessages = messages.filter(\.hasPersistableVariant)
+            guard !persistableMessages.isEmpty else { return }
+
             var existingEntitiesByID: [UUID: ChatMessageEntity] = [:]
             for entity in currentHistory?.messages ?? [] {
                 existingEntitiesByID[entity.id] = entity
             }
 
-            let entities = messages.enumerated().map { index, msg in
-                let shouldSaveVariants = !msg.isUser && msg.id == lastMessageID
-                let storedVariants: [String]?
-                let storedCurrentVariantIndex: Int?
-
-                if shouldSaveVariants, let (variants, currentIndex) = msg.persistableVariantsForLastMessage() {
-                    storedVariants = variants
-                    storedCurrentVariantIndex = currentIndex
-                } else {
-                    storedVariants = nil
-                    storedCurrentVariantIndex = nil
+            let entities: [ChatMessageEntity] = persistableMessages.enumerated().compactMap { index, msg in
+                guard let values = msg.persistenceValues(includeVariants: !msg.isUser) else {
+                    return nil
                 }
 
                 if let entity = existingEntitiesByID[msg.id] {
-                    entity.text = msg.content
+                    entity.text = values.text
                     entity.isUser = msg.isUser
                     entity.index = index
                     entity.timestamp = msg.timestamp
-                    entity.variants = storedVariants
-                    entity.currentVariantIndex = storedCurrentVariantIndex
+                    entity.variants = values.variants
+                    entity.currentVariantIndex = values.currentVariantIndex
                     return entity
                 }
 
                 return ChatMessageEntity(
                     id: msg.id,
-                    text: msg.content,
+                    text: values.text,
                     isUser: msg.isUser,
                     index: index,
                     timestamp: msg.timestamp,
-                    variants: storedVariants,
-                    currentVariantIndex: storedCurrentVariantIndex
+                    variants: values.variants,
+                    currentVariantIndex: values.currentVariantIndex
                 )
             }
 
@@ -125,20 +107,28 @@ extension ChatView {
             currentHistory = history
             applyPersonaOverride(from: history)
             rememberOpenedHistory(history)
-            messages = history.messages
+            messages = restoredMessages(from: history)
+            isManualHistoryLoad = true
+            refreshActiveAppearance()
+        }
+
+        @MainActor
+        private func restoredMessages(from history: ChatHistory) -> [ChatMessageModel] {
+            history.messages
                 .sorted { $0.index < $1.index }
-                .map { entity in
-                    ChatMessageModel(
+                .compactMap { entity in
+                    let message = ChatMessageModel(
                         id: entity.id,
                         content: entity.text,
                         isUser: entity.isUser,
                         timestamp: entity.timestamp ?? history.date,
                         variants: entity.variants,
-                        currentIndex: entity.currentVariantIndex ?? 0
+                        currentIndex: entity.currentVariantIndex ?? 0,
+                        restorePersistedFailures: true
                     )
+
+                    return message.isDiscardableEmptyAssistantPlaceholder ? nil : message
                 }
-            isManualHistoryLoad = true
-            refreshActiveAppearance()
         }
 
         private func historyToOpen(from histories: [ChatHistory]) -> ChatHistory? {
