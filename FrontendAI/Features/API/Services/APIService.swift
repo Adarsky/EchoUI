@@ -113,17 +113,7 @@ actor APIService {
         config: ServerConfig,
         onStream: ((String) -> Void)? = nil
     ) async throws -> String {
-
-        let openAIMessages = messages.compactMap { msg -> [String: String]? in
-            guard !msg.role.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
-            return ["role": msg.role, "content": msg.content]
-        }
-
-        let body: [String: Any] = [
-            "model": config.selectedModel,
-            "messages": openAIMessages,
-            "stream": true
-        ]
+        let body = makeOpenAIRequestBody(messages: messages, config: config)
 
         let endpoint = APIType.openai.endpoint(baseURL: config.baseURL, path: "chat/completions")
         guard let url = URL(string: endpoint) else {
@@ -182,22 +172,7 @@ actor APIService {
         config: ServerConfig,
         onStream: ((String) -> Void)? = nil
     ) async throws -> String {
-
-        let openRouterMessages = messages.compactMap { msg -> [String: String]? in
-            guard !msg.role.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
-            return ["role": msg.role, "content": msg.content]
-        }
-
-        var body: [String: Any] = [
-            "model": config.selectedModel,
-            "messages": openRouterMessages,
-            "stream": true,
-            "include_reasoning": true,
-            "temperature": 0.9
-        ]
-        body["reasoning"] = [
-            "effort": config.thinkingEffort.rawValue
-        ]
+        let body = makeOpenRouterRequestBody(messages: messages, config: config)
 
         let endpoint = APIType.openrouter.endpoint(baseURL: config.baseURL, path: "chat/completions")
         guard let url = URL(string: endpoint) else {
@@ -271,6 +246,53 @@ actor APIService {
         }
 
         return finalResultParts.joined()
+    }
+
+    static func makeOpenAIRequestBody(
+        messages: [ChatPayloadMessage],
+        config: ServerConfig
+    ) -> [String: Any] {
+        var body: [String: Any] = [
+            "model": config.selectedModel,
+            "messages": requestMessages(from: messages),
+            "stream": true
+        ]
+
+        if let isEnabled = config.thinkingEffort.thinkingEnabledValue {
+            body["enable_thinking"] = isEnabled
+        } else if let effort = config.thinkingEffort.reasoningEffortValue {
+            body["reasoning_effort"] = effort
+        }
+
+        return body
+    }
+
+    static func makeOpenRouterRequestBody(
+        messages: [ChatPayloadMessage],
+        config: ServerConfig
+    ) -> [String: Any] {
+        var body: [String: Any] = [
+            "model": config.selectedModel,
+            "messages": requestMessages(from: messages),
+            "stream": true,
+            "include_reasoning": true,
+            "temperature": 0.9
+        ]
+
+        if let isEnabled = config.thinkingEffort.thinkingEnabledValue {
+            body["reasoning"] = ["enabled": isEnabled]
+        } else if let effort = config.thinkingEffort.reasoningEffortValue {
+            body["reasoning"] = ["effort": effort]
+        }
+
+        return body
+    }
+
+    private static func requestMessages(from messages: [ChatPayloadMessage]) -> [[String: String]] {
+        messages.compactMap { message in
+            guard !message.role.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            return ["role": message.role, "content": message.content]
+        }
     }
 
     private static func userFacingHTTPErrorMessage(statusCode: Int) -> String {

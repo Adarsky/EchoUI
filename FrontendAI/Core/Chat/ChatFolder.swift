@@ -10,6 +10,7 @@ final class ChatFolder {
     var id: UUID
     var name: String
     var symbolName: String
+    var colorName: String = ChatFolderColor.defaultValue.rawValue
     var botIDStrings: [String]
     var sortIndex: Int
     var createdAt: Date
@@ -19,6 +20,7 @@ final class ChatFolder {
         id: UUID = UUID(),
         name: String,
         symbolName: String = "folder",
+        colorName: String = ChatFolderColor.defaultValue.rawValue,
         botIDStrings: [String] = [],
         sortIndex: Int = 0,
         createdAt: Date = .now,
@@ -27,6 +29,7 @@ final class ChatFolder {
         self.id = id
         self.name = Self.clampedName(name)
         self.symbolName = symbolName
+        self.colorName = ChatFolderColor(rawValue: colorName)?.rawValue ?? ChatFolderColor.defaultValue.rawValue
         self.botIDStrings = botIDStrings
         self.sortIndex = sortIndex
         self.createdAt = createdAt
@@ -35,6 +38,10 @@ final class ChatFolder {
 
     var displayName: String {
         name.isEmpty ? "Folder" : name
+    }
+
+    var displayColor: ChatFolderColor {
+        ChatFolderColor(rawValue: colorName) ?? .defaultValue
     }
 
     var isPrivate: Bool {

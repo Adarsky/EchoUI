@@ -26,6 +26,7 @@ enum APIConnectionStatus: String, Codable, CaseIterable {
 
 enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
     case none
+    case on
     case low
     case medium
     case high
@@ -38,6 +39,8 @@ enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .none:
             return "None"
+        case .on:
+            return "On"
         case .low:
             return "Low"
         case .medium:
@@ -45,9 +48,31 @@ enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
         case .high:
             return "High"
         case .xhigh:
-            return "XHigh"
+            return "Extra High"
         case .max:
             return "Max"
+        }
+    }
+
+    var pickerDisplayName: String {
+        self == .on ? "ON (Small/Older Models)" : displayName
+    }
+
+    var reasoningEffortValue: String? {
+        switch self {
+        case .on:
+            return nil
+        case .none, .low, .medium, .high, .xhigh, .max:
+            return rawValue
+        }
+    }
+
+    var thinkingEnabledValue: Bool? {
+        switch self {
+        case .on:
+            return true
+        case .none, .low, .medium, .high, .xhigh, .max:
+            return nil
         }
     }
 

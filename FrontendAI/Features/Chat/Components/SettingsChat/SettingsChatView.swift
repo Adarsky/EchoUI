@@ -78,11 +78,11 @@ struct SettingsChatView: View {
         guard let server = selectedServer else {
             return "Select an API server before configuring model behavior."
         }
-        guard server.type == .openrouter else {
-            return "Thinking effort is only sent to OpenRouter-compatible servers."
+        if selectedThinkingEffort == .on {
+            return "ON is intended for small or older models that expose a simple thinking toggle."
         }
         guard botID != nil else {
-            return "Without a character context, this updates the selected OpenRouter server default."
+            return "Without a character context, this updates the selected \(server.type.displayName) server default."
         }
         if selectedThinkingEffort == .max {
             return "Be careful, not all models support this parameter."
@@ -138,17 +138,13 @@ struct SettingsChatView: View {
             header: Text("Model Settings"),
             footer: Text(modelSettingsFooter)
         ) {
-            if let selectedServer, selectedServer.type == .openrouter {
+            if selectedServer != nil {
                 Picker("Thinking Effort", selection: thinkingEffortBinding) {
                     ForEach(APIThinkingEffort.allCases) { effort in
-                        Text(effort.displayName).tag(effort)
+                        Text(effort.pickerDisplayName).tag(effort)
                     }
                 }
                 .pickerStyle(.menu)
-            } else if selectedServer != nil {
-                Label("Thinking effort requires OpenRouter.", systemImage: "brain")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
 
             NavigationLink {

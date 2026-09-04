@@ -81,9 +81,7 @@ struct CreateAPIServerView: View {
         Form {
             serverDetailsSection
             modelSelectionSection
-            if isOpenRouter {
-                thinkingEffortSection
-            }
+            thinkingEffortSection
             if shouldShowTLSSection {
                 tlsSection
             }
@@ -236,7 +234,7 @@ struct CreateAPIServerView: View {
         Section(header: Text("Thinking Effort"), footer: Text(thinkingEffortFooterText)) {
             Picker("Effort", selection: $selectedThinkingEffort) {
                 ForEach(APIThinkingEffort.allCases) { effort in
-                    Text(effort.displayName).tag(effort)
+                    Text(effort.pickerDisplayName).tag(effort)
                 }
             }
             .pickerStyle(.menu)
@@ -366,17 +364,30 @@ struct CreateAPIServerView: View {
     }
 
     private var thinkingEffortFooterText: String {
+        if selectedThinkingEffort == .on {
+            switch selectedType {
+            case .openai:
+                return "ON sends enable_thinking for small or older OpenAI-compatible models with a simple thinking toggle."
+            case .openrouter:
+                return "ON sends reasoning.enabled for small or older models with a simple thinking toggle."
+            }
+        }
+
         if selectedThinkingEffort == .max {
             return "Be careful, not all models support this parameter."
         }
 
-        if let selectedOpenRouterModel {
-            if selectedOpenRouterModel.supportsReasoningEffort {
-                return "This OpenRouter model advertises reasoning support. Effort is sent as reasoning.effort."
+        if isOpenRouter {
+            if let selectedOpenRouterModel {
+                if selectedOpenRouterModel.supportsReasoningEffort {
+                    return "This OpenRouter model advertises reasoning support. Effort is sent as reasoning.effort."
+                }
+                return "OpenRouter will apply or map reasoning.effort when the selected provider supports it."
             }
-            return "OpenRouter will apply or map reasoning.effort when the selected provider supports it."
+            return "OpenRouter accepts none, low, medium, high, xhigh and max effort values."
         }
-        return "OpenRouter accepts none, low, medium, high, xhigh and max effort values."
+
+        return "OpenAI-compatible chat requests send this value as reasoning_effort. Not all models support every effort level."
     }
 
     private var hasOpenRouterModelQuery: Bool {
@@ -417,7 +428,6 @@ struct CreateAPIServerView: View {
         } else {
             openRouterModels.removeAll()
             loadedOpenRouterModelsBaseURL = nil
-            selectedThinkingEffort = .defaultValue
         }
 
         resetTLSConfigurationIfHidden()
@@ -533,7 +543,7 @@ struct CreateAPIServerView: View {
                     allowInsecureTLS: effectiveAllowInsecureTLS,
                     customCACertificateData: effectiveCustomCACertificateData,
                     customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName,
-                    thinkingEffort: selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
+                    thinkingEffort: selectedThinkingEffort
                 )
 
                 modelContext.insert(newServer)
@@ -587,9 +597,7 @@ struct CreateAPIServerView: View {
         server.customCACertificateName = effectiveCustomCACertificateName.isEmpty
             ? nil
             : effectiveCustomCACertificateName
-        server.thinkingEffort = selectedType == .openrouter
-            ? selectedThinkingEffort
-            : .defaultValue
+        server.thinkingEffort = selectedThinkingEffort
     }
 
     private func presentSaveError(_ error: Error, recoveryMessage: String? = nil) {

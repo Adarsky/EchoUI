@@ -86,8 +86,14 @@ struct FoldersSettingsSheet: View {
                 title: "Edit Folder",
                 bots: bots,
                 folder: folder,
-                onSave: { name, symbolName, botIDStrings in
-                    updateFolder(folder, name: name, symbolName: symbolName, botIDStrings: botIDStrings)
+                onSave: { name, symbolName, colorName, botIDStrings in
+                    updateFolder(
+                        folder,
+                        name: name,
+                        symbolName: symbolName,
+                        colorName: colorName,
+                        botIDStrings: botIDStrings
+                    )
                 }
             )
         }
@@ -134,10 +140,11 @@ struct FoldersSettingsSheet: View {
         return bots.filter { folder.contains(botID: $0.id) }.count
     }
 
-    private func createFolder(name: String, symbolName: String, botIDStrings: [String]) {
+    private func createFolder(name: String, symbolName: String, colorName: String, botIDStrings: [String]) {
         let folder = ChatFolder(
             name: name,
             symbolName: symbolName,
+            colorName: colorName,
             botIDStrings: botIDStrings,
             sortIndex: (folders.map(\.sortIndex).max() ?? -1) + 1
         )
@@ -146,9 +153,16 @@ struct FoldersSettingsSheet: View {
         previewSelectedFolderID = folder.id.uuidString
     }
 
-    private func updateFolder(_ folder: ChatFolder, name: String, symbolName: String, botIDStrings: [String]) {
+    private func updateFolder(
+        _ folder: ChatFolder,
+        name: String,
+        symbolName: String,
+        colorName: String,
+        botIDStrings: [String]
+    ) {
         folder.name = ChatFolder.clampedName(name)
         folder.symbolName = symbolName
+        folder.colorName = ChatFolderColor(rawValue: colorName)?.rawValue ?? ChatFolderColor.defaultValue.rawValue
         folder.botIDStrings = botIDStrings
         folder.updatedAt = .now
         saveFolders()
@@ -242,18 +256,19 @@ private struct ChatFolderEditorSheet: View {
     let title: String
     let bots: [BotModel]
     let folder: ChatFolder?
-    let onSave: (String, String, [String]) -> Void
+    let onSave: (String, String, String, [String]) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var symbolName: String
+    @State private var colorName: String
     @State private var selectedBotIDStrings: Set<String>
 
     init(
         title: String,
         bots: [BotModel],
         folder: ChatFolder?,
-        onSave: @escaping (String, String, [String]) -> Void
+        onSave: @escaping (String, String, String, [String]) -> Void
     ) {
         self.title = title
         self.bots = bots
@@ -261,6 +276,7 @@ private struct ChatFolderEditorSheet: View {
         self.onSave = onSave
         self._name = State(initialValue: folder?.displayName ?? "")
         self._symbolName = State(initialValue: folder?.symbolName ?? ChatFolderSymbol.defaultSymbol)
+        self._colorName = State(initialValue: folder?.displayColor.rawValue ?? ChatFolderColor.defaultValue.rawValue)
         self._selectedBotIDStrings = State(initialValue: Set(folder?.botIDStrings ?? []))
     }
 
@@ -280,6 +296,19 @@ private struct ChatFolderEditorSheet: View {
                         ForEach(ChatFolderSymbol.allSymbols, id: \.self) { symbol in
                             Label(ChatFolderSymbol.title(for: symbol), systemImage: symbol)
                                 .tag(symbol)
+                        }
+                    }
+
+                    Picker("Color", selection: $colorName) {
+                        ForEach(ChatFolderColor.allCases) { folderColor in
+                            Label {
+                                Text(folderColor.displayName)
+                            } icon: {
+                                colorOptionImage(for: folderColor)
+                                    .renderingMode(.original)
+                                    .accessibilityHidden(true)
+                            }
+                            .tag(folderColor.rawValue)
                         }
                     }
                 }
@@ -340,6 +369,20 @@ private struct ChatFolderEditorSheet: View {
         ChatFolder.clampedName(name)
     }
 
+    private func colorOptionImage(for folderColor: ChatFolderColor) -> Image {
+        #if os(iOS)
+        if let symbol = UIImage(systemName: "circle.fill") {
+            let coloredSymbol = symbol.withTintColor(
+                UIColor(folderColor.color),
+                renderingMode: .alwaysOriginal
+            )
+            return Image(uiImage: coloredSymbol)
+        }
+        #endif
+
+        return Image(systemName: "circle.fill")
+    }
+
     private func toggle(_ bot: BotModel) {
         let storageID = ChatFolder.storageID(for: bot.id)
         if selectedBotIDStrings.contains(storageID) {
@@ -351,7 +394,7 @@ private struct ChatFolderEditorSheet: View {
     }
 
     private func save() {
-        onSave(trimmedName, symbolName, Array(selectedBotIDStrings).sorted())
+        onSave(trimmedName, symbolName, colorName, Array(selectedBotIDStrings).sorted())
         folderFeedback(.success)
         dismiss()
     }
@@ -444,6 +487,7 @@ private let foldersSettingsPreviewContainer: ModelContainer = {
         ChatFolder(
             name: "Work",
             symbolName: "briefcase",
+            colorName: "orange",
             botIDStrings: [ChatFolder.storageID(for: bot.id)]
         )
     )

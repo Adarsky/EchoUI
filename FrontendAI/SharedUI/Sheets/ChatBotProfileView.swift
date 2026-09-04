@@ -23,21 +23,65 @@ struct ChatBotProfileView: View {
     @State private var settingsSaveErrorMessage = ""
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                CharSection
-                currentChatTokenSection
-                personaPickerSection
-                currentModelSection
-                characterChatSettingsSection
-//                characterPromptSection
-//                characterDetailsSection
+        List {
+                Section {
+                    CharSection
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+                Section {
+                    currentChatTokenSection
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+                Section("Character Persona") {
+                    personaPickerSection
+                }
+                Section {
+                    if selectedServer != nil {
+                        currentAPIServerRow
+                        currentAPIModelRow
+                        currentAPIThinkingEffortRow
+                    } else {
+                        Label("Select an API server to configure this character.", systemImage: "exclamationmark.triangle")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Current API")
+                } footer: {
+                    if let selectedServer {
+                        modelSettingsFooter(for: selectedServer)
+                    }
+                }
+                Section("Chat settings") {
+                    NavigationLink {
+                        ChatAppearanceSettingsView(
+                            botID: botID,
+                            botName: bot.name,
+                            chatID: chatAppearanceID
+                        )
+                    } label: {
+                        Label("Chat Appearance", systemImage: "paintpalette")
+                    }
+
+                    NavigationLink {
+                        TokenSpeedChangeView()
+                    } label: {
+                        Label("Token Speed", systemImage: "hare")
+                    }
+
+                    NavigationLink {
+                        InputBarSettings()
+                    } label: {
+                        Label("Input Bar Appearance", systemImage: "arrow.up")
+                    }
+                }
+                //                characterPromptSection
+                //                characterDetailsSection
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 12)
-            .padding(.bottom, 24)
-            .frame(maxWidth: .infinity)
-        }
         .scrollIndicators(.visible)
         .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
@@ -75,6 +119,7 @@ struct ChatBotProfileView: View {
             .padding(.vertical, 26)
             .padding(.horizontal, 18)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
         .frame(minHeight: 224)
         .clipShape(.rect(cornerRadius: 28))
     }
@@ -109,100 +154,86 @@ struct ChatBotProfileView: View {
         )
     }
 
-    private var currentModelSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 14) {
+    private var currentAPIServerRow: some View {
+        HStack(spacing: 10) {
+            apiIconView
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selectedServer?.name ?? "No API selected")
+                    .font(.headline)
+                    .lineLimit(1)
+
+                Text(endpointHostText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+            statusPill
+        }
+    }
+
+    @ViewBuilder
+    private var currentAPIModelRow: some View {
+        if let selectedServer {
+            NavigationLink {
+                CharacterModelPickerView(
+                    selectedModelOverride: modelOverrideBinding,
+                    defaultModel: selectedServer.selectedModel,
+                    availableModels: availableModelIDs
+                )
+            } label: {
                 HStack(spacing: 10) {
-                    apiIconView
+                    Image(systemName: "cpu")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(selectedServer?.name ?? "No API selected")
-                            .font(.headline)
-                            .lineLimit(1)
-
-                        Text(endpointHostText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 8)
-                    statusPill
-                }
-
-                Divider()
-
-                if let selectedServer {
-                    NavigationLink {
-                        CharacterModelPickerView(
-                            selectedModelOverride: modelOverrideBinding,
-                            defaultModel: selectedServer.selectedModel,
-                            availableModels: availableModelIDs
-                        )
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "cpu")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 22)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Model")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(effectiveModelName)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(2)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(botModel == nil)
-
-                    Divider()
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "brain.head.profile")
-                            .foregroundStyle(.secondary)
-                            .frame(width: 22)
-
-                        Text("Thinking effort")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Model")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-
-                        Spacer(minLength: 10)
-
-                        Picker("Thinking effort", selection: thinkingEffortBinding) {
-                            ForEach(APIThinkingEffort.allCases) { effort in
-                                Text(effort.displayName)
-                                    .tag(effort)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .disabled(botModel == nil || selectedServer.type != .openrouter)
+                        Text(effectiveModelName)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
                     }
-                } else {
-                    Label("Select an API server to configure this character.", systemImage: "exclamationmark.triangle")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(botModel == nil)
+        }
+    }
+
+    private var currentAPIThinkingEffortRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "brain.head.profile")
+                .foregroundStyle(.secondary)
+                .frame(width: 22)
+
+            Text("Thinking Effort")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 10)
+
+            Picker("Thinking effort", selection: thinkingEffortBinding) {
+                ForEach(APIThinkingEffort.allCases) { effort in
+                    Text(effort.pickerDisplayName)
+                        .tag(effort)
                 }
             }
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-
-            if let selectedServer {
-                modelSettingsFooter(for: selectedServer)
-                    .padding(.horizontal, 16)
-            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .disabled(botModel == nil)
         }
     }
 
     @ViewBuilder
     private func modelSettingsFooter(for server: APIServer) -> some View {
-        if server.type != .openrouter {
-            Label("Thinking effort is only sent to OpenRouter-compatible servers.", systemImage: "info.circle")
+        if selectedThinkingEffort == .on {
+            Label("ON is intended for small or older models that expose a simple thinking toggle.", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         } else if selectedThinkingEffort == .max {
@@ -210,94 +241,13 @@ struct ChatBotProfileView: View {
                 .font(.footnote)
                 .foregroundStyle(.orange)
         } else {
-            Text("This setting applies to this character.")
+            Text("This setting applies to this character on the selected \(server.type.displayName) server.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
-
-    private var characterChatSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            NavigationLink {
-                ChatAppearanceSettingsView(
-                    botID: botID,
-                    botName: bot.name,
-                    chatID: chatAppearanceID
-                )
-            } label: {
-                characterSettingRow(
-                    title: "Chat Appearance",
-                    subtitle: "Bubbles, colors, and wallpaper",
-                    systemImage: "paintpalette"
-                )
-            }
-
-            Divider()
-                .padding(.leading, 36)
-
-            NavigationLink {
-                TokenSpeedChangeView()
-            } label: {
-                characterSettingRow(
-                    title: "Token Speed",
-                    subtitle: "Tune streamed response updates",
-                    systemImage: "hare"
-                )
-            }
-
-            Divider()
-                .padding(.leading, 36)
-
-            NavigationLink {
-                InputBarSettings()
-            } label: {
-                characterSettingRow(
-                    title: "Input Bar Appearance",
-                    subtitle: "Choose the send button style",
-                    systemImage: "arrow.up"
-                )
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-    }
-
-    private func characterSettingRow(
-        title: String,
-        subtitle: String,
-        systemImage: String
-    ) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
-
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
-
-            Image(systemName: "chevron.right")
-                .font(.caption.bold())
-                .foregroundStyle(.tertiary)
-        }
-        .frame(minHeight: 54)
-        .contentShape(Rectangle())
-    }
-
     private var personaPickerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "Persona", systemImage: "person.crop.circle")
-
             Menu {
                 Button(action: onUseGlobalPersona) {
                     Label(
@@ -354,13 +304,10 @@ struct ChatBotProfileView: View {
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
                 }
-                .padding(12)
 
             }
             .buttonStyle(.plain)
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
     }
 
     private var greetingSection: some View {

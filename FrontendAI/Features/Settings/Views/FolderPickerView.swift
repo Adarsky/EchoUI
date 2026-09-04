@@ -31,6 +31,7 @@ struct FolderPickerView: View {
                 folderButton(
                     title: "All",
                     symbolName: "tray.full",
+                    activeColor: .accentColor,
                     count: showsCounts ? countForFolder(nil) : nil,
                     isSelected: selectedFolderID == ChatFolder.allFolderID
                 ) {
@@ -41,6 +42,7 @@ struct FolderPickerView: View {
                     folderButton(
                         title: folder.displayName,
                         symbolName: folder.symbolName,
+                        activeColor: folder.displayColor.color,
                         count: showsCounts ? countForFolder(folder) : nil,
                         isSelected: selectedFolderID == folder.id.uuidString
                     ) {
@@ -56,6 +58,7 @@ struct FolderPickerView: View {
     private func folderButton(
         title: String,
         symbolName: String,
+        activeColor: Color,
         count: Int?,
         isSelected: Bool,
         action: @escaping () -> Void
@@ -90,13 +93,14 @@ struct FolderPickerView: View {
             .frame(height: 34)
             .background {
                 Capsule()
-                    .fill(isSelected ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+                    .fill(isSelected ? activeColor : Color(.secondarySystemGroupedBackground))
             }
             .clipShape(Capsule())
             .animation(.snappy(duration: 0.24), value: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func selectFolder(_ folderID: String) {
@@ -140,10 +144,10 @@ struct FolderPickerView: View {
 
 private struct FolderPickerPreviewHost: View {
     private static let previewFolders = [
-        ChatFolder(name: "Work", symbolName: "briefcase", sortIndex: 0),
-        ChatFolder(name: "Creative", symbolName: "paintpalette", sortIndex: 1),
-        ChatFolder(name: "Research", symbolName: "magnifyingglass", sortIndex: 2),
-        ChatFolder(name: "Long-Term Planning", symbolName: "calendar", sortIndex: 3)
+        ChatFolder(name: "Work", symbolName: "briefcase", colorName: "orange", sortIndex: 0),
+        ChatFolder(name: "Creative", symbolName: "paintpalette", colorName: "purple", sortIndex: 1),
+        ChatFolder(name: "Research", symbolName: "magnifyingglass", colorName: "teal", sortIndex: 2),
+        ChatFolder(name: "Long-Term Planning", symbolName: "calendar", colorName: "green", sortIndex: 3)
     ]
 
     @State private var selectedFolderID = previewFolders[1].id.uuidString

@@ -93,7 +93,7 @@ https://api.openai.com
 
 ## Supported APIs
 
-- `OpenAI`: APIs that follow the OpenAI chat-completions format.
+- `OpenAI`: APIs that follow the OpenAI chat-completions format, including reasoning-effort and toggle-only thinking controls.
 - `OpenRouter`: OpenRouter-compatible endpoints with model catalog, reasoning, and balance support.
 
 EchoUI can stream chat responses, load model lists, use optional Bearer token authentication, and normalize base URLs such as `https://api.example.com` and `https://api.example.com/v1`.
