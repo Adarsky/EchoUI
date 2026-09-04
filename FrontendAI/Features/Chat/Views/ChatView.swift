@@ -9,10 +9,10 @@ struct ChatView: View {
     let botID: UUID
     let isPreviewSeeded: Bool
 
-    let maxVisibleMessages = 300
+    let maxContextMessages = 300
 
     @State var messages: [ChatMessageModel] = []
-    @State var showChatBotSheet = false
+    @State var showCharacterProfile = false
     @State var inputText: String = ""
     @State var currentHistory: ChatHistory?
     @State var isViewingHistory = false
@@ -23,6 +23,7 @@ struct ChatView: View {
     @State var generationTask: Task<Void, Never>? = nil
     @State var activeGenerationID: UUID?
     @State var hasRestoredDraft = false
+    @State var hasLoadedInitialHistory = false
 
     @State var alertMessage: String?
     @State var showAlertBanner = false
@@ -61,8 +62,17 @@ struct ChatView: View {
     }
 
     var currentSystemPrompt: String {
-        let personaPrompt = currentPersona?.systemPrompt ?? ""
-        return [personaPrompt, bot.subtitle].filter { !$0.isEmpty }.joined(separator: "\n\n")
+        let personaPrompt = CharacterTextFormatting.normalized(currentPersona?.systemPrompt ?? "")
+        let characterPrompt = CharacterTextFormatting.normalized(bot.subtitle)
+        return [personaPrompt, characterPrompt].filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    var currentGreeting: String {
+        CharacterTextFormatting.normalized(bot.greeting)
+    }
+
+    var currentBotModel: BotModel? {
+        savedBotModel ?? allBots.first { $0.id == botID }
     }
 
     var currentPersona: PersonaModel? {
@@ -113,12 +123,18 @@ struct ChatView: View {
             ToolbarItem(placement: .principal) {
                 navigationHeaderBar
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("New Chat", systemImage: "square.and.pencil") {
+                    startNewChatTapped()
+                }
+            }
         }
         .onAppear {
             migrateLegacyWallpaperIfNeeded()
             refreshActiveAppearance()
             restoreDraftIfNeeded()
-            if !isManualHistoryLoad && !isPreviewSeeded {
+            if !hasLoadedInitialHistory && !isManualHistoryLoad && !isPreviewSeeded {
+                hasLoadedInitialHistory = true
                 loadHistory()
             }
         }
@@ -135,10 +151,9 @@ struct ChatView: View {
         }
         .onDisappear {
             persistDraftImmediately()
+            guard !showCharacterProfile else { return }
             if isGenerating {
                 stopGeneration()
-            } else {
-                saveChatHistory()
             }
         }
         .onChange(of: isViewingHistory) { _, isViewingHistory in
@@ -204,6 +219,24 @@ struct ChatView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Please select or configure an API endpoint to continue.")
+        }
+        .navigationDestination(isPresented: $showCharacterProfile) {
+            ChatBotProfileView(
+                bot: bot,
+                botModel: currentBotModel,
+                botID: botID,
+                chatAppearanceID: currentChatAppearanceID,
+                currentChatTokenCount: currentChatTokenCount,
+                tokenWindow: currentTokenWindow,
+                personas: personas,
+                currentPersona: currentPersona,
+                globalPersona: globalPersona,
+                hasPersonaOverride: hasChatPersonaOverride,
+                onViewHistory: { isViewingHistory = true },
+                onSelectPersona: setActiveChatPersona,
+                onUseGlobalPersona: clearChatPersonaOverride
+            )
+            .environmentObject(apiManager)
         }
         .navigationDestination(isPresented: $isViewingHistory) {
             ChatHistoryListView(botID: botID, botName: bot.name) { loadSelectedHistory($0) }

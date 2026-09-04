@@ -33,13 +33,8 @@ enum MainPageAPIStatusDisplayStyle: String, CaseIterable, Identifiable {
 struct MainPage: View {
     @State private var showSheetSettings = false
     @State private var showSheetPersona = false
-    @State private var selectedTab = MainPageTab.chats
-    @State private var selectedBot: BotModel? = nil
-    @State private var selectedBotForEdit: BotModel? = nil
-    @State private var navigateToChat = false
-    @State private var showCreatePage = false
-    @State private var showCreateAPIServerSheet = false
-    @State private var showCreatePersonaPage = false
+    @State private var showAPIManagerSheet = false
+    @State private var chatNavigationPath: [MainPageRoute] = []
     @State private var shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
     @State private var botForFolderAssignment: BotModel?
     @State private var draftsByBotID: [UUID: String] = [:]
@@ -199,67 +194,33 @@ struct MainPage: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Chats", systemImage: "bubble.left.and.bubble.right", value: MainPageTab.chats) {
-                NavigationStack {
-                    homePage
-                        .navigationTitle("Echo UI")
-                        .modifier(MainPageAPISubtitleModifier(
-                            isVisible: apiStatusDisplayStyle != .hidden,
-                            subtitle: apiNavigationSubtitle
-                        ))
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                HStack(spacing: 16) {
-                                    Button {
-                                        showSheetPersona = true
-                                    } label: {
-                                        Image(systemName: "person.fill")
-                                    }
-
-                                    Button {
-                                        showSheetSettings = true
-                                    } label: {
-                                        Image(systemName: "gearshape.fill")
-                                    }
-                                }
-                                .padding(5)
-                            }
+        NavigationStack(path: $chatNavigationPath) {
+            homePage
+                .navigationTitle("Echo UI")
+                .modifier(MainPageAPISubtitleModifier(
+                    isVisible: apiStatusDisplayStyle != .hidden,
+                    subtitle: apiNavigationSubtitle
+                ))
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu("Main Menu", systemImage: "line.3.horizontal") {
+                            Button("Settings", systemImage: "gearshape", action: openSettings)
+                            Button("Personas", systemImage: "person.2", action: openPersonas)
+                            Button("New Character", systemImage: "plus", action: createCharacter)
                         }
-                        .navigationDestination(isPresented: $navigateToChat) {
-                            if let bot = selectedBot {
-                                ChatView(bot: bot.asBot())
-                            }
-                        }
-                        .navigationDestination(item: $selectedBotForEdit) { bot in
-                            EditBotView(bot: bot)
-                        }
-                        .navigationDestination(isPresented: $showCreatePage) {
-                            CreateBotView()
-                        }
-                        .navigationDestination(isPresented: $showCreatePersonaPage) {
-                            CreatePersonaView()
-                        }
+                        .labelStyle(.iconOnly)
                     }
-            }
-
-            Tab("API", systemImage: "server.rack", value: MainPageTab.apiSettings) {
-                APIManagerView(
-                    selectedServer: $apiManager.selectedServer,
-                    showsAddButton: false
-                )
-            }
-
-            Tab("Create", systemImage: "plus", value: MainPageTab.createCharacter, role: .search) {
-                Color.clear
-            }
+                }
+                .navigationDestination(for: MainPageRoute.self) { route in
+                    MainPageDestinationView(route: route)
+                }
         }
         .sheet(
             isPresented: $showSheetPersona,
             onDismiss: {
                 if shouldOpenCreatePersonaAfterPersonaSheetDismisses {
                     shouldOpenCreatePersonaAfterPersonaSheetDismisses = false
-                    showCreatePersonaPage = true
+                    chatNavigationPath.append(.createPersona)
                 }
             }
         ) {
@@ -277,8 +238,8 @@ struct MainPage: View {
                 apiStatusDisplayStyle: $apiStatusDisplayStyleRawValue
             )
         }
-        .sheet(isPresented: $showCreateAPIServerSheet) {
-            CreateAPIServerView()
+        .sheet(isPresented: $showAPIManagerSheet) {
+            APIManagerView(selectedServer: $apiManager.selectedServer)
         }
         .sheet(item: $botForFolderAssignment) { bot in
             ChatFolderAssignmentSheet(bot: bot)
@@ -331,20 +292,8 @@ struct MainPage: View {
                 unlockedPrivateFolderID = nil
             }
         }
-        .onChange(of: selectedTab) { previousTab, newTab in
-            guard newTab == .createCharacter else { return }
-
-            switch previousTab {
-            case .apiSettings:
-                selectedTab = .apiSettings
-                showCreateAPIServerSheet = true
-            case .chats, .createCharacter:
-                selectedTab = .chats
-                showCreatePage = true
-            }
-        }
-        .onChange(of: navigateToChat) { _, isNavigating in
-            if !isNavigating {
+        .onChange(of: chatNavigationPath) { _, path in
+            if path.isEmpty {
                 refreshDrafts()
             }
         }
@@ -356,6 +305,23 @@ struct MainPage: View {
             }
         }
     }
+
+    private func openAPISettings() {
+        showAPIManagerSheet = true
+    }
+
+    private func createCharacter() {
+        chatNavigationPath.append(.createCharacter)
+    }
+
+    private func openSettings() {
+        showSheetSettings = true
+    }
+
+    private func openPersonas() {
+        showSheetPersona = true
+    }
+
     private var homePage: some View {
         VStack(spacing: 0) {
             chatList
@@ -371,7 +337,7 @@ struct MainPage: View {
                         .bold()
                     if apiStatusDisplayStyle != .hidden {
                         Button {
-                            selectedTab = .apiSettings
+                            openAPISettings()
                         } label: {
                             HStack(spacing: 6) {
                                 if let apiStatusSymbolName {
@@ -531,8 +497,7 @@ struct MainPage: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            selectedBot = bot
-            navigateToChat = true
+            chatNavigationPath.append(.chat(botID: bot.id))
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             pinButton(for: bot)
@@ -548,7 +513,7 @@ struct MainPage: View {
             }
 
             Button {
-                selectedBotForEdit = bot
+                chatNavigationPath.append(.editCharacter(botID: bot.id))
             } label: {
                 Label("Edit", systemImage: "pencil")
             }

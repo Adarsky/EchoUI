@@ -141,7 +141,9 @@ private struct ChatMessageStack: View {
                     availableWidth: availableWidth,
                     regenerate: actions.regenerate,
                     switchVariant: actions.switchVariant,
-                    onDelete: actions.delete
+                    onEdit: actions.edit,
+                    onDelete: actions.delete,
+                    onBranch: actions.branch
                 )
                 .id(message.id)
                 .onReceive(message.objectWillChange) { _ in

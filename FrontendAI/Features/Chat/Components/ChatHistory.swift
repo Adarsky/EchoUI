@@ -4,6 +4,12 @@ import SwiftData
 @Model
 class ChatHistory {
     @Attribute
+    var historyID: UUID?
+
+    @Attribute
+    var parentHistoryID: UUID?
+
+    @Attribute
     var messages: [ChatMessageEntity]
     
     @Attribute
@@ -22,18 +28,33 @@ class ChatHistory {
     var hasPersonaOverride: Bool = false
 
     init(
+        historyID: UUID = UUID(),
+        parentHistoryID: UUID? = nil,
         messages: [ChatMessageEntity],
         date: Date = .now,
         bot: BotModel,
         personaID: UUID? = nil,
         hasPersonaOverride: Bool = false
     ) {
+        self.historyID = historyID
+        self.parentHistoryID = parentHistoryID
         self.messages = messages
         self.date = date
         self.bot = bot
         self.botID = bot.id
         self.personaID = personaID
         self.hasPersonaOverride = hasPersonaOverride
+    }
+
+    @discardableResult
+    func ensureHistoryID() -> UUID {
+        if let historyID {
+            return historyID
+        }
+
+        let generatedID = UUID()
+        historyID = generatedID
+        return generatedID
     }
 
     var selectionIdentifier: String? {
@@ -83,6 +104,42 @@ class ChatMessageEntity: Identifiable {
 
 enum ChatHistoryPersistence {
     @MainActor
+    static func createBranch(
+        from parent: ChatHistory,
+        throughMessageID messageID: UUID,
+        context: ModelContext
+    ) -> ChatHistory? {
+        let orderedMessages = parent.messages.sorted { $0.index < $1.index }
+        guard
+            let selectedIndex = orderedMessages.firstIndex(where: { $0.id == messageID }),
+            !orderedMessages[selectedIndex].isUser
+        else {
+            return nil
+        }
+
+        let copiedMessages = orderedMessages[...selectedIndex].enumerated().map { index, message in
+            ChatMessageEntity(
+                text: message.text,
+                isUser: message.isUser,
+                index: index,
+                timestamp: message.timestamp,
+                variants: message.variants,
+                currentVariantIndex: message.currentVariantIndex
+            )
+        }
+
+        let branch = ChatHistory(
+            parentHistoryID: parent.ensureHistoryID(),
+            messages: copiedMessages,
+            bot: parent.bot,
+            personaID: parent.personaID,
+            hasPersonaOverride: parent.hasPersonaOverride
+        )
+        context.insert(branch)
+        return branch
+    }
+
+    @MainActor
     static func replaceMessages(
         in history: ChatHistory,
         with messages: [ChatMessageEntity],
@@ -101,6 +158,13 @@ enum ChatHistoryPersistence {
 
     @MainActor
     static func delete(_ history: ChatHistory, context: ModelContext) {
+        if let deletedHistoryID = history.historyID,
+           let allHistories = try? context.fetch(FetchDescriptor<ChatHistory>()) {
+            for child in allHistories where child.parentHistoryID == deletedHistoryID {
+                child.parentHistoryID = nil
+            }
+        }
+
         let messages = history.messages
         context.delete(history)
         for message in messages {

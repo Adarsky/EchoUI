@@ -24,7 +24,9 @@ struct ChatScreenActions {
     struct Messages {
         let regenerate: (ChatMessageModel) -> Void
         let switchVariant: (UUID, Int) -> Void
+        let edit: (UUID) -> Void
         let delete: (UUID) -> Void
+        let branch: (UUID) -> Void
     }
 
     struct Composer {

@@ -36,6 +36,28 @@ final class FrontendAIUITests: XCTestCase {
     }
 
     @MainActor
+    func testRootNavigationActionsRemainUsable() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Echo UI"].waitForExistence(timeout: 3))
+
+        app.buttons["Main Menu"].tap()
+        app.buttons["New Character"].tap()
+        let newCharacterNavigationBar = app.navigationBars["New Character"]
+        XCTAssertTrue(newCharacterNavigationBar.waitForExistence(timeout: 3))
+        newCharacterNavigationBar.buttons.firstMatch.tap()
+
+        XCTAssertTrue(app.navigationBars["Echo UI"].waitForExistence(timeout: 3))
+        app.buttons["Main Menu"].tap()
+        app.buttons["New Character"].tap()
+        XCTAssertTrue(newCharacterNavigationBar.waitForExistence(timeout: 3))
+        newCharacterNavigationBar.buttons.firstMatch.tap()
+
+        XCTAssertTrue(app.navigationBars["Echo UI"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
             measure(metrics: [XCTApplicationLaunchMetric()]) {

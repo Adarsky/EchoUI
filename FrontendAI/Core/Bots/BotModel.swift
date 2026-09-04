@@ -17,6 +17,9 @@ class BotModel {
     var pinnedSortIndex: Int = 0
     var avatarData: Data?
     var greeting: String
+    var modelOverride: String? = nil
+    var modelOverrideServerID: UUID? = nil
+    var thinkingEffortOverrideRawValue: String? = nil
     
     @Transient
     var avatarImage: Image {
@@ -38,7 +41,10 @@ class BotModel {
         isPinned: Bool,
         pinnedSortIndex: Int = 0,
         avatarData: Data? = nil,
-        greeting: String
+        greeting: String,
+        modelOverride: String? = nil,
+        modelOverrideServerID: UUID? = nil,
+        thinkingEffortOverrideRawValue: String? = nil
     ) {
         self.id = id
         self.name = Self.clampedName(name)
@@ -50,6 +56,9 @@ class BotModel {
         self.pinnedSortIndex = pinnedSortIndex
         self.avatarData = avatarData
         self.greeting = greeting
+        self.modelOverride = modelOverride
+        self.modelOverrideServerID = modelOverrideServerID
+        self.thinkingEffortOverrideRawValue = thinkingEffortOverrideRawValue
     }
 
     convenience init(from bot: Bot) {

@@ -9,9 +9,11 @@ struct ChatHistoryListView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
 
     @State private var histories: [ChatHistory] = []
+    @State private var expandedHistoryIDs: Set<UUID> = []
 
     private enum HistoryBucket: String, CaseIterable, Identifiable {
         case last3Days = "Last 3 Days"
@@ -30,6 +32,14 @@ struct ChatHistoryListView: View {
         var title: String { bucket.rawValue }
     }
 
+    private struct HistoryTreeEntry: Identifiable {
+        let history: ChatHistory
+        let depth: Int
+        let directBranchCount: Int
+
+        var id: PersistentIdentifier { history.persistentModelID }
+    }
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -41,43 +51,26 @@ struct ChatHistoryListView: View {
                     LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
                         ForEach(sectionedHistories) { section in
                             Section {
-                                ForEach(section.items) { history in
-                                    Button {
-                                        onSelectHistory?(history)
-                                        dismiss()
-                                    } label: {
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            lastMessagePreview(for: history)
-                                                .font(.body)
-                                                .lineLimit(2)
-                                            HStack {
-                                                Text("\(history.messages.count) messages")
-                                                    .foregroundColor(.gray)
-                                                    .font(.system(.caption, design: .monospaced))
-                                                Spacer()
-                                                Text(displayDate(for: history).formatted(date: .numeric, time: .shortened))
-                                                    .font(.system(.caption, design: .monospaced))
-                                                    .foregroundColor(.secondary)
-                                            }
+                                ForEach(historyTreeEntries(startingWith: section.items)) { entry in
+                                    ChatHistoryRowView(
+                                        history: entry.history,
+                                        botName: botName,
+                                        depth: entry.depth,
+                                        directBranchCount: entry.directBranchCount,
+                                        isExpanded: isExpanded(entry.history),
+                                        onSelect: {
+                                            onSelectHistory?(entry.history)
+                                            dismiss()
+                                        },
+                                        onToggleExpansion: {
+                                            toggleExpansion(for: entry.history)
+                                        },
+                                        onDelete: {
+                                            deleteHistory(entry.history)
                                         }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 18)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                                .fill(Color(.gray).opacity(0.1))
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
+                                    )
                                     .padding(.horizontal, 16)
                                     .padding(.top, 4)
-                                    .contextMenu {
-                                        Button(role: .destructive) {
-                                            deleteHistory(history)
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
                                 }
                             } header: {
                                 HStack {
@@ -149,14 +142,93 @@ struct ChatHistoryListView: View {
             grouped[bucket] = []
         }
 
-        for history in histories {
+        for history in rootHistories {
             let bucket = bucket(for: displayDate(for: history))
             grouped[bucket, default: []].append(history)
         }
 
         return HistoryBucket.allCases.compactMap { bucket in
             guard let items = grouped[bucket], !items.isEmpty else { return nil }
-            return SectionGroup(bucket: bucket, items: items)
+            return SectionGroup(
+                bucket: bucket,
+                items: items.sorted { displayDate(for: $0) > displayDate(for: $1) }
+            )
+        }
+    }
+
+    private var rootHistories: [ChatHistory] {
+        let knownHistoryIDs = Set(histories.compactMap(\.historyID))
+        return histories.filter { history in
+            guard let parentHistoryID = history.parentHistoryID else { return true }
+            return !knownHistoryIDs.contains(parentHistoryID)
+        }
+    }
+
+    private func historyTreeEntries(startingWith roots: [ChatHistory]) -> [HistoryTreeEntry] {
+        var entries: [HistoryTreeEntry] = []
+        var visited: Set<PersistentIdentifier> = []
+
+        for root in roots {
+            appendHistoryTree(
+                root,
+                depth: 0,
+                visited: &visited,
+                entries: &entries
+            )
+        }
+
+        return entries
+    }
+
+    private func appendHistoryTree(
+        _ history: ChatHistory,
+        depth: Int,
+        visited: inout Set<PersistentIdentifier>,
+        entries: inout [HistoryTreeEntry]
+    ) {
+        guard visited.insert(history.persistentModelID).inserted else { return }
+
+        let branches = directBranches(of: history)
+        entries.append(
+            HistoryTreeEntry(
+                history: history,
+                depth: depth,
+                directBranchCount: branches.count
+            )
+        )
+
+        guard isExpanded(history) else { return }
+        for branch in branches {
+            appendHistoryTree(
+                branch,
+                depth: depth + 1,
+                visited: &visited,
+                entries: &entries
+            )
+        }
+    }
+
+    private func directBranches(of history: ChatHistory) -> [ChatHistory] {
+        guard let historyID = history.historyID else { return [] }
+        return histories
+            .filter { $0.parentHistoryID == historyID }
+            .sorted { displayDate(for: $0) > displayDate(for: $1) }
+    }
+
+    private func isExpanded(_ history: ChatHistory) -> Bool {
+        guard let historyID = history.historyID else { return false }
+        return expandedHistoryIDs.contains(historyID)
+    }
+
+    private func toggleExpansion(for history: ChatHistory) {
+        guard let historyID = history.historyID else { return }
+
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+            if expandedHistoryIDs.contains(historyID) {
+                expandedHistoryIDs.remove(historyID)
+            } else {
+                expandedHistoryIDs.insert(historyID)
+            }
         }
     }
 
@@ -196,25 +268,6 @@ struct ChatHistoryListView: View {
         }
     }
     
-    private func lastMessagePreview(for history: ChatHistory) -> Text {
-        guard let last = history.messages
-            .sorted(by: { $0.index < $1.index })
-            .last
-        else {
-            return Text("Empty chat")
-        }
-
-        let prefix = last.isUser ? "You: " : "\(botName): "
-        let previewText = truncatedPreviewText(prefix: prefix, message: last.displayText)
-        return Text("\(Text(prefix).fontWeight(.semibold))\(Text(previewText))")
-    }
-
-    private func truncatedPreviewText(prefix: String, message: String) -> String {
-        let maxLength = 80
-        let availableMessageLength = max(0, maxLength - prefix.count)
-        guard message.count > availableMessageLength else { return message }
-        return String(message.prefix(availableMessageLength)) + "…"
-    }
 }
 
 #Preview("Temple Chats") {

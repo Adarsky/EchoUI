@@ -30,6 +30,7 @@ enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
     case medium
     case high
     case xhigh
+    case max
 
     var id: String { rawValue }
 
@@ -45,6 +46,8 @@ enum APIThinkingEffort: String, Codable, CaseIterable, Identifiable, Sendable {
             return "High"
         case .xhigh:
             return "XHigh"
+        case .max:
+            return "Max"
         }
     }
 
@@ -226,6 +229,22 @@ enum APIAuthorization {
     }
 }
 
+private enum APIKeychainStoreError: LocalizedError {
+    case invalidCredentialData
+    case operationFailed(operation: String, status: OSStatus)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidCredentialData:
+            return "The saved API key could not be read."
+        case let .operationFailed(operation, status):
+            let detail = SecCopyErrorMessageString(status, nil).map { $0 as String }
+                ?? "OSStatus \(status)"
+            return "\(operation) failed: \(detail)"
+        }
+    }
+}
+
 private enum APIKeychainStore {
     private static let service = (Bundle.main.bundleIdentifier ?? "com.frontendai.app") + ".api-keys"
 
@@ -238,18 +257,28 @@ private enum APIKeychainStore {
     }
 
     static func loadAPIKey(for uuid: UUID) -> String? {
+        try? loadAPIKeyThrowing(for: uuid)
+    }
+
+    static func loadAPIKeyThrowing(for uuid: UUID) throws -> String? {
         var query = baseQuery(for: uuid)
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         query[kSecReturnData as String] = true
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard
-            status == errSecSuccess,
-            let data = item as? Data,
-            let key = String(data: data, encoding: .utf8)
-        else {
+        if status == errSecItemNotFound {
             return nil
+        }
+        guard status == errSecSuccess else {
+            throw APIKeychainStoreError.operationFailed(
+                operation: "Reading the API key",
+                status: status
+            )
+        }
+        guard let data = item as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            throw APIKeychainStoreError.invalidCredentialData
         }
 
         let normalized = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -257,9 +286,13 @@ private enum APIKeychainStore {
     }
 
     static func saveAPIKey(_ rawKey: String, for uuid: UUID) {
+        try? saveAPIKeyThrowing(rawKey, for: uuid)
+    }
+
+    static func saveAPIKeyThrowing(_ rawKey: String, for uuid: UUID) throws {
         let normalized = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else {
-            deleteAPIKey(for: uuid)
+            try deleteAPIKeyThrowing(for: uuid)
             return
         }
 
@@ -273,18 +306,37 @@ private enum APIKeychainStore {
         if updateStatus == errSecSuccess {
             return
         }
-        if updateStatus != errSecItemNotFound {
-            _ = SecItemDelete(query as CFDictionary)
+        guard updateStatus == errSecItemNotFound else {
+            throw APIKeychainStoreError.operationFailed(
+                operation: "Updating the API key",
+                status: updateStatus
+            )
         }
 
         var insertItem = query
         insertItem[kSecValueData as String] = data
         insertItem[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        _ = SecItemAdd(insertItem as CFDictionary, nil)
+        let insertStatus = SecItemAdd(insertItem as CFDictionary, nil)
+        guard insertStatus == errSecSuccess else {
+            throw APIKeychainStoreError.operationFailed(
+                operation: "Saving the API key",
+                status: insertStatus
+            )
+        }
     }
 
     static func deleteAPIKey(for uuid: UUID) {
-        _ = SecItemDelete(baseQuery(for: uuid) as CFDictionary)
+        try? deleteAPIKeyThrowing(for: uuid)
+    }
+
+    static func deleteAPIKeyThrowing(for uuid: UUID) throws {
+        let status = SecItemDelete(baseQuery(for: uuid) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw APIKeychainStoreError.operationFailed(
+                operation: "Deleting the API key",
+                status: status
+            )
+        }
     }
 }
 
@@ -544,6 +596,8 @@ private final class TLSSessionDelegate: NSObject, URLSessionDelegate, URLSession
 
 @Model
 final class APIServer {
+    static let maximumNameLength = 24
+
     @Attribute(.unique) var uuid: UUID
     var name: String
     var baseURL: String
@@ -557,6 +611,8 @@ final class APIServer {
     var customCACertificateData: Data? = nil
     var customCACertificateName: String? = nil
     var thinkingEffortRawValue: String = APIThinkingEffort.defaultValue.rawValue
+    var isPinned: Bool = false
+    var sortOrder: Int = Int.max
     
     init(
         uuid: UUID = UUID(),
@@ -571,7 +627,9 @@ final class APIServer {
         allowInsecureTLS: Bool = false,
         customCACertificateData: Data? = nil,
         customCACertificateName: String? = nil,
-        thinkingEffort: APIThinkingEffort = .defaultValue
+        thinkingEffort: APIThinkingEffort = .defaultValue,
+        isPinned: Bool = false,
+        sortOrder: Int = Int.max
     ) {
         self.uuid = uuid
         self.name = name
@@ -583,11 +641,15 @@ final class APIServer {
         self.persistedConnectionStatus = resolvedStatus
         self.isOnline = resolvedStatus == .online
         self.legacyAPIKeyStorage = nil
-        self.apiKey = apiKey
+        if let apiKey {
+            self.apiKey = apiKey
+        }
         self.allowInsecureTLS = allowInsecureTLS
         self.customCACertificateData = customCACertificateData
         self.customCACertificateName = customCACertificateName
         self.thinkingEffort = thinkingEffort
+        self.isPinned = isPinned
+        self.sortOrder = sortOrder
     }
 }
 
@@ -607,13 +669,21 @@ extension APIServer {
             return APIKeychainStore.loadAPIKey(for: uuid)
         }
         set {
-            if let newValue {
-                APIKeychainStore.saveAPIKey(newValue, for: uuid)
-            } else {
-                APIKeychainStore.deleteAPIKey(for: uuid)
-            }
-            legacyAPIKeyStorage = nil
+            try? setAPIKeyInKeychain(newValue)
         }
+    }
+
+    func readAPIKeyFromKeychain() throws -> String? {
+        try APIKeychainStore.loadAPIKeyThrowing(for: uuid)
+    }
+
+    func setAPIKeyInKeychain(_ newValue: String?) throws {
+        if let newValue {
+            try APIKeychainStore.saveAPIKeyThrowing(newValue, for: uuid)
+        } else {
+            try APIKeychainStore.deleteAPIKeyThrowing(for: uuid)
+        }
+        legacyAPIKeyStorage = nil
     }
 
     var thinkingEffort: APIThinkingEffort {
@@ -627,11 +697,17 @@ extension APIServer {
 
     @discardableResult
     func migrateAPIKeyToKeychainIfNeeded() -> Bool {
+        (try? migrateAPIKeyToKeychain()) ?? false
+    }
+
+    @discardableResult
+    func migrateAPIKeyToKeychain() throws -> Bool {
         guard let legacy = legacyAPIKeyStorage else { return false }
         let normalized = legacy.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if !normalized.isEmpty, APIKeychainStore.loadAPIKey(for: uuid) == nil {
-            APIKeychainStore.saveAPIKey(normalized, for: uuid)
+        if !normalized.isEmpty,
+           try APIKeychainStore.loadAPIKeyThrowing(for: uuid) == nil {
+            try APIKeychainStore.saveAPIKeyThrowing(normalized, for: uuid)
         }
 
         legacyAPIKeyStorage = nil
@@ -650,5 +726,25 @@ extension APIServer {
     func updateConnectionStatus(_ status: APIConnectionStatus) {
         connectionStatus = status
         isOnline = status == .online
+    }
+
+    /// Creates a detached copy of this configuration with no keychain write.
+    /// Use `APIServerCloner` when the clone should be inserted and its API key copied.
+    func makeConfigurationClone(name: String, sortOrder: Int) -> APIServer {
+        APIServer(
+            name: name,
+            baseURL: baseURL,
+            selectedModel: selectedModel,
+            availableModels: availableModels,
+            type: type,
+            connectionStatus: .offline,
+            apiKey: nil,
+            allowInsecureTLS: allowInsecureTLS,
+            customCACertificateData: customCACertificateData,
+            customCACertificateName: customCACertificateName,
+            thinkingEffort: thinkingEffort,
+            isPinned: isPinned,
+            sortOrder: sortOrder
+        )
     }
 }

@@ -35,16 +35,22 @@ extension ChatView {
             let config = ServerConfig(
                 type: server.type,
                 baseURL: server.baseURL,
-                selectedModel: server.selectedModel,
+                selectedModel: CharacterGenerationSettings.resolvedModel(
+                    for: currentBotModel,
+                    server: server
+                ),
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
                 customCACertificateData: server.customCACertificateData,
-                thinkingEffort: ChatThinkingEffortStore.resolvedEffort(botID: botID, server: server)
+                thinkingEffort: CharacterGenerationSettings.resolvedThinkingEffort(
+                    for: currentBotModel,
+                    botID: botID,
+                    server: server
+                )
             )
 
             let userMessage = ChatMessageModel(content: submittedText, isUser: true)
             withTransaction(.init(animation: nil)) { messages.append(userMessage) }
-            trimMessagesIfNeeded()
             inputText = ""
             clearSavedDraft()
 
@@ -81,11 +87,18 @@ extension ChatView {
             let config = ServerConfig(
                 type: server.type,
                 baseURL: server.baseURL,
-                selectedModel: server.selectedModel,
+                selectedModel: CharacterGenerationSettings.resolvedModel(
+                    for: currentBotModel,
+                    server: server
+                ),
                 apiKey: server.apiKey,
                 allowInsecureTLS: server.allowInsecureTLS,
                 customCACertificateData: server.customCACertificateData,
-                thinkingEffort: ChatThinkingEffortStore.resolvedEffort(botID: botID, server: server)
+                thinkingEffort: CharacterGenerationSettings.resolvedThinkingEffort(
+                    for: currentBotModel,
+                    botID: botID,
+                    server: server
+                )
             )
             guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return }
 
@@ -271,8 +284,17 @@ extension ChatView {
         // MARK: - Payload builder
         private func buildPayload(upTo limit: Int? = nil, dummyUser: Bool = false) -> [ChatPayloadMessage] {
             let systemPrompt = currentSystemPrompt
-            let greeting = bot.greeting
-            let hasGreeting = messages.contains { !$0.isUser && $0.content == greeting }
+            let greeting = currentGreeting
+            let messagesBeforeReply: ArraySlice<ChatMessageModel>
+            if let limit {
+                messagesBeforeReply = messages.prefix(upTo: limit)
+            } else {
+                messagesBeforeReply = messages[...]
+            }
+            let contextMessages = messagesBeforeReply.suffix(maxContextMessages)
+            let hasGreeting = contextMessages.contains {
+                !$0.isUser && CharacterTextFormatting.normalized($0.content) == greeting
+            }
 
             var payload: [ChatPayloadMessage] = []
 
@@ -280,12 +302,11 @@ extension ChatView {
                 payload.append(.init(role: "system", content: systemPrompt))
             }
             if dummyUser { payload.append(.init(role: "user", content: ".")) }
-            if !hasGreeting { payload.append(.init(role: "assistant", content: greeting)) }
+            if !greeting.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !hasGreeting {
+                payload.append(.init(role: "assistant", content: greeting))
+            }
 
-            let slice: [ChatMessageModel] = {
-                if let limit { Array(messages.prefix(upTo: limit)) } else { messages }
-            }()
-            payload += slice.compactMap { message in
+            payload += contextMessages.compactMap { message in
                 guard let content = message.contentForConversation else { return nil }
                 return ChatPayloadMessage(
                     role: message.isUser ? "user" : "assistant",
@@ -294,12 +315,5 @@ extension ChatView {
             }
 
             return payload
-        }
-
-        // MARK: - Utils
-        private func trimMessagesIfNeeded() {
-            if messages.count > maxVisibleMessages {
-                messages.removeFirst(messages.count - maxVisibleMessages)
-            }
         }
 }

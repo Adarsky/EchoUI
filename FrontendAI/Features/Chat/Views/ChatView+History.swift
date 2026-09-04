@@ -26,7 +26,7 @@ extension ChatView {
                     } else {
                         chatPersonaID = nil
                         hasChatPersonaOverride = false
-                        messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
+                        messages.append(ChatMessageModel(content: currentGreeting, isUser: false))
                         refreshActiveAppearance()
                     }
                 } catch {
@@ -99,6 +99,48 @@ extension ChatView {
                 alertMessage = "Could not save this chat. Your current messages remain open so you can try again."
                 showAlertBanner = true
             }
+        }
+
+        @MainActor
+        func branchChat(at messageID: UUID) {
+            guard !isGenerating else { return }
+            guard let selectedMessage = messages.first(where: { $0.id == messageID }),
+                  !selectedMessage.isUser else {
+                return
+            }
+
+            if savedBotModel == nil {
+                savedBotModel = allBots.first(where: { $0.id == botID })
+            }
+            saveChatHistory()
+
+            guard let parent = currentHistory,
+                  let branch = ChatHistoryPersistence.createBranch(
+                    from: parent,
+                    throughMessageID: messageID,
+                    context: modelContext
+                  ) else {
+                alertMessage = "Could not branch this chat. Please wait for the message to finish and try again."
+                showAlertBanner = true
+                return
+            }
+
+            do {
+                try modelContext.save()
+            } catch {
+                ChatHistoryPersistence.delete(branch, context: modelContext)
+                alertMessage = "Could not save the new chat branch. The original chat is unchanged."
+                showAlertBanner = true
+                return
+            }
+
+            resetInitialMessagePositioning()
+            currentHistory = branch
+            applyPersonaOverride(from: branch)
+            rememberOpenedHistory(branch)
+            messages = restoredMessages(from: branch)
+            isManualHistoryLoad = true
+            refreshActiveAppearance()
         }
 
         @MainActor

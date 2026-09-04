@@ -38,8 +38,10 @@ struct CreateAPIServerView: View {
     @State private var openRouterModelAlertMessage: String = ""
     @State private var showOpenRouterModelSearch: Bool = false
     @State private var openRouterModelSearchText: String = ""
+    @State private var showServerSaveError: Bool = false
+    @State private var serverSaveErrorMessage: String = ""
 
-    private let maxServerNameLength = 24
+    private let maxServerNameLength = APIServer.maximumNameLength
 
     var editingServer: APIServer? = nil
 
@@ -120,6 +122,11 @@ struct CreateAPIServerView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(openRouterModelAlertMessage)
+        }
+        .alert("Could Not Save API Server", isPresented: $showServerSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(serverSaveErrorMessage)
         }
         .fullScreenCover(isPresented: $showOpenRouterModelSearch) {
             OpenRouterModelSearchView(
@@ -232,7 +239,7 @@ struct CreateAPIServerView: View {
                     Text(effort.displayName).tag(effort)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
         }
     }
 
@@ -359,13 +366,17 @@ struct CreateAPIServerView: View {
     }
 
     private var thinkingEffortFooterText: String {
+        if selectedThinkingEffort == .max {
+            return "Be careful, not all models support this parameter."
+        }
+
         if let selectedOpenRouterModel {
             if selectedOpenRouterModel.supportsReasoningEffort {
                 return "This OpenRouter model advertises reasoning support. Effort is sent as reasoning.effort."
             }
             return "OpenRouter will apply or map reasoning.effort when the selected provider supports it."
         }
-        return "OpenRouter accepts none, low, medium, high and xhigh effort values."
+        return "OpenRouter accepts none, low, medium, high, xhigh and max effort values."
     }
 
     private var hasOpenRouterModelQuery: Bool {
@@ -482,35 +493,110 @@ struct CreateAPIServerView: View {
 
         let modelsToPersist = isOpenRouter ? openRouterModels.map(\.id) : availableModels
 
-        if let server = editingServer {
-            server.name = normalizedName
-            server.baseURL = normalizedBaseURL
-            server.selectedModel = normalizedModel
-            server.availableModels = modelsToPersist
-            server.type = selectedType
-            server.apiKey = normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
-            server.allowInsecureTLS = effectiveAllowInsecureTLS
-            server.customCACertificateData = effectiveCustomCACertificateData
-            server.customCACertificateName = effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName
-            server.thinkingEffort = selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
-        } else {
-            let newServer = APIServer(
-                name: normalizedName,
-                baseURL: normalizedBaseURL,
-                selectedModel: normalizedModel,
-                availableModels: modelsToPersist,
-                type: selectedType,
-                apiKey: normalizedAPIKey.isEmpty ? nil : normalizedAPIKey,
-                allowInsecureTLS: effectiveAllowInsecureTLS,
-                customCACertificateData: effectiveCustomCACertificateData,
-                customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName,
-                thinkingEffort: selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
-            )
-            modelContext.insert(newServer)
-        }
+        let requestedAPIKey = normalizedAPIKey.isEmpty ? nil : normalizedAPIKey
 
-        try? modelContext.save()
-        dismiss()
+        do {
+            if let server = editingServer {
+                let previousAPIKey = try server.readAPIKeyFromKeychain()
+                try server.setAPIKeyInKeychain(requestedAPIKey)
+                applyFormValues(
+                    to: server,
+                    name: normalizedName,
+                    baseURL: normalizedBaseURL,
+                    model: normalizedModel,
+                    availableModels: modelsToPersist
+                )
+
+                do {
+                    try modelContext.save()
+                } catch {
+                    let persistenceError = error
+                    modelContext.rollback()
+                    do {
+                        try server.setAPIKeyInKeychain(previousAPIKey)
+                    } catch {
+                        presentSaveError(
+                            persistenceError,
+                            recoveryMessage: "The previous API key could not be restored: \(error.localizedDescription)"
+                        )
+                        return
+                    }
+                    throw persistenceError
+                }
+            } else {
+                let newServer = APIServer(
+                    name: normalizedName,
+                    baseURL: normalizedBaseURL,
+                    selectedModel: normalizedModel,
+                    availableModels: modelsToPersist,
+                    type: selectedType,
+                    allowInsecureTLS: effectiveAllowInsecureTLS,
+                    customCACertificateData: effectiveCustomCACertificateData,
+                    customCACertificateName: effectiveCustomCACertificateName.isEmpty ? nil : effectiveCustomCACertificateName,
+                    thinkingEffort: selectedType == .openrouter ? selectedThinkingEffort : .defaultValue
+                )
+
+                modelContext.insert(newServer)
+                do {
+                    try modelContext.save()
+                } catch {
+                    modelContext.rollback()
+                    throw error
+                }
+
+                if let requestedAPIKey {
+                    do {
+                        try newServer.setAPIKeyInKeychain(requestedAPIKey)
+                    } catch {
+                        let credentialError = error
+                        modelContext.delete(newServer)
+                        do {
+                            try modelContext.save()
+                        } catch {
+                            presentSaveError(
+                                credentialError,
+                                recoveryMessage: "The incomplete server configuration could not be removed: \(error.localizedDescription)"
+                            )
+                            return
+                        }
+                        throw credentialError
+                    }
+                }
+            }
+
+            dismiss()
+        } catch {
+            presentSaveError(error)
+        }
+    }
+
+    private func applyFormValues(
+        to server: APIServer,
+        name: String,
+        baseURL: String,
+        model: String,
+        availableModels: [String]
+    ) {
+        server.name = name
+        server.baseURL = baseURL
+        server.selectedModel = model
+        server.availableModels = availableModels
+        server.type = selectedType
+        server.allowInsecureTLS = effectiveAllowInsecureTLS
+        server.customCACertificateData = effectiveCustomCACertificateData
+        server.customCACertificateName = effectiveCustomCACertificateName.isEmpty
+            ? nil
+            : effectiveCustomCACertificateName
+        server.thinkingEffort = selectedType == .openrouter
+            ? selectedThinkingEffort
+            : .defaultValue
+    }
+
+    private func presentSaveError(_ error: Error, recoveryMessage: String? = nil) {
+        serverSaveErrorMessage = [error.localizedDescription, recoveryMessage]
+            .compactMap { $0 }
+            .joined(separator: "\n\n")
+        showServerSaveError = true
     }
 
     private func requestFetchModels() {

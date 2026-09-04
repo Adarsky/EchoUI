@@ -5,31 +5,8 @@
 //  Created by macbook on 10.05.2026.
 //
 
-import SwiftUI
 import SwiftData
-
-enum ChatThinkingEffortStore {
-    static func resolvedEffort(botID: UUID?, server: APIServer, defaults: UserDefaults = .standard) -> APIThinkingEffort {
-        guard let key = overrideKey(botID: botID, serverID: server.uuid),
-              let rawValue = defaults.string(forKey: key) else {
-            return server.thinkingEffort
-        }
-        return APIThinkingEffort.value(from: rawValue)
-    }
-
-    static func save(_ effort: APIThinkingEffort, botID: UUID?, server: APIServer, defaults: UserDefaults = .standard) {
-        guard let key = overrideKey(botID: botID, serverID: server.uuid) else {
-            server.thinkingEffort = effort
-            return
-        }
-        defaults.set(effort.rawValue, forKey: key)
-    }
-
-    private static func overrideKey(botID: UUID?, serverID: UUID) -> String? {
-        guard let botID else { return nil }
-        return "chatThinkingEffort.\(botID.uuidString.lowercased()).\(serverID.uuidString.lowercased())"
-    }
-}
+import SwiftUI
 
 struct SettingsChatView: View {
     let botID: UUID?
@@ -38,6 +15,7 @@ struct SettingsChatView: View {
 
     @EnvironmentObject private var apiManager: APIManager
     @Environment(\.modelContext) private var modelContext
+    @Query private var bots: [BotModel]
 
     init(botID: UUID? = nil, botName: String? = nil, chatID: String? = nil) {
         self.botID = botID
@@ -64,7 +42,11 @@ struct SettingsChatView: View {
 
     private var selectedThinkingEffort: APIThinkingEffort {
         guard let selectedServer else { return .defaultValue }
-        return ChatThinkingEffortStore.resolvedEffort(botID: botID, server: selectedServer)
+        return CharacterGenerationSettings.resolvedThinkingEffort(
+            for: currentBotModel,
+            botID: botID,
+            server: selectedServer
+        )
     }
 
     private var thinkingEffortBinding: Binding<APIThinkingEffort> {
@@ -72,10 +54,24 @@ struct SettingsChatView: View {
             get: { selectedThinkingEffort },
             set: { newValue in
                 guard let selectedServer else { return }
-                ChatThinkingEffortStore.save(newValue, botID: botID, server: selectedServer)
+                if botID != nil {
+                    guard let currentBotModel else { return }
+                    CharacterGenerationSettings.setThinkingEffortOverride(
+                        newValue,
+                        for: currentBotModel,
+                        server: selectedServer
+                    )
+                } else {
+                    selectedServer.thinkingEffort = newValue
+                }
                 try? modelContext.save()
             }
         )
+    }
+
+    private var currentBotModel: BotModel? {
+        guard let botID else { return nil }
+        return bots.first { $0.id == botID }
     }
 
     private var modelSettingsFooter: String {
@@ -88,7 +84,10 @@ struct SettingsChatView: View {
         guard botID != nil else {
             return "Without a character context, this updates the selected OpenRouter server default."
         }
-        return "This thinking effort is saved for \(botName ?? "this character") on \(server.name)."
+        if selectedThinkingEffort == .max {
+            return "Be careful, not all models support this parameter."
+        }
+        return "This thinking effort is saved for \(botName ?? "this character")."
     }
 
     private var selectedEndpointText: String {
@@ -108,7 +107,7 @@ struct SettingsChatView: View {
         }
     }
 
-    private var appearanceSettingsSection: some View {
+    public var appearanceSettingsSection: some View {
         Section("Appearance Settings") {
             NavigationLink {
                 ChatAppearanceSettingsView(
@@ -129,7 +128,7 @@ struct SettingsChatView: View {
             NavigationLink {
                 InputBarSettings()
             } label: {
-                Label("Input Bar Appearance", systemImage: "paperplane.fill")
+                Label("Input Bar Appearance", systemImage: "arrow.up")
             }
         }
     }
@@ -145,7 +144,7 @@ struct SettingsChatView: View {
                         Text(effort.displayName).tag(effort)
                     }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
             } else if selectedServer != nil {
                 Label("Thinking effort requires OpenRouter.", systemImage: "brain")
                     .font(.subheadline)
@@ -179,7 +178,7 @@ struct SettingsChatView: View {
                             .background(Circle().fill(Color.accentColor))
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(selectedServer.selectedModel.isEmpty ? "No model selected" : selectedServer.selectedModel)
+                            Text(selectedModelName)
                                 .font(.headline)
                                 .lineLimit(2)
                             Text(botName ?? "Global chat defaults")
@@ -205,6 +204,15 @@ struct SettingsChatView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var selectedModelName: String {
+        guard let selectedServer else { return "No model selected" }
+        let model = CharacterGenerationSettings.resolvedModel(
+            for: currentBotModel,
+            server: selectedServer
+        )
+        return model.isEmpty ? "No model selected" : model
     }
 }
 

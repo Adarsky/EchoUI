@@ -34,7 +34,9 @@ extension ChatView {
             messages: ChatScreenActions.Messages(
                 regenerate: regenerateMessage,
                 switchVariant: switchVariant,
-                delete: deleteMessage
+                edit: { _ in saveChatHistory() },
+                delete: deleteMessage,
+                branch: branchChat
             ),
             composer: ChatScreenActions.Composer(
                 send: sendMessage,
@@ -46,21 +48,8 @@ extension ChatView {
     var navigationHeaderBar: some View {
         ChatHeaderBar(
             bot: bot,
-            botID: botID,
-            chatAppearanceID: currentChatAppearanceID,
-            currentChatTokenCount: currentChatTokenCount,
-            tokenWindow: currentTokenWindow,
-            personas: personas,
-            currentPersona: currentPersona,
-            globalPersona: globalPersona,
-            hasPersonaOverride: hasChatPersonaOverride,
-            showChatBotSheet: $showChatBotSheet,
-            isViewingHistory: $isViewingHistory,
-            onNewChat: startNewChatTapped,
-            onSelectPersona: setActiveChatPersona,
-            onUseGlobalPersona: clearChatPersonaOverride
+            showCharacterProfile: $showCharacterProfile
         )
-        .environmentObject(apiManager)
         .frame(maxWidth: 280)
     }
 
@@ -116,8 +105,11 @@ extension ChatView {
 
     var currentChatTokenCount: Int {
         let systemPromptTokens = TokenUsageEstimator.estimatedTokenCount(for: currentSystemPrompt)
-        let messageTokens = messages.reduce(0) { $0 + TokenUsageEstimator.estimatedTokenCount(for: $1) }
-        let greetingTokens = shouldInjectGreetingIntoPayload ? TokenUsageEstimator.estimatedTokenCount(for: bot.greeting) : 0
+        let contextMessages = messages.suffix(maxContextMessages)
+        let messageTokens = contextMessages.reduce(0) {
+            $0 + TokenUsageEstimator.estimatedTokenCount(for: $1)
+        }
+        let greetingTokens = shouldInjectGreetingIntoPayload ? TokenUsageEstimator.estimatedTokenCount(for: currentGreeting) : 0
 
         return systemPromptTokens + greetingTokens + messageTokens
     }
@@ -130,7 +122,10 @@ extension ChatView {
             return nil
         }
 
-        let selectedModelID = selectedServer.selectedModel
+        let selectedModelID = CharacterGenerationSettings.resolvedModel(
+            for: currentBotModel,
+            server: selectedServer
+        )
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         guard !selectedModelID.isEmpty else { return nil }
@@ -142,8 +137,10 @@ extension ChatView {
     }
 
     private var shouldInjectGreetingIntoPayload: Bool {
-        !bot.greeting.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !messages.contains { !$0.isUser && $0.content == bot.greeting }
+        !currentGreeting.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !messages.suffix(maxContextMessages).contains {
+                !$0.isUser && CharacterTextFormatting.normalized($0.content) == currentGreeting
+            }
     }
 
     @MainActor
@@ -179,7 +176,7 @@ extension ChatView {
         currentHistory = nil
         chatPersonaID = persona?.id
         self.hasChatPersonaOverride = hasPersonaOverride
-        messages.append(ChatMessageModel(content: bot.greeting, isUser: false))
+        messages.append(ChatMessageModel(content: currentGreeting, isUser: false))
         refreshActiveAppearance()
     }
 

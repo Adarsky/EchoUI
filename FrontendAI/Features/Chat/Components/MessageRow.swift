@@ -6,7 +6,9 @@ struct MessageRow: View {
 
     let regenerate: (ChatMessageModel) -> Void
     let switchVariant: (UUID, Int) -> Void
+    let onEdit: (UUID) -> Void
     let onDelete: (UUID) -> Void
+    let onBranch: ((UUID) -> Void)?
     let availableWidth: CGFloat
     @Environment(\.chatAppearance) private var chatAppearance
     @Environment(\.isGenerating) private var isGenerating
@@ -29,13 +31,17 @@ struct MessageRow: View {
         availableWidth: CGFloat = 390,
         regenerate: @escaping (ChatMessageModel) -> Void,
         switchVariant: @escaping (UUID, Int) -> Void,
-        onDelete: @escaping (UUID) -> Void
+        onEdit: @escaping (UUID) -> Void = { _ in },
+        onDelete: @escaping (UUID) -> Void,
+        onBranch: ((UUID) -> Void)? = nil
     ) {
         self.msg = msg
         self.availableWidth = max(1, availableWidth)
         self.regenerate = regenerate
         self.switchVariant = switchVariant
+        self.onEdit = onEdit
         self.onDelete = onDelete
+        self.onBranch = onBranch
     }
 
     var body: some View {
@@ -83,6 +89,15 @@ struct MessageRow: View {
                                 Label("Edit", systemImage: "pencil")
                             }
 
+                            if !msg.isUser, let onBranch {
+                                Button {
+                                    onBranch(msg.id)
+                                } label: {
+                                    Label("Branch to New Chat", systemImage: "arrow.triangle.branch")
+                                }
+                                .disabled(isGenerating || msg.isStreaming)
+                            }
+
                             Button(role: .destructive, action: presentDeleteConfirmation) {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -99,6 +114,15 @@ struct MessageRow: View {
                     .frame(maxWidth: maxBubbleWidth(for: false), alignment: .leading)
                     .transition(ErrorMessage.appearanceTransition(reduceMotion: reduceMotion))
                     .contextMenu {
+                        if let onBranch {
+                            Button {
+                                onBranch(msg.id)
+                            } label: {
+                                Label("Branch to New Chat", systemImage: "arrow.triangle.branch")
+                            }
+                            .disabled(isGenerating || msg.isStreaming)
+                        }
+
                         Button(role: .destructive, action: presentDeleteConfirmation) {
                             Label("Delete", systemImage: "trash")
                         }
@@ -170,6 +194,7 @@ struct MessageRow: View {
                 onSave: { newText in
                     Task { @MainActor in
                         msg.replaceCurrentVariant(with: newText)
+                        onEdit(msg.id)
                     }
                 }
             )
