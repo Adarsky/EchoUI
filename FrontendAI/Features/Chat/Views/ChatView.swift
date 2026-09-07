@@ -25,8 +25,7 @@ struct ChatView: View {
     @State var hasRestoredDraft = false
     @State var hasLoadedInitialHistory = false
 
-    @State var alertMessage: String?
-    @State var showAlertBanner = false
+    @State var notification: ChatNotification?
     @State var showMissingAPIAlert = false
     @State var openSettings = false
     @State var showPersonaPickerForNewChat = false
@@ -92,25 +91,13 @@ struct ChatView: View {
         ZStack {
             chatBackground
 
-            if showAlertBanner, let alertMessage {
-                VStack {
-                    Text(alertMessage)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.red.opacity(0.9))
-                        .cornerRadius(12)
-                        .padding(.top, 8)
-                        .padding(.horizontal)
-                    Spacer()
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .animation(.easeInOut, value: showAlertBanner)
-            }
             VStack(spacing: 0) {
                 messagesScrollView
             }
             .environment(\.chatAppearance, activeChatAppearance)
+        }
+        .overlay(alignment: .top) {
+            ChatNotificationOverlay(notification: $notification)
         }
         .environment(\.bot, bot)
         .environment(\.personaManager, personaManager)
@@ -147,9 +134,11 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
                 persistDraftImmediately()
+                saveChatHistory()
             }
         }
         .onDisappear {
+            notification = nil
             persistDraftImmediately()
             guard !showCharacterProfile else { return }
             if isGenerating {

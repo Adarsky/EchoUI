@@ -62,6 +62,7 @@ class ChatHistory {
             .min(by: { $0.index < $1.index })?
             .id
             .uuidString
+            ?? historyID?.uuidString
     }
 }
 

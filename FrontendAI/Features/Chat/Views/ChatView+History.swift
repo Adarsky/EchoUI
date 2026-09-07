@@ -37,67 +37,29 @@ extension ChatView {
         }
 
         @MainActor
-        func saveChatHistory() {
-            let persistableMessages = messages.filter(\.hasPersistableVariant)
-            guard !persistableMessages.isEmpty else { return }
-
-            var existingEntitiesByID: [UUID: ChatMessageEntity] = [:]
-            for entity in currentHistory?.messages ?? [] {
-                existingEntitiesByID[entity.id] = entity
-            }
-
-            let entities: [ChatMessageEntity] = persistableMessages.enumerated().compactMap { index, msg in
-                guard let values = msg.persistenceValues(includeVariants: !msg.isUser) else {
-                    return nil
-                }
-
-                if let entity = existingEntitiesByID[msg.id] {
-                    entity.text = values.text
-                    entity.isUser = msg.isUser
-                    entity.index = index
-                    entity.timestamp = msg.timestamp
-                    entity.variants = values.variants
-                    entity.currentVariantIndex = values.currentVariantIndex
-                    return entity
-                }
-
-                return ChatMessageEntity(
-                    id: msg.id,
-                    text: values.text,
-                    isUser: msg.isUser,
-                    index: index,
-                    timestamp: msg.timestamp,
-                    variants: values.variants,
-                    currentVariantIndex: values.currentVariantIndex
-                )
-            }
-
-            if let history = currentHistory {
-                ChatHistoryPersistence.replaceMessages(
-                    in: history,
-                    with: entities,
+        @discardableResult
+        func saveChatHistory() -> Bool {
+            if isPreviewSeeded { return true }
+            savedBotModel = currentBotModel
+            do {
+                currentHistory = try ChatHistoryWriter.save(
+                    messages: messages,
+                    history: currentHistory,
+                    bot: savedBotModel,
+                    personaID: chatPersonaID,
+                    hasPersonaOverride: hasChatPersonaOverride,
                     context: modelContext
                 )
-                history.date = .now
-                history.personaID = chatPersonaID
-                history.hasPersonaOverride = hasChatPersonaOverride
-                rememberOpenedHistory(history)
-            } else if let realBotModel = savedBotModel {
-                let new = ChatHistory(
-                    messages: entities,
-                    bot: realBotModel,
-                    personaID: chatPersonaID,
-                    hasPersonaOverride: hasChatPersonaOverride
-                )
-                modelContext.insert(new)
-                currentHistory = new
-                rememberOpenedHistory(new)
-            }
-            do {
-                try modelContext.save()
+                if let currentHistory {
+                    rememberOpenedHistory(currentHistory)
+                }
+                return true
             } catch {
-                alertMessage = "Could not save this chat. Your current messages remain open so you can try again."
-                showAlertBanner = true
+                notification = .error(
+                    "Couldn’t save chat",
+                    message: "Your current messages remain open so you can try again."
+                )
+                return false
             }
         }
 
@@ -112,7 +74,7 @@ extension ChatView {
             if savedBotModel == nil {
                 savedBotModel = allBots.first(where: { $0.id == botID })
             }
-            saveChatHistory()
+            guard saveChatHistory() else { return }
 
             guard let parent = currentHistory,
                   let branch = ChatHistoryPersistence.createBranch(
@@ -120,8 +82,10 @@ extension ChatView {
                     throughMessageID: messageID,
                     context: modelContext
                   ) else {
-                alertMessage = "Could not branch this chat. Please wait for the message to finish and try again."
-                showAlertBanner = true
+                notification = .error(
+                    "Couldn’t branch chat",
+                    message: "Please wait for the message to finish and try again."
+                )
                 return
             }
 
@@ -129,8 +93,10 @@ extension ChatView {
                 try modelContext.save()
             } catch {
                 ChatHistoryPersistence.delete(branch, context: modelContext)
-                alertMessage = "Could not save the new chat branch. The original chat is unchanged."
-                showAlertBanner = true
+                notification = .error(
+                    "Couldn’t save branch",
+                    message: "The original chat is unchanged. Please try again."
+                )
                 return
             }
 
@@ -141,6 +107,7 @@ extension ChatView {
             messages = restoredMessages(from: branch)
             isManualHistoryLoad = true
             refreshActiveAppearance()
+            notification = .branched
         }
 
         @MainActor

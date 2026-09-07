@@ -34,16 +34,12 @@ struct ChatScreenView: View {
                 .defaultScrollAnchor(.bottom, for: .alignment)
                 .scrollDismissesKeyboard(.interactively)
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
+                .safeAreaBar(edge: .bottom, spacing: 0) {
                     ChatComposerDock(
                         composer: model.composer,
                         bindings: bindings,
                         actions: actions.composer
                     )
-                }
-                .safeAreaBar(edge: .bottom, spacing: 0) {
-                    // Register the edge effect without moving the focus-driven composer into the bar host.
-                    Color.clear.frame(height: 0)
                 }
                 .onScrollGeometryChange(for: ChatScrollMetrics.self) { geometry in
                     ChatScrollMetrics(geometry: geometry)
@@ -161,15 +157,18 @@ private struct ChatComposerDock: View {
     let actions: ChatScreenActions.Composer
 
     var body: some View {
-        ChatInputBar(
-            inputText: bindings.inputText,
-            isGenerating: composer.isGenerating,
-            isThinking: composer.isThinking,
-            sendButtonStyle: composer.sendButtonStyle,
-            placeholder: composer.placeholder,
-            onSend: actions.send,
-            onStop: actions.stop
+        ChatInputBarHost(
+            inputBar: ChatInputBar(
+                inputText: bindings.inputText,
+                isGenerating: composer.isGenerating,
+                isThinking: composer.isThinking,
+                sendButtonStyle: composer.sendButtonStyle,
+                placeholder: composer.placeholder,
+                onSend: actions.send,
+                onStop: actions.stop
+            )
         )
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, ChatScreenLayout.composerVerticalPadding)
     }
 }

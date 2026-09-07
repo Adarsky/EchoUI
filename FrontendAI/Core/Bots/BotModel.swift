@@ -5,7 +5,6 @@ import SwiftUI
 @Model
 class BotModel {
     static let maxNameLength = 24
-    static let maxSubtitleLength = 10_000
 
     var id: UUID
     var name: String
@@ -48,7 +47,7 @@ class BotModel {
     ) {
         self.id = id
         self.name = Self.clampedName(name)
-        self.subtitle = Self.clampedSubtitle(subtitle)
+        self.subtitle = subtitle
         self.date = date
         self.avatarSystemName = avatarSystemName
         self.iconColorName = iconColorName
@@ -91,9 +90,5 @@ class BotModel {
 
     static func clampedName(_ value: String) -> String {
         String(value.prefix(maxNameLength))
-    }
-
-    static func clampedSubtitle(_ value: String) -> String {
-        String(value.prefix(maxSubtitleLength))
     }
 }

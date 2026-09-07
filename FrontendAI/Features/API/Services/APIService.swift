@@ -98,20 +98,22 @@ actor APIService {
     static func sendMessage(
         messages: [ChatPayloadMessage],
         config: ServerConfig,
-        onStream: ((String) -> Void)? = nil
+        onStream: ((String) -> Void)? = nil,
+        session: URLSession? = nil
     ) async throws -> String {
         switch config.type {
         case .openai:
-            return try await sendToOpenAI(messages: messages, config: config, onStream: onStream)
+            return try await sendToOpenAI(messages: messages, config: config, onStream: onStream, session: session)
         case .openrouter:
-            return try await sendToOpenRouter(messages: messages, config: config, onStream: onStream)
+            return try await sendToOpenRouter(messages: messages, config: config, onStream: onStream, session: session)
         }
     }
 
     private static func sendToOpenAI(
         messages: [ChatPayloadMessage],
         config: ServerConfig,
-        onStream: ((String) -> Void)? = nil
+        onStream: ((String) -> Void)? = nil,
+        session: URLSession? = nil
     ) async throws -> String {
         let body = makeOpenAIRequestBody(messages: messages, config: config)
 
@@ -137,8 +139,9 @@ actor APIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         try Task.checkCancellation()
-        let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
-        let (stream, response) = try await session.bytes(for: request)
+        let requestSession = session ?? TLSSessionFactory.makeSession(policy: config.tlsPolicy)
+        defer { if session == nil { requestSession.finishTasksAndInvalidate() } }
+        let (stream, response) = try await requestSession.bytes(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200..<300).contains(httpResponse.statusCode) else {
@@ -161,16 +164,19 @@ actor APIService {
         }
 
         if !didFinishStream, let eventData = eventParser.finish() {
-            _ = appendOpenAIEvent(eventData, to: &finalResultParts, onStream: onStream)
+            didFinishStream = appendOpenAIEvent(eventData, to: &finalResultParts, onStream: onStream)
         }
 
+        try Task.checkCancellation()
+        guard didFinishStream else { throw APIStreamError.incompleteStream }
         return finalResultParts.joined()
     }
 
     private static func sendToOpenRouter(
         messages: [ChatPayloadMessage],
         config: ServerConfig,
-        onStream: ((String) -> Void)? = nil
+        onStream: ((String) -> Void)? = nil,
+        session: URLSession? = nil
     ) async throws -> String {
         let body = makeOpenRouterRequestBody(messages: messages, config: config)
 
@@ -196,8 +202,9 @@ actor APIService {
         }
 
         try Task.checkCancellation()
-        let session = TLSSessionFactory.makeSession(policy: config.tlsPolicy)
-        let (stream, response) = try await session.bytes(for: request)
+        let requestSession = session ?? TLSSessionFactory.makeSession(policy: config.tlsPolicy)
+        defer { if session == nil { requestSession.finishTasksAndInvalidate() } }
+        let (stream, response) = try await requestSession.bytes(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "APIService", code: -1002,
@@ -236,7 +243,7 @@ actor APIService {
         }
 
         if !didFinishStream, let eventData = eventParser.finish() {
-            _ = appendOpenRouterEvent(
+            didFinishStream = appendOpenRouterEvent(
                 eventData,
                 to: &finalResultParts,
                 thinkingOpened: &injectedThinkingOpened,
@@ -245,6 +252,8 @@ actor APIService {
             )
         }
 
+        try Task.checkCancellation()
+        guard didFinishStream else { throw APIStreamError.incompleteStream }
         return finalResultParts.joined()
     }
 

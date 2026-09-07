@@ -13,9 +13,10 @@ final class FrontendAIUITests: XCTestCase {
     func testLongPersonaPromptStaysInsideTheCompactEditor() throws {
         let app = XCUIApplication()
         app.launch()
-        app.buttons["person.fill"].tap()
+        app.buttons["Main Menu"].tap()
+        app.buttons["Personas"].tap()
         XCTAssertTrue(app.navigationBars["Your personas"].waitForExistence(timeout: 3))
-        app.buttons.matching(identifier: "plus").element(boundBy: 1).tap()
+        app.buttons["New Persona"].tap()
         XCTAssertTrue(app.navigationBars["New Persona"].waitForExistence(timeout: 3))
 
         let promptEditor = app.textViews.firstMatch

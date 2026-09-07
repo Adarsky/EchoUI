@@ -68,12 +68,6 @@ struct EditBotView: View {
                 draftName = clampedName
             }
         }
-        .onChange(of: draftSubtitle) { _, newValue in
-            let clampedSubtitle = BotModel.clampedSubtitle(newValue)
-            if clampedSubtitle != newValue {
-                draftSubtitle = clampedSubtitle
-            }
-        }
         .sheet(item: $pendingAvatarImage) { draft in
             AvatarImageEditorView(
                 image: draft.image,
@@ -173,8 +167,22 @@ struct EditBotView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(title, systemImage: icon)
-                    .font(.subheadline.weight(.semibold))
+                Label {
+                    HStack(spacing: 5) {
+                        Text(title)
+
+                        Text("•")
+                            .accessibilityHidden(true)
+
+                        Text("\(TokenUsageEstimator.estimatedTokenCount(for: text.wrappedValue).formatted()) tokens")
+                            .fontWeight(.regular)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: icon)
+                }
+                .font(.subheadline.weight(.semibold))
+                .accessibilityElement(children: .combine)
 
                 Spacer()
 
@@ -282,10 +290,27 @@ struct EditBotView: View {
 
     private func saveBot() {
         bot.name = BotModel.clampedName(draftName.trimmingCharacters(in: .whitespacesAndNewlines))
-        bot.subtitle = BotModel.clampedSubtitle(draftSubtitle.trimmingCharacters(in: .whitespacesAndNewlines))
+        bot.subtitle = draftSubtitle.trimmingCharacters(in: .whitespacesAndNewlines)
         bot.greeting = draftGreeting.trimmingCharacters(in: .whitespacesAndNewlines)
         bot.avatarData = draftAvatarData
         try? modelContext.save()
         dismiss()
     }
+}
+
+#Preview("Edit Character") {
+    NavigationStack {
+        EditBotView(
+            bot: BotModel(
+                name: "Luna",
+                subtitle: "A thoughtful creative partner who turns ideas into clear next steps.",
+                date: "Sep 7, 2026",
+                avatarSystemName: "sparkles",
+                iconColorName: "purple",
+                isPinned: false,
+                greeting: "Hi! What would you like to create today?"
+            )
+        )
+    }
+    .modelContainer(for: BotModel.self, inMemory: true)
 }

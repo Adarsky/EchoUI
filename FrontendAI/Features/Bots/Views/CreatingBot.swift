@@ -59,9 +59,6 @@ struct CreateCharacterView: View {
         .onChange(of: name) { _, newValue in
             name = BotModel.clampedName(newValue)
         }
-        .onChange(of: description) { _, newValue in
-            description = BotModel.clampedSubtitle(newValue)
-        }
         .alert("Photo was not selected, please select it", isPresented: $showMissingPhotoAlert) {
             Button("OK", role: .cancel) { }
         }
@@ -275,7 +272,7 @@ struct CreateCharacterView: View {
 
         let newBot = BotModel(
             name: BotModel.clampedName(name.trimmingCharacters(in: .whitespacesAndNewlines)),
-            subtitle: BotModel.clampedSubtitle(description.trimmingCharacters(in: .whitespacesAndNewlines)),
+            subtitle: description.trimmingCharacters(in: .whitespacesAndNewlines),
             date: formattedToday(),
             avatarSystemName: "person.crop.circle.fill",
             iconColorName: "blue",

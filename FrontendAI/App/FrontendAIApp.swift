@@ -25,7 +25,7 @@ struct FrontendAIApp: App {
             case let .failed(failure):
                 StoreStartupFailureView(failure: failure)
             case .protectedDataUnavailable:
-                StoreProtectedDataUnavailableView(retry: retryStoreBootstrap)
+                LoadScreen()
                     .onAppear(perform: retryStoreBootstrapIfProtectedDataIsAvailable)
                     .retryingWhenProtectedDataBecomesAvailable(retryStoreBootstrap)
             }
@@ -545,30 +545,6 @@ private struct StoreStartupFailureView: View {
                 LocalDataRecoveryView()
             }
         }
-    }
-}
-
-private struct StoreProtectedDataUnavailableView: View {
-    let retry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: "lock.shield")
-                .font(.system(size: 42))
-                .foregroundStyle(.orange)
-
-            Text("Unlock Required")
-                .font(.title2.weight(.semibold))
-
-            Text("Your local data is protected by iOS and is not available yet. Unlock the device, then try again.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            Button("Try Again", action: retry)
-                .buttonStyle(.borderedProminent)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
 

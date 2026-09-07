@@ -11,6 +11,8 @@ final class ChatFolder {
     var name: String
     var symbolName: String
     var colorName: String = ChatFolderColor.defaultValue.rawValue
+    var hidesFromAllChats: Bool = false
+    var pinnedBotIDStrings: [String] = []
     var botIDStrings: [String]
     var sortIndex: Int
     var createdAt: Date
@@ -21,6 +23,7 @@ final class ChatFolder {
         name: String,
         symbolName: String = "folder",
         colorName: String = ChatFolderColor.defaultValue.rawValue,
+        hidesFromAllChats: Bool = false,
         botIDStrings: [String] = [],
         sortIndex: Int = 0,
         createdAt: Date = .now,
@@ -30,6 +33,7 @@ final class ChatFolder {
         self.name = Self.clampedName(name)
         self.symbolName = symbolName
         self.colorName = ChatFolderColor(rawValue: colorName)?.rawValue ?? ChatFolderColor.defaultValue.rawValue
+        self.hidesFromAllChats = hidesFromAllChats
         self.botIDStrings = botIDStrings
         self.sortIndex = sortIndex
         self.createdAt = createdAt
@@ -62,6 +66,7 @@ final class ChatFolder {
             }
         } else {
             botIDStrings.removeAll { $0 == storageID }
+            pinnedBotIDStrings.removeAll { $0 == storageID }
         }
 
         updatedAt = .now
@@ -97,9 +102,15 @@ enum PrivateChatVisibility {
         let privacyFilteredBots = bots.filter { !privateBotIDs.contains($0.id) }
 
         guard foldersEnabled else { return privacyFilteredBots }
-        guard selectedFolderID != ChatFolder.allFolderID else { return privacyFilteredBots }
-        guard let selectedFolder = folders.first(where: { $0.id.uuidString == selectedFolderID }) else {
-            return privacyFilteredBots
+        guard selectedFolderID != ChatFolder.allFolderID,
+              let selectedFolder = folders.first(where: { $0.id.uuidString == selectedFolderID }) else {
+            let hiddenBotIDs = Set(
+                folders
+                    .filter(\.hidesFromAllChats)
+                    .flatMap(\.botIDStrings)
+                    .compactMap(UUID.init(uuidString:))
+            )
+            return privacyFilteredBots.filter { !hiddenBotIDs.contains($0.id) }
         }
 
         if selectedFolder.isPrivate {

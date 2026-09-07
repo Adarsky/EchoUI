@@ -128,6 +128,7 @@ struct PersonasPageView: View {
         }
         .glassEffect(.regular.tint(.white.opacity(1.0)).interactive())
         .buttonBorderShape(.circle)
+        .accessibilityLabel("New Persona")
     }
 }
 

@@ -3,7 +3,6 @@ import Foundation
 import SwiftData
 import UIKit
 import Symbols
-import LocalAuthentication
 
 enum MainPageAPIStatusDisplayStyle: String, CaseIterable, Identifiable {
     case hidden
@@ -52,7 +51,8 @@ struct MainPage: View {
     @AppStorage("chatFoldersEnabled") private var chatFoldersEnabled = true
     @AppStorage("selectedChatFolderID") private var selectedChatFolderID = ChatFolder.allFolderID
     @State private var folderNavigationDirection = 1
-    @State private var unlockedPrivateFolderID: String?
+    @State private var privateChatAccess = PrivateChatAccess()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var privateFolderAuthenticationMessage = "Face ID is required to open the Private folder."
     @State private var showsPrivateFolderAuthenticationAlert = false
 
@@ -150,18 +150,11 @@ struct MainPage: View {
     }
 
     private var pinnedBots: [BotModel] {
-        visibleBots
-            .filter { $0.isPinned }
-            .sorted {
-                if $0.pinnedSortIndex == $1.pinnedSortIndex {
-                    return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-                }
-                return $0.pinnedSortIndex < $1.pinnedSortIndex
-            }
+        ChatFolderOrganization.pinnedBots(from: visibleBots, in: selectedChatFolder)
     }
 
     private var regularBots: [BotModel] {
-        visibleBots.filter { !$0.isPinned }
+        visibleBots.filter { !ChatFolderOrganization.isPinned($0, in: selectedChatFolder) }
     }
 
     private var selectedChatFolder: ChatFolder? {
@@ -176,7 +169,7 @@ struct MainPage: View {
             folders: chatFolders,
             foldersEnabled: chatFoldersEnabled,
             selectedFolderID: selectedChatFolderID,
-            unlockedPrivateFolderID: unlockedPrivateFolderID
+            unlockedPrivateFolderID: privateChatAccess.isUnlocked ? selectedChatFolderID : nil
         )
     }
 
@@ -284,12 +277,24 @@ struct MainPage: View {
         .onChange(of: chatFoldersEnabled) { _, isEnabled in
             if !isEnabled {
                 selectedChatFolderID = ChatFolder.allFolderID
-                unlockedPrivateFolderID = nil
+                privateChatAccess.lock()
             }
         }
         .onChange(of: selectedChatFolderID) { _, folderID in
             if !isPrivateFolderID(folderID) {
-                unlockedPrivateFolderID = nil
+                privateChatAccess.lock()
+            }
+        }
+        .environment(privateChatAccess)
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .background else { return }
+            let hadPrivateAccess = privateChatAccess.isUnlocked || privateChatAccess.isAuthenticating
+            privateChatAccess.lock()
+            if hadPrivateAccess {
+                selectedChatFolderID = ChatFolder.allFolderID
+                chatNavigationPath.removeAll()
+                showSheetSettings = false
+                botForFolderAssignment = nil
             }
         }
         .onChange(of: chatNavigationPath) { _, path in
@@ -476,7 +481,7 @@ struct MainPage: View {
             folders: chatFolders,
             foldersEnabled: true,
             selectedFolderID: folder?.id.uuidString ?? ChatFolder.allFolderID,
-            unlockedPrivateFolderID: unlockedPrivateFolderID
+            unlockedPrivateFolderID: privateChatAccess.isUnlocked ? selectedChatFolderID : nil
         ).count
     }
 
@@ -491,7 +496,7 @@ struct MainPage: View {
             title: bot.name,
             subtitle: preview.subtitle,
             date: preview.dateText,
-            isPinned: bot.isPinned,
+            isPinned: ChatFolderOrganization.isPinned(bot, in: selectedChatFolder),
             draft: draftsByBotID[bot.id],
             avatarImage: bot.avatarImage
         )
@@ -539,12 +544,13 @@ struct MainPage: View {
     }
 
     private func pinButton(for bot: BotModel) -> some View {
-        Button {
+        let isPinned = ChatFolderOrganization.isPinned(bot, in: selectedChatFolder)
+        return Button {
             togglePinned(bot)
         } label: {
-            Label(bot.isPinned ? "Unpin" : "Pin", systemImage: bot.isPinned ? "pin.slash" : "pin")
+            Label(isPinned ? "Unpin" : "Pin", systemImage: isPinned ? "pin.slash" : "pin")
         }
-        .tint(bot.isPinned ? .gray : .gray)
+        .tint(.gray)
     }
 
     @MainActor
@@ -580,15 +586,7 @@ struct MainPage: View {
     }
 
     private func togglePinned(_ bot: BotModel) {
-        if bot.isPinned {
-            bot.isPinned = false
-            bot.pinnedSortIndex = 0
-        } else {
-            bot.isPinned = true
-            bot.pinnedSortIndex = (pinnedBots.map(\.pinnedSortIndex).max() ?? -1) + 1
-        }
-
-        normalizePinnedOrder()
+        ChatFolderOrganization.togglePin(bot, in: selectedChatFolder, bots: bots)
         try? modelContext.save()
     }
 
@@ -599,14 +597,8 @@ struct MainPage: View {
         try? modelContext.save()
     }
 
-    private func normalizePinnedOrder() {
-        applyPinnedOrder(pinnedBots)
-    }
-
     private func applyPinnedOrder(_ orderedPinnedBots: [BotModel]) {
-        for (index, bot) in orderedPinnedBots.enumerated() {
-            bot.pinnedSortIndex = index
-        }
+        ChatFolderOrganization.applyPinnedOrder(orderedPinnedBots, in: selectedChatFolder, bots: bots)
     }
 
     private func validateSelectedFolder() {
@@ -620,13 +612,10 @@ struct MainPage: View {
     private func canSelectFolder(_ folderID: String) async -> Bool {
         guard isPrivateFolderID(folderID) else { return true }
 
-        let result = await authenticatePrivateFolder()
-        switch result {
-        case .success:
-            unlockedPrivateFolderID = folderID
-            return true
-        case .failure(let message):
-            privateFolderAuthenticationMessage = message
+        do {
+            return try await privateChatAccess.authorize()
+        } catch {
+            privateFolderAuthenticationMessage = error.localizedDescription
             showsPrivateFolderAuthenticationAlert = true
             return false
         }
@@ -637,7 +626,7 @@ struct MainPage: View {
     }
 
     private func lockSelectedPrivateFolderIfNeeded() {
-        guard isPrivateFolderID(selectedChatFolderID), unlockedPrivateFolderID != selectedChatFolderID else { return }
+        guard isPrivateFolderID(selectedChatFolderID), !privateChatAccess.isUnlocked else { return }
         selectedChatFolderID = ChatFolder.allFolderID
     }
 
@@ -647,29 +636,6 @@ struct MainPage: View {
             ? MainPageAPIStatusDisplayStyle.coloredDot.rawValue
             : MainPageAPIStatusDisplayStyle.hidden.rawValue
         didMigrateAPIStatusDisplayStyle = true
-    }
-
-    private func authenticatePrivateFolder() async -> PrivateFolderAuthenticationResult {
-        let context = LAContext()
-        context.localizedCancelTitle = "Cancel"
-
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-            return .failure(faceIDUnavailableMessage(from: error))
-        }
-
-        return await withCheckedContinuation { continuation in
-            context.evaluatePolicy(
-                .deviceOwnerAuthenticationWithBiometrics,
-                localizedReason: "Unlock the Private folder."
-            ) { success, error in
-                if success {
-                    continuation.resume(returning: .success)
-                } else {
-                    continuation.resume(returning: .failure(faceIDFailedMessage(from: error)))
-                }
-            }
-        }
     }
 
     @MainActor
@@ -684,45 +650,6 @@ struct MainPage: View {
             checkingAPIStatusServerUUID = nil
             checkingAPIStatusRequestUUID = nil
         }
-    }
-}
-
-private enum PrivateFolderAuthenticationResult {
-    case success
-    case failure(String)
-}
-
-private func faceIDUnavailableMessage(from error: NSError?) -> String {
-    guard let error else {
-        return "Face ID is not available on this device."
-    }
-
-    switch LAError.Code(rawValue: error.code) {
-    case .biometryNotAvailable:
-        return "Face ID is not available on this device."
-    case .biometryNotEnrolled:
-        return "Set up Face ID in Settings to open the Private folder."
-    case .biometryLockout:
-        return "Face ID is locked. Unlock it in Settings before opening the Private folder."
-    default:
-        return "Face ID is required to open the Private folder."
-    }
-}
-
-private func faceIDFailedMessage(from error: Error?) -> String {
-    guard let error = error as? LAError else {
-        return "Face ID did not unlock the Private folder."
-    }
-
-    switch error.code {
-    case .userCancel, .appCancel, .systemCancel:
-        return "The Private folder was not unlocked."
-    case .authenticationFailed:
-        return "Face ID did not recognize you."
-    case .biometryLockout:
-        return "Face ID is locked. Unlock it in Settings before opening the Private folder."
-    default:
-        return "Face ID did not unlock the Private folder."
     }
 }
 

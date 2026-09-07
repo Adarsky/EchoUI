@@ -36,10 +36,8 @@ struct SettingsPageView: View {
 
     var body: some View {
         List {
-            Section(header: Text("Balance information")) {
-                Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
-
-                if openRouterBalancePingEnabled {
+            if openRouterBalancePingEnabled {
+                Section(header: Text("Balance information")) {
                     Button {
                         Task {
                             await refreshOpenRouterBalance()
@@ -111,6 +109,11 @@ struct SettingsPageView: View {
                 NavigationLink(destination: DeveloperSettingsView()) {
                     Label("Call settings", systemImage: "hammer")
                 }
+            }
+            Section {
+                Toggle("OpenRouter balance", isOn: $openRouterBalancePingEnabled)
+            } footer: {
+                Text("Show the balance card and check credits for your selected OpenRouter server.")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -467,6 +470,7 @@ private enum OpenRouterBalanceState {
 
 private struct SettingsSheetViewPreviewHost: View {
     @State private var isPresented = true
+    @State private var privateChatAccess = PrivateChatAccess()
     @State private var apiStatusDisplayStyle = MainPageAPIStatusDisplayStyle.coloredDot.rawValue
     var navName: String = "Settings"
 
@@ -476,6 +480,7 @@ private struct SettingsSheetViewPreviewHost: View {
             apiStatusDisplayStyle: $apiStatusDisplayStyle,
             navName: navName
         )
+        .environment(privateChatAccess)
     }
 }
 

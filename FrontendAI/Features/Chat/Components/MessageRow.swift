@@ -93,7 +93,7 @@ struct MessageRow: View {
                                 Button {
                                     onBranch(msg.id)
                                 } label: {
-                                    Label("Branch to New Chat", systemImage: "arrow.triangle.branch")
+                                    Label("Branch to New Chat", systemImage: "arrow.turn.down.right")
                                 }
                                 .disabled(isGenerating || msg.isStreaming)
                             }
@@ -118,7 +118,7 @@ struct MessageRow: View {
                             Button {
                                 onBranch(msg.id)
                             } label: {
-                                Label("Branch to New Chat", systemImage: "arrow.triangle.branch")
+                                Label("Branch to New Chat", systemImage: "arrow.turn.down.right")
                             }
                             .disabled(isGenerating || msg.isStreaming)
                         }

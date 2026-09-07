@@ -180,6 +180,9 @@ enum ChatReplyStreamService {
     }
 
     static func userFacingFailure(from error: Error) -> ChatReplyFailure {
+        if let streamError = error as? APIStreamError {
+            return ChatReplyFailure(kind: .connectionInterrupted, message: streamError.localizedDescription)
+        }
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain {
             switch nsError.code {

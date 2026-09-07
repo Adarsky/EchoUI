@@ -51,6 +51,11 @@ extension ChatView {
 
             let userMessage = ChatMessageModel(content: submittedText, isUser: true)
             withTransaction(.init(animation: nil)) { messages.append(userMessage) }
+            guard saveChatHistory() else {
+                messages.removeAll { $0.id == userMessage.id }
+                persistDraftImmediately()
+                return
+            }
             inputText = ""
             clearSavedDraft()
 

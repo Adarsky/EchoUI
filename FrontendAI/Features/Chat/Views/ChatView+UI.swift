@@ -170,7 +170,7 @@ extension ChatView {
         if isGenerating {
             stopGeneration()
         }
-        saveChatHistory()
+        guard saveChatHistory() else { return }
         resetInitialMessagePositioning()
         messages.removeAll()
         currentHistory = nil
