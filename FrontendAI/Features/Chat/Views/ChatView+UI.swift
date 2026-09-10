@@ -13,6 +13,7 @@ extension ChatView {
     private var chatScreenModel: ChatScreenModel {
         ChatScreenModel(
             messages: messages,
+            botName: bot.name,
             appearance: activeChatAppearance,
             composer: ChatScreenModel.Composer(
                 isGenerating: isGenerating,

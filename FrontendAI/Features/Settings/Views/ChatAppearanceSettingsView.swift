@@ -71,6 +71,7 @@ struct ChatAppearanceSettingsView: View {
                         title: "Your Messages",
                         sampleText: previewUserMessage,
                         isUser: true,
+                        material: appearance.messageMaterial,
                         color: userBubbleColorBinding,
                         transparent: boolBinding(\.userBubbleTransparent),
                         widthRatio: doubleBinding(\.userMessageBubbleWidthRatio),
@@ -94,6 +95,7 @@ struct ChatAppearanceSettingsView: View {
                         title: "Bot Messages",
                         sampleText: previewBotMessage,
                         isUser: false,
+                        material: appearance.messageMaterial,
                         color: botBubbleColorBinding,
                         transparent: boolBinding(\.botBubbleTransparent),
                         widthRatio: doubleBinding(\.botMessageBubbleWidthRatio),
@@ -111,6 +113,24 @@ struct ChatAppearanceSettingsView: View {
                         isTransparent: appearance.botBubbleTransparent
                     )
                 }
+            }
+
+            Section {
+                Picker("Messages", selection: materialBinding(\.messageMaterial)) {
+                    ForEach(ChatSurfaceMaterial.allCases) { material in
+                        Text(material.title).tag(material)
+                    }
+                }
+
+                Picker("Notifications", selection: materialBinding(\.notificationMaterial)) {
+                    ForEach(ChatSurfaceMaterial.allCases) { material in
+                        Text(material.title).tag(material)
+                    }
+                }
+            } header: {
+                Text("Materials")
+            } footer: {
+                Text("Message material applies when Transparent is turned off for a bubble.")
             }
 
             Section("Wallpaper") {
@@ -383,6 +403,17 @@ struct ChatAppearanceSettingsView: View {
         )
     }
 
+    private func materialBinding(_ keyPath: WritableKeyPath<ChatAppearanceSnapshot, ChatSurfaceMaterial>) -> Binding<ChatSurfaceMaterial> {
+        Binding(
+            get: { appearance[keyPath: keyPath] },
+            set: { newValue in
+                saveAppearance { snapshot in
+                    snapshot[keyPath: keyPath] = newValue
+                }
+            }
+        )
+    }
+
     private func boolBinding(_ keyPath: WritableKeyPath<ChatAppearanceSnapshot, Bool>) -> Binding<Bool> {
         Binding(
             get: { appearance[keyPath: keyPath] },
@@ -417,7 +448,7 @@ struct ChatAppearanceSettingsView: View {
         let shape = RoundedRectangle(cornerRadius: previewBubbleCornerRadius(isUser: isUser), style: .continuous)
         shape.fill(previewBubbleFillColor(isUser: isUser))
         if !(isUser ? appearance.userBubbleTransparent : appearance.botBubbleTransparent) {
-            shape.fill(.ultraThinMaterial)
+            ChatMaterialBackground(material: appearance.messageMaterial, shape: shape)
         }
     }
 
@@ -675,6 +706,7 @@ private struct BubbleAppearanceEditor: View {
     let title: String
     let sampleText: String
     let isUser: Bool
+    let material: ChatSurfaceMaterial
     @Binding var color: Color
     @Binding var transparent: Bool
     @Binding var widthRatio: Double
@@ -751,7 +783,7 @@ private struct BubbleAppearanceEditor: View {
         return ZStack {
             shape.fill(transparent ? Color.clear : color)
             if !transparent {
-                shape.fill(.ultraThinMaterial)
+                ChatMaterialBackground(material: material, shape: shape)
             }
         }
     }

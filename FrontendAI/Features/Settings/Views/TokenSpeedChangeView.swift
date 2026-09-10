@@ -131,6 +131,7 @@ private struct TokenSpeedChatPreview: View {
     let isAssistantStreaming: Bool
     let onReplay: () -> Void
 
+    @AppStorage(ChatAppearanceStorageKeys.messageMaterial) private var messageMaterial = ChatAppearanceDefaults.messageMaterial
     @AppStorage(ChatAppearanceStorageKeys.userBubbleRed) private var userBubbleRed = ChatAppearanceDefaults.userBubbleRed
     @AppStorage(ChatAppearanceStorageKeys.userBubbleGreen) private var userBubbleGreen = ChatAppearanceDefaults.userBubbleGreen
     @AppStorage(ChatAppearanceStorageKeys.userBubbleBlue) private var userBubbleBlue = ChatAppearanceDefaults.userBubbleBlue
@@ -201,7 +202,7 @@ private struct TokenSpeedChatPreview: View {
         let shape = RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
         shape.fill(bubbleFillColor(isUser: isUser))
         if !isBubbleTransparent(isUser: isUser) {
-            shape.fill(.ultraThinMaterial)
+            ChatMaterialBackground(material: messageMaterial, shape: shape)
         }
     }
 

@@ -5,6 +5,7 @@ struct ChatNotificationBanner: View {
     let dismiss: () -> Void
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.chatAppearance) private var chatAppearance
     @ScaledMetric(relativeTo: .body) private var iconSize = 38
 
     private var accent: Color {
@@ -50,12 +51,8 @@ struct ChatNotificationBanner: View {
             if reduceTransparency {
                 shape.fill(.background)
             } else {
-                shape.fill(.regularMaterial)
+                ChatMaterialBackground(material: chatAppearance.notificationMaterial, shape: shape)
             }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26)
-                .strokeBorder(.primary.opacity(0.06), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
         .accessibilityIdentifier("chat-notification")

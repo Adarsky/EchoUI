@@ -10,6 +10,7 @@ struct MessageRow: View {
     let onDelete: (UUID) -> Void
     let onBranch: ((UUID) -> Void)?
     let availableWidth: CGFloat
+    let botName: String
     @Environment(\.chatAppearance) private var chatAppearance
     @Environment(\.isGenerating) private var isGenerating
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -29,6 +30,7 @@ struct MessageRow: View {
     init(
         msg: ChatMessageModel,
         availableWidth: CGFloat = 390,
+        botName: String = "Bot",
         regenerate: @escaping (ChatMessageModel) -> Void,
         switchVariant: @escaping (UUID, Int) -> Void,
         onEdit: @escaping (UUID) -> Void = { _ in },
@@ -37,6 +39,7 @@ struct MessageRow: View {
     ) {
         self.msg = msg
         self.availableWidth = max(1, availableWidth)
+        self.botName = botName
         self.regenerate = regenerate
         self.switchVariant = switchVariant
         self.onEdit = onEdit
@@ -131,13 +134,13 @@ struct MessageRow: View {
 
                 if shouldShowAssistantControls {
                     GlassEffectContainer {
-                        HStack(spacing: 16) {
+                        HStack() {
                             Button(
                                 "Previous response",
                                 systemImage: "chevron.left",
                                 action: showPreviousVariant
                             )
-                            .imageScale(.medium)
+                            .imageScale(.small)
                             .disabled(!msg.hasMultipleVariants)
                             .buttonStyle(.glass)
                             .buttonBorderShape(.circle)
@@ -188,14 +191,13 @@ struct MessageRow: View {
         )
         .frame(width: availableWidth, alignment: msg.isUser ? .trailing : .leading)
         .sheet(item: $editSession) { session in
-            LegacyEditMessageSheet(
+            EditMessageSheet(
                 text: session.text,
                 isUser: session.isUser,
+                botName: botName,
                 onSave: { newText in
-                    Task { @MainActor in
-                        msg.replaceCurrentVariant(with: newText)
-                        onEdit(msg.id)
-                    }
+                    msg.replaceCurrentVariant(with: newText)
+                    onEdit(msg.id)
                 }
             )
         }
@@ -282,7 +284,7 @@ struct MessageRow: View {
         let shape = RoundedRectangle(cornerRadius: bubbleCornerRadius(for: isUser), style: .continuous)
         shape.fill(bubbleFillColor(for: isUser))
         if !isBubbleTransparent(for: isUser) {
-            shape.fill(.ultraThinMaterial)
+            ChatMaterialBackground(material: chatAppearance.messageMaterial, shape: shape)
         }
     }
 
@@ -496,46 +498,6 @@ private func messageContentSegments(from text: String) -> [MessageContentSegment
 
     flushTextLines()
     return segments.isEmpty ? [.text("")] : segments
-}
-
-// MARK: - iOS < 16
-struct LegacyEditMessageSheet: View {
-    var text: String
-    var isUser: Bool
-    var onSave: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var draftText = ""
-
-    var body: some View {
-        NavigationView {
-            VStack {
-                TextEditor(text: $draftText)
-                    .scrollContentBackground(.hidden)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding()
-                Spacer()
-            }
-            .navigationBarTitle(isUser ? "Edit (you)" : "Edit (bot)", displayMode: .inline)
-            .navigationBarItems(
-                leading: Button("Cancel") { dismiss() },
-                trailing: Button("Save") {
-                    let textToSave = draftText
-                    dismiss()
-                    Task { @MainActor in
-                        onSave(textToSave)
-                    }
-                }
-            )
-        }
-        .onAppear {
-            draftText = text
-        }
-        .onChange(of: text) { _, newValue in
-            draftText = newValue
-        }
-    }
 }
 
 private func renderedMarkdown(from text: String, textColor: Color) -> AttributedString {

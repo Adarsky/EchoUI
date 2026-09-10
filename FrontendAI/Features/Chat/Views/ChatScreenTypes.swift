@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatScreenModel {
     let messages: [ChatMessageModel]
+    let botName: String
     let appearance: ChatAppearanceSnapshot
     let composer: Composer
 

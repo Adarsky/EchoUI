@@ -98,6 +98,7 @@ struct ChatView: View {
         }
         .overlay(alignment: .top) {
             ChatNotificationOverlay(notification: $notification)
+                .environment(\.chatAppearance, activeChatAppearance)
         }
         .environment(\.bot, bot)
         .environment(\.personaManager, personaManager)

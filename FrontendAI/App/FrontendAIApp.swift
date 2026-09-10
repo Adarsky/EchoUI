@@ -58,7 +58,17 @@ private struct FrontendAIAppRoot: View {
     }
 
     var body: some View {
-        MainPage()
+        Group {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--message-editor-ui-testing") {
+                MessageEditorUITestHost()
+            } else {
+                MainPage()
+            }
+            #else
+            MainPage()
+            #endif
+        }
             .environment(personaManager)
             .modelContainer(modelContainer)
             .onAppear {

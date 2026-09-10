@@ -17,6 +17,7 @@ struct ChatScreenView: View {
                 ScrollView {
                     ChatMessageStack(
                         messages: model.messages,
+                        botName: model.botName,
                         availableWidth: messageWidth(in: geometry),
                         actions: actions.messages,
                         onMessageChange: { message in
@@ -125,6 +126,7 @@ struct ChatScreenView: View {
 
 private struct ChatMessageStack: View {
     let messages: [ChatMessageModel]
+    let botName: String
     let availableWidth: CGFloat
     let actions: ChatScreenActions.Messages
     let onMessageChange: (ChatMessageModel) -> Void
@@ -135,6 +137,7 @@ private struct ChatMessageStack: View {
                 MessageRow(
                     msg: message,
                     availableWidth: availableWidth,
+                    botName: botName,
                     regenerate: actions.regenerate,
                     switchVariant: actions.switchVariant,
                     onEdit: actions.edit,
