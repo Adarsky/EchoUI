@@ -55,7 +55,7 @@ private struct ThinkingReasoningSheet: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    ChatMarkdownView(blocks: msg.thinkingMarkdownBlocks)
+                    ChatMarkdownView(blocks: msg.thinkingMarkdownBlocks, textColor: .secondary)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)

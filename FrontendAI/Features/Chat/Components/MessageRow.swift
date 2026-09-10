@@ -255,7 +255,8 @@ struct MessageRow: View {
     private var messageText: some View {
         ChatMarkdownView(
             blocks: msg.markdownBlocks,
-            fadeNewBlocks: msg.isStreaming && chatAppearance.messageTextFadeInEnabled
+            fadeNewBlocks: msg.isStreaming && chatAppearance.messageTextFadeInEnabled,
+            textColor: bubbleTextColor(for: msg.isUser)
         )
     }
 

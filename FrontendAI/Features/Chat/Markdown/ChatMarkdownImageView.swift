@@ -17,6 +17,12 @@ struct ChatMarkdownImageView: View {
                 Link(destination: url) {
                     Label(alternative.isEmpty ? "Image" : alternative, systemImage: "photo")
                 }
+                .contextMenu {
+                    Text(url.absoluteString)
+                    Button("Copy", systemImage: "doc.on.doc") {
+                        UIPasteboard.general.string = url.absoluteString
+                    }
+                }
             }
         }
         .task(id: url) { await loadImage() }
