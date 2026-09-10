@@ -199,6 +199,19 @@ final class ChatMessageModel: ObservableObject, Identifiable {
         }
     }
 
+    private var markdownRenderer = ChatMarkdownRenderer()
+    private var thinkingMarkdownRenderer = ChatMarkdownRenderer()
+
+    @MainActor
+    var markdownBlocks: [ChatMarkdownBlock] {
+        markdownRenderer.render(content)
+    }
+
+    @MainActor
+    var thinkingMarkdownBlocks: [ChatMarkdownBlock] {
+        thinkingMarkdownRenderer.render(thinkingContent)
+    }
+
     let id: UUID
     let isUser: Bool
     var timestamp: Date
@@ -307,6 +320,10 @@ final class ChatMessageModel: ObservableObject, Identifiable {
     func appendChunk(_ chunk: String, to variant: Int) {
         guard variants.indices.contains(variant) else { return }
         variants[variant].appendChunk(chunk)
+        // Prepare already-visible content once per transport batch, before SwiftUI reads it.
+        if variant == currentIndex, markdownRenderer.parseCount > 0 {
+            _ = markdownRenderer.render(content)
+        }
     }
 
     @MainActor

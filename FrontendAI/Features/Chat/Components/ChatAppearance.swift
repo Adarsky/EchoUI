@@ -60,7 +60,7 @@ enum ChatAppearanceDefaults {
     static let wallpaperTintOpacity: Double = 0.14
     static let minWallpaperTintOpacity: Double = 0.0
     static let maxWallpaperTintOpacity: Double = 0.7
-    static let messageTextFadeInEnabled: Bool = true
+    static let messageTextFadeInEnabled: Bool = false
     static let messageMaterial: ChatSurfaceMaterial = .ultraThinMaterial
     static let notificationMaterial: ChatSurfaceMaterial = .glass
 

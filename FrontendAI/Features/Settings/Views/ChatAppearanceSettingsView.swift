@@ -866,7 +866,10 @@ private struct ChatAppearanceAdvancedView: View {
     var body: some View {
         Form {
             Section("Message Text") {
-                Toggle("Fade In While Streaming", isOn: $fadeInEnabled)
+                Toggle("Fade In New Markdown Blocks", isOn: $fadeInEnabled)
+                Text("Formatting appears with each update. This optional animation only fades in new blocks while streaming.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Message Text")
