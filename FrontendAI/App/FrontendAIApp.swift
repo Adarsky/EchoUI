@@ -60,7 +60,9 @@ private struct FrontendAIAppRoot: View {
     var body: some View {
         Group {
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--message-editor-ui-testing") {
+            if ProcessInfo.processInfo.arguments.contains("--markdown-ui-testing") {
+                MarkdownUITestHost()
+            } else if ProcessInfo.processInfo.arguments.contains("--message-editor-ui-testing") {
                 MessageEditorUITestHost()
             } else {
                 MainPage()

@@ -24,9 +24,7 @@ struct ThinkingField: View {
         }
         .sheet(isPresented: $isSheetPresented) {
             ThinkingReasoningSheet(
-                sourceText: msg.thinkingContent,
-                isStreaming: msg.isThinkingInProgress,
-                thinkingDurationText: msg.thinkingDurationText
+                msg: msg
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -35,18 +33,16 @@ struct ThinkingField: View {
 }
 
 private struct ThinkingReasoningSheet: View {
-    let sourceText: String
-    let isStreaming: Bool
-    let thinkingDurationText: String?
+    @ObservedObject var msg: ChatMessageModel
 
     private var titleText: String {
-        guard let thinkingDurationText else { return "Thinking complete" }
+        guard let thinkingDurationText = msg.thinkingDurationText else { return "Thinking complete" }
         return "Thought for \(thinkingDurationText)"
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if isStreaming {
+            if msg.isThinkingInProgress {
                 ThinkingShimmerTitle(text: "Thinking")
                     .font(.title3.weight(.semibold))
             } else {
@@ -54,12 +50,12 @@ private struct ThinkingReasoningSheet: View {
                     .font(.title3.weight(.semibold))
             }
             ScrollView(.vertical, showsIndicators: true) {
-                if sourceText.isEmpty {
+                if msg.thinkingContent.isEmpty {
                     Text("No reasoning available yet.")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text(renderedThinkingMarkdown(from: sourceText))
+                    ChatMarkdownView(blocks: msg.thinkingMarkdownBlocks, textColor: .secondary)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
@@ -90,69 +86,6 @@ private struct ThinkingShimmerTitle: View {
                 opacity = 0.58
             }
     }
-}
-
-private func renderedThinkingMarkdown(from text: String) -> AttributedString {
-    let markdownText = thinkingMarkdownReadyText(from: text)
-    let options = AttributedString.MarkdownParsingOptions(
-        interpretedSyntax: .inlineOnlyPreservingWhitespace,
-        failurePolicy: .returnPartiallyParsedIfPossible
-    )
-    if let attributed = try? AttributedString(markdown: markdownText, options: options) {
-        return applyingNoHyphenationToThinkingText(attributed)
-    }
-    return applyingNoHyphenationToThinkingText(AttributedString(markdownText))
-}
-
-private func thinkingMarkdownReadyText(from text: String) -> String {
-    let normalizedText = text
-        .replacingOccurrences(of: "\u{00AD}", with: "")
-        .replacingOccurrences(of: "/n/n", with: "\n\n")
-        .replacingOccurrences(of: "/n", with: "\n")
-        .replacingOccurrences(of: "\\n", with: "\n")
-        .replacingOccurrences(of: "\r\n", with: "\n")
-        .replacingOccurrences(of: "\r", with: "\n")
-
-    var result = ""
-    var newlineRun = 0
-
-    for character in normalizedText {
-        if character == "\n" {
-            newlineRun += 1
-            continue
-        }
-
-        if newlineRun == 1 {
-            result += "  \n"
-        } else if newlineRun > 1 {
-            result += String(repeating: "\n", count: newlineRun)
-        }
-        newlineRun = 0
-        result.append(character)
-    }
-
-    if newlineRun == 1 {
-        result += "  \n"
-    } else if newlineRun > 1 {
-        result += String(repeating: "\n", count: newlineRun)
-    }
-
-    return result
-}
-
-private func applyingNoHyphenationToThinkingText(_ attributed: AttributedString) -> AttributedString {
-    let nsAttributed = NSAttributedString(attributed)
-    let mutable = NSMutableAttributedString(attributedString: nsAttributed)
-    let fullRange = NSRange(location: 0, length: mutable.length)
-
-    mutable.enumerateAttribute(.paragraphStyle, in: fullRange) { value, range, _ in
-        let paragraphStyle = (value as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-        paragraphStyle.hyphenationFactor = 0
-        paragraphStyle.lineBreakMode = .byWordWrapping
-        mutable.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
-    }
-
-    return (try? AttributedString(mutable, including: \.uiKit)) ?? attributed
 }
 
 private struct ThinkingFieldPreviewHost: View {

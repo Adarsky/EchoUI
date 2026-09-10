@@ -110,7 +110,8 @@ EchoUI can stream chat responses, load model lists, use optional Bearer token au
 
 - Character creation, editing, avatars, pinning, reordering, and deletion.
 - Persona creation, editing, avatar support, prompt configuration, and per-chat selection.
-- Streaming chat with stop, regenerate, edit, copy, delete, Markdown rendering, and local history.
+- Streaming chat with stop, regenerate, edit, copy, delete, and local history.
+- Live Markdown with headings, nested lists, task lists, quotes, tables, code blocks, links, and images; cached incremental rendering keeps streaming efficient. See [Markdown support and performance](Documentation/Markdown.md).
 - Appearance customization for message bubbles, wallpapers, app icons, animation, and chat presets.
 - API server management with model loading, status checks, OpenRouter search, balance display, and custom TLS support.
 - Local data storage with cache controls, recovery handling, usage charts, token estimates, and character statistics.
